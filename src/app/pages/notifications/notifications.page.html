@@ -1,0 +1,91 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Notifications</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="markAllAsRead()" [disabled]="unreadCount === 0">
+        <ion-icon name="checkmark-done-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <!-- Header with tabs -->
+  <div class="notification-header">
+    <div class="notification-tabs">
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'all'"
+        (click)="setActiveTab('all')">
+        All
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'unread'"
+        (click)="setActiveTab('unread')">
+        Unread
+        <span class="unread-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+      </button>
+    </div>
+    
+    <div class="section-header" *ngIf="filteredNotifications.length > 0">
+      <span class="section-title">Earlier</span>
+      <button class="see-all-btn" (click)="seeAllNotifications()">See all</button>
+    </div>
+  </div>
+
+  <!-- Notifications List -->
+  <div class="notifications-container">
+    <!-- No notifications message -->
+    <div class="no-notifications" *ngIf="filteredNotifications.length === 0">
+      <ion-icon name="notifications-outline" class="no-notifications-icon"></ion-icon>
+      <h3>No notifications yet</h3>
+      <p>When you receive notifications, they'll appear here.</p>
+    </div>
+
+    <!-- Notifications -->
+    <div class="notification-item" 
+         *ngFor="let notification of filteredNotifications; trackBy: trackByNotificationId"
+         [class.unread]="!notification.read"
+         (click)="onNotificationClick(notification)">
+      
+      <!-- Notification Icon -->
+      <div class="notification-icon">
+        <img [src]="getNotificationIcon(notification)" [alt]="notification.type" class="icon-image">
+        <div class="icon-badge" [ngClass]="getIconBadgeClass(notification)">
+          <ion-icon [name]="getBadgeIcon(notification)"></ion-icon>
+        </div>
+      </div>
+
+      <!-- Notification Content -->
+      <div class="notification-content">
+        <div class="notification-text">
+          <span class="notification-title">{{ getNotificationTitle(notification) }}</span>
+          <span class="notification-description">{{ getNotificationDescription(notification) }}</span>
+        </div>
+        <div class="notification-meta">
+          <span class="notification-time">{{ getTimeAgo(notification.created_at) }}</span>
+          <span class="notification-reactions" *ngIf="notification.reactions">
+            {{ notification.reactions }} Reactions
+          </span>
+        </div>
+      </div>
+
+      <!-- Unread indicator -->
+      <div class="unread-indicator" *ngIf="!notification.read"></div>
+    </div>
+  </div>
+
+  <!-- Load more button -->
+  <div class="load-more-container" *ngIf="hasMoreNotifications">
+    <ion-button fill="clear" (click)="loadMoreNotifications()" [disabled]="isLoading">
+      <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
+      <span *ngIf="!isLoading">Load More</span>
+    </ion-button>
+  </div>
+</ion-content>

@@ -1,0 +1,54 @@
+.switcher-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.active-endpoint {
+  --background: var(--ion-color-primary-tint);
+  --border-color: var(--ion-color-primary);
+  border-left: 4px solid var(--ion-color-primary);
+}
+
+.endpoint-url {
+  font-family: monospace;
+  font-size: 0.8em;
+  color: var(--ion-color-medium);
+  word-break: break-all;
+}
+
+.success-message {
+  color: var(--ion-color-success);
+  font-weight: 500;
+}
+
+.error-message {
+  color: var(--ion-color-danger);
+  font-weight: 500;
+}
+
+ion-card {
+  margin-bottom: 16px;
+}
+
+ion-card-title {
+  color: var(--ion-color-primary);
+}
+
+ion-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+
+ion-button {
+  --border-radius: 8px;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.quick-actions ion-button {
+  flex: 1;
+}

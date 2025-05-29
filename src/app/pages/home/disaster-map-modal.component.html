@@ -1,0 +1,100 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismissModal()">
+          Close
+      </ion-button>
+    </ion-buttons>
+    <ion-title>{{ disasterType === 'all' ? 'All Evacuation Centers' : (disasterType | titlecase) + ' Evacuation Centers' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-segment [(ngModel)]="travelMode" (ionChange)="updateRoute()" class="mode-segment">
+    <ion-segment-button value="foot-walking">
+      <img src="assets/walking.png" style="width:24px; height:24px; display:block; margin:auto;" />
+      Walk
+    </ion-segment-button>
+    <ion-segment-button value="cycling-regular">
+      <img src="assets/bike.png" style="width:24px; height:24px; display:block; margin:auto;" />
+      Bike
+    </ion-segment-button>
+    <ion-segment-button value="driving-car">
+      <img src="assets/car.png" style="width:24px; height:24px; display:block; margin:auto;" />
+      Car
+    </ion-segment-button>
+  </ion-segment>
+
+  <div id="map"></div>
+
+  <div *ngIf="routeTime && routeDistance" class="route-summary-card">
+    <ion-icon [name]="travelMode === 'foot-walking' ? 'walk-outline' : travelMode === 'cycling-regular' ? 'bicycle-outline' : 'car-outline'"></ion-icon>
+    {{ (routeTime/60).toFixed(0) }} min • {{ (routeDistance/1000).toFixed(2) }} km
+  </div>
+
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button color="primary" (click)="routeToTwoNearestCenters()">
+      <ion-icon name="navigate-outline"></ion-icon>
+    </ion-fab-button>
+    <ion-label class="fab-label">Route to 2 Nearest Centers</ion-label>
+  </ion-fab>
+</ion-content>
+
+<style>
+  #map {
+  height: 100%;
+  width: 100%;
+}
+
+.fab-label {
+  position: absolute;
+  right: 80px;
+  bottom: 30px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #222;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mode-segment {
+  margin: 12px 0 0 0;
+  display: flex;
+  justify-content: center;
+  background: #fff;
+  z-index: 1000;
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 90%;
+}
+
+.route-summary-card {
+  position: absolute;
+  left: 50%;
+  top: 120px;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+  padding: 12px 24px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
+}
+
+ion-segment-button {
+  --padding-top: 8px;
+  --padding-bottom: 8px;
+  --padding-start: 4px;
+  --padding-end: 4px;
+  min-height: 48px;
+}
+</style>

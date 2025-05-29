@@ -1,0 +1,124 @@
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80vh;
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 28px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-logo {
+  width: 300px;
+  height: 300px;
+}
+
+.login-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.login-desc {
+  font-size: 1.1rem;
+  color: #888;
+
+}
+
+.login-form ion-item {
+  font-size: 1.1rem;
+  border-radius: 16px;
+
+}
+
+.login-btn {
+  --border-radius: 25px;
+  font-size: 1.2rem;
+  height: 48px;
+
+}
+
+.login-link {
+  margin-top: 20px;
+  font-size: 1.1rem;
+}
+.login-link a {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.troubleshooting-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ion-color-light);
+}
+
+.troubleshooting-section ion-button {
+  margin-bottom: 8px;
+}
+
+/* Alert styling */
+.login-alert {
+  --backdrop-opacity: 0.8;
+
+  .alert-wrapper {
+    border-radius: 15px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .alert-head {
+    padding-bottom: 10px;
+  }
+
+  .alert-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #d9534f;
+  }
+
+  .alert-message {
+    font-size: 1rem;
+    color: #333;
+  }
+
+  .alert-button {
+    color: #3880ff;
+    font-weight: 500;
+  }
+}
+
+/* Success Alert styling */
+.login-success-alert {
+  --backdrop-opacity: 0.8;
+
+  .alert-wrapper {
+    border-radius: 15px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .alert-head {
+    padding-bottom: 10px;
+  }
+
+  .alert-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #5cb85c; /* Green color for success */
+  }
+
+  .alert-message {
+    font-size: 1rem;
+    color: #333;
+  }
+
+  .alert-button {
+    color: #3880ff;
+    font-weight: 500;
+  }
+}

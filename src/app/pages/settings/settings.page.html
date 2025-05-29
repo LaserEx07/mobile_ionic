@@ -1,0 +1,34 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon slot="icon-only" name="arrow-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Settings</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-list>
+    <ion-item-group>
+      <ion-item-divider>
+        <ion-label>Notifications</ion-label>
+      </ion-item-divider>
+      
+      <!-- FCM Refresh Component -->
+      <app-fcm-refresh></app-fcm-refresh>
+    </ion-item-group>
+    
+    <ion-item-group>
+      <ion-item-divider>
+        <ion-label>Account</ion-label>
+      </ion-item-divider>
+      
+      <ion-item button (click)="logout()">
+        <ion-icon name="log-out-outline" slot="start" color="danger"></ion-icon>
+        <ion-label>Logout</ion-label>
+      </ion-item>
+    </ion-item-group>
+  </ion-list>
+</ion-content>

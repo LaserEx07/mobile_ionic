@@ -1,0 +1,38 @@
+
+
+<ion-content class="ion-padding register-bg">
+  <div class="register-wrapper">
+    <img src="assets/ALERTO.png" alt="App Logo" class="register-logo" />
+    <h1 class="register-title">Sign Up Here!</h1>
+    <form (ngSubmit)="onRegister()" class="register-form">
+      <ion-item>
+        <ion-label position="floating">Full Name:</ion-label>
+        <ion-input type="text" [(ngModel)]="user.full_name" name="full_name" required></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Email:</ion-label>
+        <ion-input type="email" [(ngModel)]="user.email" name="email" required></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Password:</ion-label>
+        <ion-input type="password" [(ngModel)]="user.password" name="password" required></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating">Confirm Password:</ion-label>
+        <ion-input type="password" [(ngModel)]="user.confirmPassword" name="confirmPassword" required></ion-input>
+      </ion-item>
+<br>  <br>
+      <ion-button expand="block" type="submit" class="register-btn">Register</ion-button>
+    </form>
+
+    <div class="ion-text-center ion-margin-top">
+      <ion-text>Already have an account? </ion-text>
+      <a (click)="goToLogin()"><strong><u>Log In</u></strong></a>
+    </div>
+
+    
+  </div>
+</ion-content>

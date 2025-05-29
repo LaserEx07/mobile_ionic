@@ -1,0 +1,29 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>🔵 Flood Evacuation Centers</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div id="flood-map" style="height: 100%; width: 100%;"></div>
+  
+  <!-- Floating info card -->
+  <div class="floating-info">
+    <ion-card>
+      <ion-card-content>
+        <div class="info-row">
+          <ion-icon name="water" color="primary"></ion-icon>
+          <span>Flood Centers: {{ evacuationCenters.length }}</span>
+        </div>
+        <div class="info-text">
+          Showing evacuation centers specifically for flood disasters
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

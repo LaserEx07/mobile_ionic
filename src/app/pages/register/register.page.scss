@@ -1,0 +1,82 @@
+.register-container {
+  height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-wrapper {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px 28px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.register-logo {
+  width: 280px;
+  height: 280px;
+}
+
+.register-title {
+  font-size: 2rem;
+  font-weight: 700;
+ 
+}
+
+.register-desc {
+  color: #888;
+  font-size: 1.1rem;
+}
+.register-form ion-label {
+  font-size: 18px;
+  color: #888;
+}
+.register-form ion-item {
+  width: 100%;          
+  --highlight-color-focused: xz#000000; 
+  --min-height: 44px;   
+  --padding-start: 0;   
+  --padding-end: 0;     
+  --inner-padding-end: 0;
+  --inner-padding-start: 0;
+}
+
+.forgot-link {
+  text-align: right;
+ 
+  font-size: 0.95rem;
+}
+.forgot-link a {
+  color: #1565c0;
+  text-decoration: none;
+}
+
+.register-link a {
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+
+
+.register-link {
+ 
+  font-size: 1rem;
+  color: #444;
+}
+.register-link a {
+  color: #1565c0;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.register-btn {
+  --border-radius: 25px;
+  font-size: 1.1rem;
+  height: 48px;
+  width: 100%;
+}

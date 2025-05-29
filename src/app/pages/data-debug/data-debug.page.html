@@ -1,0 +1,175 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Data Debug</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/home"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Data Debug</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="debug-container">
+    
+    <!-- Loading Indicator -->
+    <div *ngIf="isLoading" class="loading-section">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading data...</p>
+    </div>
+
+    <!-- API Data Section -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon 
+            [name]="getStatusIcon(stats.api.total > 0, !!apiError)" 
+            [color]="getStatusColor(stats.api.total > 0, !!apiError)">
+          </ion-icon>
+          API Data (Online)
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div *ngIf="!apiError">
+          <ion-item>
+            <ion-label>
+              <h3>Total Centers: {{ stats.api.total }}</h3>
+            </ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>🟠 Earthquake: {{ stats.api.earthquake }}</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>🟢 Typhoon: {{ stats.api.typhoon }}</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>🔵 Flood: {{ stats.api.flood }}</ion-label>
+          </ion-item>
+        </div>
+        <div *ngIf="apiError" class="error-message">
+          <p>{{ apiError }}</p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Offline Data Section -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon 
+            [name]="getStatusIcon(stats.offline.total > 0, !!offlineError)" 
+            [color]="getStatusColor(stats.offline.total > 0, !!offlineError)">
+          </ion-icon>
+          Offline Data (Cached)
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div *ngIf="!offlineError">
+          <ion-item>
+            <ion-label>
+              <h3>Total Centers: {{ stats.offline.total }}</h3>
+            </ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>🟠 Earthquake: {{ stats.offline.earthquake }}</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>🟢 Typhoon: {{ stats.offline.typhoon }}</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>🔵 Flood: {{ stats.offline.flood }}</ion-label>
+          </ion-item>
+        </div>
+        <div *ngIf="offlineError" class="error-message">
+          <p>{{ offlineError }}</p>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <ion-button 
+        expand="block" 
+        fill="outline" 
+        (click)="loadAllData()"
+        [disabled]="isLoading">
+        <ion-icon name="refresh" slot="start"></ion-icon>
+        Refresh Data
+      </ion-button>
+
+      <ion-button 
+        expand="block" 
+        color="primary" 
+        (click)="syncOfflineData()"
+        [disabled]="isLoading || !!apiError">
+        <ion-icon name="sync" slot="start"></ion-icon>
+        Sync Offline Data
+      </ion-button>
+
+      <ion-button 
+        expand="block" 
+        color="warning" 
+        (click)="addSampleData()"
+        [disabled]="isLoading">
+        <ion-icon name="add-circle" slot="start"></ion-icon>
+        Add Sample Data
+      </ion-button>
+    </div>
+
+    <!-- Recommendations -->
+    <ion-card *ngIf="!isLoading">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="bulb" color="warning"></ion-icon>
+          Recommendations
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div *ngIf="stats.api.total === 0 && !apiError">
+          <ion-item color="warning">
+            <ion-icon name="warning" slot="start"></ion-icon>
+            <ion-label>
+              <h3>No API Data Found</h3>
+              <p>The database appears to be empty. Add sample data to test the maps.</p>
+            </ion-label>
+          </ion-item>
+        </div>
+
+        <div *ngIf="stats.offline.total === 0 && stats.api.total > 0">
+          <ion-item color="primary">
+            <ion-icon name="download" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Sync Offline Data</h3>
+              <p>API has data but offline storage is empty. Sync for offline access.</p>
+            </ion-label>
+          </ion-item>
+        </div>
+
+        <div *ngIf="apiError">
+          <ion-item color="danger">
+            <ion-icon name="wifi-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>API Connection Issue</h3>
+              <p>Check your network connection and backend server status.</p>
+            </ion-label>
+          </ion-item>
+        </div>
+
+        <div *ngIf="stats.api.total > 0 && stats.offline.total > 0">
+          <ion-item color="success">
+            <ion-icon name="checkmark-circle" slot="start"></ion-icon>
+            <ion-label>
+              <h3>All Good!</h3>
+              <p>Both API and offline data are available. Maps should work properly.</p>
+            </ion-label>
+          </ion-item>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+</ion-content>

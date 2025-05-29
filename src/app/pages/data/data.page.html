@@ -1,0 +1,131 @@
+
+<ion-content class="ion-padding">
+  <div class="profile-container">
+
+    <div class="header-logo">
+      <div class="home-title"><img src="assets/ALERTO.png" alt="App Logo" class="home-logo"/> Hi, Welcome to Safe Area!</div>
+    </div>
+    <form (ngSubmit)="onSave()">
+      <ion-item>
+        <ion-label position="floating" style="font-size: 15px;">Full Name:</ion-label>
+        <ion-input type="text" [(ngModel)]="userData.full_name" name="full_name" style="font-size: 20px; padding-bottom: 10px;" required></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating" style="font-size: 15px;">Mobile Number:</ion-label>
+        <div style="display: flex; align-items: center; width: 100%;">
+          <span style="font-size: 20px; font-weight: bold; margin-right: 8px; color: #333; min-width: 40px;">+63</span>
+          <ion-input
+            type="tel"
+            [(ngModel)]="userData.mobile_number"
+            name="mobile_number"
+            style="font-size: 20px; padding-bottom: 10px; flex: 1;"
+            placeholder="917-123-4567"
+            maxlength="10"
+            (ionInput)="onMobileNumberInput($event)"
+            required>
+          </ion-input>
+        </div>
+
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating"  style="font-size: 15px;">Age:</ion-label>
+        <ion-input type="number" [(ngModel)]="userData.age" name="age" style="font-size: 20px; padding-bottom: 10px; "required></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating" >Gender <ion-select [(ngModel)]="userData.gender" name="gender" required>
+          <ion-select-option value="Male">Male</ion-select-option>
+          <ion-select-option value="Female">Female</ion-select-option>
+          <ion-select-option value="Other">Other</ion-select-option>
+        </ion-select></ion-label>
+
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="floating" style="font-size: 15px;">Address:</ion-label>
+        <ion-input type="text" [(ngModel)]="userData.address" name="address" style="font-size: 20px; padding-bottom: 10px;" required></ion-input>
+      </ion-item>
+
+      <ion-text color="danger" *ngIf="showError" class="error-message">
+        <p>{{ errorMessage }}</p>
+      </ion-text>
+
+      <div class="terms-checkbox">
+        <ion-checkbox slot="start" [(ngModel)]="acceptedTerms" name="acceptedTerms" required></ion-checkbox>
+        <label>I accept the <a (click)="openTermsModal()" style="color: #3880ff; text-decoration: underline; cursor: pointer;">Terms and Conditions</a></label>
+      </div>
+
+      <ion-button expand="block" type="submit" class="ion-margin-top">
+        Save
+      </ion-button>
+    </form>
+  </div>
+</ion-content>
+
+<!-- Terms and Conditions Modal -->
+<ion-modal #termsModal [isOpen]="isTermsModalOpen" (willDismiss)="closeTermsModal()">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Terms and Conditions</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeTermsModal()">
+            <ion-icon name="close"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding">
+      <div class="terms-content">
+        <h2>Alerto - Emergency Evacuation App</h2>
+        <h3>Terms and Conditions of Use</h3>
+
+        <p><strong>Last Updated:</strong> {{ getCurrentDate() }}</p>
+
+        <h4>1. Acceptance of Terms</h4>
+        <p>By using the Alerto emergency evacuation application, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use this application.</p>
+
+        <h4>2. Purpose of the Application</h4>
+        <p>Alerto is designed to provide emergency evacuation information and guidance during natural disasters including earthquakes, typhoons, and flash floods in the Philippines. The app provides location-based evacuation center recommendations and emergency notifications.</p>
+
+        <h4>3. User Responsibilities</h4>
+        <p>• Provide accurate personal information including contact details</p>
+        <p>• Keep your mobile number updated for emergency notifications</p>
+        <p>• Use the app responsibly during emergency situations</p>
+        <p>• Follow official emergency protocols and local authority instructions</p>
+
+        <h4>4. Data Collection and Privacy</h4>
+        <p>We collect and store your personal information including name, mobile number, age, gender, and address to provide personalized emergency services. Your location data may be accessed to provide relevant evacuation center recommendations.</p>
+
+        <h4>5. Emergency Notifications</h4>
+        <p>By using this app, you consent to receive emergency push notifications on your device. These notifications are critical for your safety during disaster events.</p>
+
+        <h4>6. Limitation of Liability</h4>
+        <p>While we strive to provide accurate and timely information, Alerto and its developers are not liable for any damages or losses resulting from the use of this application. Always follow official emergency protocols and local authority guidance.</p>
+
+        <h4>7. Service Availability</h4>
+        <p>We cannot guarantee uninterrupted service availability, especially during extreme weather conditions or network outages that may occur during disasters.</p>
+
+        <h4>8. Updates and Modifications</h4>
+        <p>These terms may be updated periodically. Continued use of the application constitutes acceptance of any modifications.</p>
+
+        <h4>9. Contact Information</h4>
+        <p>For questions about these terms or the application, please contact our support team through the app's feedback feature.</p>
+
+        <p><strong>By clicking "I accept" below, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.</strong></p>
+      </div>
+
+      <div class="modal-buttons">
+        <ion-button expand="block" fill="outline" (click)="closeTermsModal()">
+          Close
+        </ion-button>
+        <ion-button expand="block" (click)="acceptTerms()">
+          I Accept
+        </ion-button>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

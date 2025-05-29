@@ -1,0 +1,53 @@
+
+
+<ion-content>
+  <div class="profile-header">
+    <div class="profile-background">
+      <div class="profile-avatar">
+        <ion-icon name="person" class="avatar-icon"></ion-icon>
+      </div>
+      <div class="profile-info">
+        <h2>Hi, {{ userData.full_name || 'User' }}</h2>
+        <p *ngIf="userData.email">{{ userData.email }}</p>
+      </div>
+    </div>
+  </div>
+
+  <ion-list lines="full" class="menu-list">
+    <ion-item button (click)="openAccountInfoModal()" style="padding-top: 10px;">
+      <img src="assets/setting (1).png" style="width:28px; height:28px; display:block; margin:auto;" slot="start" />
+      <ion-label style="padding-left: 15px; font-size: 17px;">Account Information</ion-label>
+    </ion-item>
+
+    <ion-item button (click)="openGuideModal()" style="padding-top: 10px;">
+      <img src="assets/info.png" style="width:28px; height:28px; display:block; margin:auto;" slot="start" />
+      <ion-label style="padding-left: 15px; font-size: 17px;">Reference Guide for Map Symbols</ion-label>
+    </ion-item>
+
+    <ion-item button (click)="openEmergencyContactsModal()" style="padding-top: 10px;">
+      <img src="assets/medical-call.png" style="width:28px; height:28px; display:block; margin:auto;" slot="start" />
+      <ion-label style="padding-left: 15px; font-size: 17px;">Emergency Contacts</ion-label>
+    </ion-item>
+
+    <ion-item button (click)="openSafetyTipsModal()" style="padding-top: 10px;">
+      <img src="assets/first-aid-box.png" style="width:28px; height:28px; display:block; margin:auto;" slot="start" />
+      <ion-label style="padding-left: 15px; font-size: 17px;">Safety Tips</ion-label>
+    </ion-item>
+
+    <ion-item button (click)="openPrivacyModal()" style="padding-top: 10px;">
+      <img src="assets/shield.png" style="width:28px; height:28px; display:block; margin:auto;" slot="start" />
+      <ion-label style="padding-left: 15px;   font-size: 17px;">Privacy Policy</ion-label>
+    </ion-item>
+
+    <ion-item button (click)="openTermsModal()" style="padding-top: 10px;">
+      <img src="assets/terms-and-conditions.png" style="width:28px; height:28px; display:block; margin:auto; " slot="start" />
+      <ion-label style="padding-left: 15px; font-size: 17px;">Terms and Condition</ion-label>
+    </ion-item>
+
+    <ion-item button (click)="goToSettings()" style="padding-top: 10px;">
+      <ion-icon name="settings-outline" style="width:28px; height:28px; display:block; margin:auto; color: #3880ff;" slot="start"></ion-icon>
+      <ion-label style="padding-left: 15px; font-size: 17px;">Notification Settings</ion-label>
+    </ion-item>
+
+  </ion-list>
+</ion-content>

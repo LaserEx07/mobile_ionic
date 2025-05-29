@@ -1,0 +1,42 @@
+<div class="modal-container">
+  <!-- Close button -->
+  <div class="close-button" (click)="dismiss()">
+    <ion-icon name="close-circle" color="danger"></ion-icon>
+  </div>
+
+  <!-- Center name -->
+  <h2 class="center-name">{{ center.name }}</h2>
+
+  <!-- Center image -->
+  <div class="center-image">
+    <!-- Use a placeholder image for now -->
+    <img src="assets/evacuation-center.jpg" alt="{{ center.name }}"
+         onerror="this.src='assets/evacuation-placeholder.jpg'">
+  </div>
+
+  <!-- Contact info -->
+  <div class="info-section">
+    <div class="info-label">Contact Number</div>
+    <div class="info-value contact">
+      <ion-icon name="call-outline"></ion-icon>
+      <span>{{ center.contact || 'No contact available' }}</span>
+    </div>
+  </div>
+
+  <!-- Address info -->
+  <div class="info-section">
+    <div class="info-label">Address</div>
+    <div class="info-value address">
+      <ion-icon name="location-outline"></ion-icon>
+      <span>{{ center.address }}</span>
+    </div>
+  </div>
+
+  <!-- Get Directions button -->
+  <div class="directions-button">
+    <ion-button expand="block" color="primary" (click)="getDirections()">
+      <ion-icon name="navigate" slot="start"></ion-icon>
+      Get Directions
+    </ion-button>
+  </div>
+</div>

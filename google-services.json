@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "660101685392",
+    "project_id": "last-5acaf",
+    "storage_bucket": "last-5acaf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:660101685392:android:c7c81cb0ccca4f30cb7815",
+        "android_client_info": {
+          "package_name": "io.ionic.starter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5H6_NGbhDlVZ4l67qEC_JNRmcXPQ-GAo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

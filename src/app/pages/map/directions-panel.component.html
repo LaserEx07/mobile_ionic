@@ -1,0 +1,32 @@
+<div class="directions-panel">
+  <div class="directions-header">
+    <ion-item lines="none">
+      <ion-icon [name]="getTravelModeIcon()" [color]="getTravelModeColor()" slot="start"></ion-icon>
+      <ion-label>
+        <h2>{{ getTravelModeName() }} Directions</h2>
+        <p *ngIf="totalDistance && totalDuration">
+          {{ formatDistance(totalDistance) }} • {{ formatTime(totalDuration) }}
+        </p>
+      </ion-label>
+      <ion-button fill="clear" slot="end" (click)="closePanel()">
+        <ion-icon name="close-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-item>
+  </div>
+
+  <div class="directions-list">
+    <ion-list>
+      <ion-item *ngFor="let direction of directions; let i = index" lines="full">
+        <ion-icon [name]="getDirectionIcon(direction.type)" slot="start" [color]="getTravelModeColor()"></ion-icon>
+        <ion-label>
+          <h3 [innerHTML]="direction.instruction"></h3>
+          <p *ngIf="direction.distance > 0">
+            {{ formatDistance(direction.distance) }}
+            <span *ngIf="direction.duration > 0"> • {{ formatTime(direction.duration) }}</span>
+          </p>
+        </ion-label>
+        <ion-note slot="end">{{ i + 1 }}</ion-note>
+      </ion-item>
+    </ion-list>
+  </div>
+</div>

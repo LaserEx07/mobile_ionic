@@ -1,0 +1,106 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="secondary">
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>🗺️ All Evacuation Centers</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div id="all-maps" style="height: 100%; width: 100%;"></div>
+
+  <!-- Floating info card -->
+  <div class="floating-info">
+    <ion-card>
+      <ion-card-content>
+        <div class="info-header">
+          <ion-icon name="map" color="secondary"></ion-icon>
+          <span>All Centers: {{ centerCounts.total }}</span>
+        </div>
+
+        <div class="disaster-counts">
+          <div class="count-row">
+            <span class="disaster-icon">🟠</span>
+            <span class="disaster-label">Earthquake:</span>
+            <span class="disaster-count">{{ centerCounts.earthquake }}</span>
+          </div>
+
+          <div class="count-row">
+            <span class="disaster-icon">🟢</span>
+            <span class="disaster-label">Typhoon:</span>
+            <span class="disaster-count">{{ centerCounts.typhoon }}</span>
+          </div>
+
+          <div class="count-row">
+            <span class="disaster-icon">🔵</span>
+            <span class="disaster-label">Flood:</span>
+            <span class="disaster-count">{{ centerCounts.flood }}</span>
+          </div>
+        </div>
+
+        <div class="info-text">
+          Complete overview of all evacuation centers by disaster type
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Transportation Mode Controls -->
+  <div class="transport-controls">
+    <ion-card>
+      <ion-card-content>
+        <div class="transport-header">
+          <ion-icon name="navigate-outline" color="primary"></ion-icon>
+          <span>Travel Mode</span>
+        </div>
+        <ion-segment [(ngModel)]="travelMode" (ionChange)="onTravelModeChange($event)">
+          <ion-segment-button value="walking">
+            <ion-icon name="walk-outline"></ion-icon>
+            <ion-label>Walk</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="cycling">
+            <ion-icon name="bicycle-outline"></ion-icon>
+            <ion-label>Bike</ion-label>
+          </ion-segment-button>
+          <ion-segment-button value="driving">
+            <ion-icon name="car-outline"></ion-icon>
+            <ion-label>Drive</ion-label>
+          </ion-segment-button>
+        </ion-segment>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Route Information -->
+  <div *ngIf="routeTime && routeDistance" class="route-info">
+    <ion-card>
+      <ion-card-content>
+        <div class="route-header">
+          <ion-icon name="time-outline" color="success"></ion-icon>
+          <span>Route to Nearest Center</span>
+        </div>
+        <div class="route-details">
+          <div class="route-item">
+            <ion-icon [name]="travelMode === 'walking' ? 'walk-outline' : travelMode === 'cycling' ? 'bicycle-outline' : 'car-outline'"></ion-icon>
+            <span>{{ (routeTime/60).toFixed(0) }} min</span>
+          </div>
+          <div class="route-item">
+            <ion-icon name="location-outline"></ion-icon>
+            <span>{{ (routeDistance/1000).toFixed(2) }} km</span>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Route Button -->
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button color="primary" (click)="routeToTwoNearestCenters()">
+      <ion-icon name="navigate-outline"></ion-icon>
+    </ion-fab-button>
+    <ion-label class="fab-label">Route to 2 Nearest Centers</ion-label>
+  </ion-fab>
+</ion-content>

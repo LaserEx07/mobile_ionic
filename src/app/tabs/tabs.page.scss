@@ -1,0 +1,9 @@
+/* Tabs styling */
+ion-tab-bar {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-light);
+}
+
+ion-tab-button {
+  --color-selected: var(--ion-color-light);
+}

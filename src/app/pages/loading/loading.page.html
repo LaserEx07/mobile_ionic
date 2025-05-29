@@ -1,0 +1,13 @@
+<ion-content class="ion-padding">
+  <div class="loading-container">
+    <div class="loader"></div>
+    <h2>Loading...</h2>
+    
+    <ion-alert
+      [isOpen]="!isOnline"
+      header="No Internet Connection"
+      message="Please check your internet connection and try again."
+      [buttons]="['OK']"
+    ></ion-alert>
+  </div>
+</ion-content> 

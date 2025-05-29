@@ -1,0 +1,125 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="dismiss()">
+        <ion-icon name="chevron-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Evacuation Center</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <!-- Loading spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <ion-spinner name="circles"></ion-spinner>
+    <p>Calculating travel times...</p>
+  </div>
+
+  <div *ngIf="!isLoading" class="details-container">
+    <!-- Center image -->
+    <div class="center-image">
+      <!-- Use disaster-specific images based on the center type -->
+      <img *ngIf="center.disaster_type && center.disaster_type.toLowerCase().includes('earthquake')"
+           src="assets/earthquake.png" alt="{{ center.name }}">
+      <img *ngIf="center.disaster_type && center.disaster_type.toLowerCase().includes('flood')"
+           src="assets/flood.png" alt="{{ center.name }}">
+      <img *ngIf="center.disaster_type && center.disaster_type.toLowerCase().includes('typhoon')"
+           src="assets/typhoon.png" alt="{{ center.name }}">
+      <!-- Default image if no specific disaster type -->
+      <img *ngIf="!center.disaster_type ||
+                 (!center.disaster_type.toLowerCase().includes('earthquake') &&
+                  !center.disaster_type.toLowerCase().includes('flood') &&
+                  !center.disaster_type.toLowerCase().includes('typhoon'))"
+           src="assets/ALERTO.png" alt="{{ center.name }}">
+    </div>
+
+    <!-- Center name and type -->
+    <h1 class="center-name">{{ center.name }}</h1>
+    <div class="center-type">
+      <ion-chip [color]="getStatusColor(center.status)">
+        <ion-icon [name]="getDisasterTypeIcon(center.disaster_type)"></ion-icon>
+        <ion-label>{{ center.disaster_type || 'General' }}</ion-label>
+      </ion-chip>
+      <ion-chip *ngIf="center.status" [color]="getStatusColor(center.status)">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <ion-label>{{ center.status }}</ion-label>
+      </ion-chip>
+    </div>
+
+    <!-- Address -->
+    <div class="info-section">
+      <ion-item lines="none">
+        <ion-icon name="location-outline" slot="start" color="primary"></ion-icon>
+        <ion-label>
+          <h2>Address</h2>
+          <p>{{ center.address || 'No address available' }}</p>
+        </ion-label>
+      </ion-item>
+    </div>
+
+    <!-- Contact -->
+    <div class="info-section">
+      <ion-item lines="none">
+        <ion-icon name="call-outline" slot="start" color="primary"></ion-icon>
+        <ion-label>
+          <h2>Contact</h2>
+          <p>{{ center.contact || 'No contact information available' }}</p>
+        </ion-label>
+      </ion-item>
+    </div>
+
+    <!-- Capacity -->
+    <div class="info-section" *ngIf="center.capacity">
+      <ion-item lines="none">
+        <ion-icon name="people-outline" slot="start" color="primary"></ion-icon>
+        <ion-label>
+          <h2>Capacity</h2>
+          <p>{{ center.capacity }} people</p>
+        </ion-label>
+      </ion-item>
+    </div>
+
+    <!-- Travel time estimates -->
+    <div class="travel-section">
+      <h2>Travel Time Estimates</h2>
+
+      <div class="travel-cards">
+        <ion-card *ngFor="let estimate of travelEstimates" (click)="selectTravelMode(estimate.mode)" class="travel-card">
+          <ion-card-header>
+            <ion-icon [name]="estimate.icon" [color]="estimate.color" class="travel-icon"></ion-icon>
+            <ion-card-title>
+              {{ estimate.mode === 'foot-walking' ? 'Walking' :
+                 estimate.mode === 'cycling-regular' ? 'Cycling' : 'Driving' }}
+            </ion-card-title>
+          </ion-card-header>
+
+          <ion-card-content>
+            <div class="travel-info">
+              <div class="travel-time">
+                <ion-icon name="time-outline"></ion-icon>
+                <span>{{ formatTime(estimate.time) }}</span>
+              </div>
+              <div class="travel-distance">
+                <ion-icon name="navigate-outline"></ion-icon>
+                <span>{{ formatDistance(estimate.distance) }}</span>
+              </div>
+            </div>
+            <ion-button expand="block" fill="clear" [color]="estimate.color" (click)="selectTravelMode(estimate.mode)">
+              Select
+              <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+      </div>
+    </div>
+  </div>
+</ion-content>
+
+<ion-footer class="ion-no-border">
+  <ion-toolbar>
+    <ion-button expand="block" (click)="dismiss()" color="medium">
+      Back to Map
+    </ion-button>
+  </ion-toolbar>
+</ion-footer>

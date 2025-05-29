@@ -1,0 +1,54 @@
+{
+  "appId": "io.ionic.starter",
+  "appName": "Alerto",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": [
+      "http://localhost:8100",
+      "http://localhost:8000",
+      "http://127.0.0.1:8100",
+      "http://127.0.0.1:8000",
+      "http://192.168.112.244:8000",
+      "https://*.ngrok-free.app",
+      "http://*.ngrok-free.app",
+      "https://*.ngrok.io",
+      "http://*.ngrok.io"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1000,
+      "backgroundColor": "#FFFFFF",
+      "androidSplashResourceName": "splash",
+      "showSpinner": true,
+      "spinnerColor": "#999999",
+      "autoHide": true
+    },
+    "Geolocation": {
+      "permissions": {
+        "android": {
+          "coarseLocation": true,
+          "fineLocation": true
+        },
+        "ios": {
+          "whenInUse": true,
+          "always": false
+        }
+      }
+    },
+    "FirebaseMessaging": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "ios": {
+    "contentInset": "always",
+    "preferredContentMode": "mobile"
+  }
+}

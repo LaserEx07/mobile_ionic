@@ -1,0 +1,29 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="success">
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>🟢 Typhoon Evacuation Centers</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div id="typhoon-map" style="height: 100%; width: 100%;"></div>
+  
+  <!-- Floating info card -->
+  <div class="floating-info">
+    <ion-card>
+      <ion-card-content>
+        <div class="info-row">
+          <ion-icon name="thunderstorm" color="success"></ion-icon>
+          <span>Typhoon Centers: {{ evacuationCenters.length }}</span>
+        </div>
+        <div class="info-text">
+          Showing evacuation centers specifically for typhoon disasters
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

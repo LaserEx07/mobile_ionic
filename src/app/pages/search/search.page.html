@@ -1,0 +1,92 @@
+
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Search Evacuation Centers</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="refreshCenters($event)">
+    <ion-refresher-content
+      pullingIcon="chevron-down-circle-outline"
+      pullingText="Pull to refresh"
+      refreshingSpinner="circles"
+      refreshingText="Refreshing...">
+    </ion-refresher-content>
+  </ion-refresher>
+
+  <div class="search-container">
+    <ion-searchbar
+      [(ngModel)]="searchQuery"
+      (ionInput)="onSearch($event)"
+      (ionClear)="clearSearch()"
+      placeholder="Search evacuation centers by name"
+      animated="true"
+      showCancelButton="focus"
+      debounce="300"
+    ></ion-searchbar>
+
+    <ion-text color="medium" class="search-hint" *ngIf="!searchQuery">
+      <p>Search by center name, address, or disaster type</p>
+    </ion-text>
+  </div>
+
+  <div class="search-results">
+    <!-- Loading indicator -->
+    <div class="loading-container" *ngIf="isLoading">
+      <ion-spinner name="circles"></ion-spinner>
+      <ion-text color="medium">
+        <p>Loading evacuation centers...</p>
+      </ion-text>
+    </div>
+
+    <!-- Error message -->
+    <div class="error-container" *ngIf="hasError">
+      <ion-icon name="alert-circle-outline" color="danger" size="large"></ion-icon>
+      <ion-text color="danger">
+        <p>{{ errorMessage }}</p>
+      </ion-text>
+      <ion-button (click)="loadEvacuationCenters()" fill="outline" size="small">
+        <ion-icon name="refresh-outline" slot="start"></ion-icon>
+        Try Again
+      </ion-button>
+    </div>
+
+    <!-- Search results -->
+    <ion-list *ngIf="locations.length > 0">
+      <ion-item *ngFor="let location of locations" button detail (click)="viewOnMap(location)">
+        <ion-icon name="location-outline" slot="start" color="primary"></ion-icon>
+        <ion-label>
+          <h2>{{ location.name }}</h2>
+          <p>{{ location.address }}</p>
+          <p *ngIf="location.disaster_type">
+            <ion-badge color="secondary">{{ location.disaster_type }}</ion-badge>
+            <ion-badge color="{{ location.status === 'Active' ? 'success' : 'warning' }}" *ngIf="location.status">
+              {{ location.status }}
+            </ion-badge>
+          </p>
+        </ion-label>
+      </ion-item>
+    </ion-list>
+
+    <!-- No results message -->
+    <div class="no-results" *ngIf="searchQuery && locations.length === 0 && !isLoading && !hasError">
+      <ion-icon name="search-outline" color="medium" size="large"></ion-icon>
+      <ion-text color="medium">
+        <p>No evacuation centers found matching "{{ searchQuery }}"</p>
+      </ion-text>
+    </div>
+
+    <!-- Empty state when no search is performed -->
+    <div class="empty-state" *ngIf="!searchQuery && !isLoading && !hasError && allCenters.length > 0">
+      <ion-icon name="search" color="primary" size="large"></ion-icon>
+      <ion-text color="medium">
+        <h3>Search for Evacuation Centers</h3>
+        <p>Enter a name, address, or disaster type to find evacuation centers</p>
+      </ion-text>
+      <ion-button (click)="searchQuery = 'all'; onSearch({target: {value: 'all'}})" fill="outline">
+        Show All Centers
+      </ion-button>
+    </div>
+  </div>
+</ion-content>

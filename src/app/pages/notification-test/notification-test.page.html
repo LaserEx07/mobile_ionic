@@ -1,0 +1,158 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Emergency Notification Test</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="ion-padding">
+  <div class="test-container">
+    
+    <!-- Info Card -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>🚨 Emergency Notification Testing</ion-card-title>
+        <ion-card-subtitle>Test emergency modals and notifications</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        <p>This page allows you to test emergency notifications to ensure they work properly when the app is active.</p>
+        <p><strong>What to expect:</strong></p>
+        <ul>
+          <li>Emergency modal should appear immediately</li>
+          <li>Device should vibrate</li>
+          <li>Modal should have disaster-specific colors</li>
+          <li>App should NOT crash or close</li>
+        </ul>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Quick Test Button -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Quick Test</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-button 
+          expand="block" 
+          color="danger" 
+          (click)="testAllNotifications()">
+          <ion-icon name="flash-outline" slot="start"></ion-icon>
+          Test All Notification Types
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Individual Tests -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Individual Tests</ion-card-title>
+        <ion-card-subtitle>Test specific disaster types</ion-card-subtitle>
+      </ion-card-header>
+      <ion-card-content>
+        
+        <ion-list>
+          <ion-item 
+            *ngFor="let notification of testNotifications" 
+            class="notification-item">
+            
+            <ion-icon 
+              [name]="getDisasterIcon(notification.category)" 
+              [color]="getDisasterColor(notification.category)"
+              slot="start">
+            </ion-icon>
+            
+            <ion-label>
+              <h2>{{ notification.title }}</h2>
+              <p>{{ notification.body }}</p>
+              <p class="category-badge">
+                <ion-badge [color]="getDisasterColor(notification.category)">
+                  {{ notification.category.toUpperCase() }}
+                </ion-badge>
+                <ion-badge [color]="notification.severity === 'high' ? 'danger' : 'warning'">
+                  {{ notification.severity.toUpperCase() }}
+                </ion-badge>
+              </p>
+            </ion-label>
+
+            <ion-buttons slot="end">
+              <ion-button 
+                fill="clear" 
+                [color]="getDisasterColor(notification.category)"
+                (click)="testForegroundNotification(notification)">
+                <ion-icon name="play-outline"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-item>
+        </ion-list>
+
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Test Types -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Test Types</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        
+        <ion-list>
+          <ion-item>
+            <ion-icon name="phone-portrait-outline" slot="start" color="primary"></ion-icon>
+            <ion-label>
+              <h3>Foreground Test</h3>
+              <p>Tests notifications when app is active and visible</p>
+            </ion-label>
+          </ion-item>
+          
+          <ion-item>
+            <ion-icon name="moon-outline" slot="start" color="secondary"></ion-icon>
+            <ion-label>
+              <h3>Background Test</h3>
+              <p>Simulates notifications when app was in background</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Troubleshooting -->
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Troubleshooting</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list>
+          <ion-item>
+            <ion-icon name="checkmark-circle-outline" slot="start" color="success"></ion-icon>
+            <ion-label>
+              <h3>✅ Working Correctly</h3>
+              <p>Modal appears, device vibrates, app stays open</p>
+            </ion-label>
+          </ion-item>
+          
+          <ion-item>
+            <ion-icon name="close-circle-outline" slot="start" color="danger"></ion-icon>
+            <ion-label>
+              <h3>❌ App Crashes</h3>
+              <p>Check console logs, modal creation might be failing</p>
+            </ion-label>
+          </ion-item>
+          
+          <ion-item>
+            <ion-icon name="warning-outline" slot="start" color="warning"></ion-icon>
+            <ion-label>
+              <h3>⚠️ No Modal</h3>
+              <p>Check if fallback toast appears instead</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+</ion-content>

@@ -1,0 +1,14 @@
+ion-item-divider {
+  --background: var(--ion-color-light);
+  --color: var(--ion-color-medium);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding-top: 16px;
+}
+
+ion-item {
+  --padding-start: 16px;
+  --inner-padding-end: 16px;
+}
