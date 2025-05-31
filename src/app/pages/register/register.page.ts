@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { IonicModule, Platform, AlertController } from '@ionic/angular';
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { FcmService } from '../../services/fcm.service';
+import { FCMService } from '../../services/fcm.service';
 
 @Component({
   standalone: true,
@@ -31,58 +32,14 @@ export class RegisterPage implements OnInit {
     private router: Router,
     private http: HttpClient,
     private platform: Platform,
-    private fcmService: FcmService,
-    private alertController: AlertController
+    private alertController: AlertController,
+    private fcmService: FCMService
   ) {}
 
   async ngOnInit() {
     console.log('🔥 Register page initializing...');
-    // Initialize FCM and get token
-    await this.initializeFCM();
-  }
-
-  /**
-   * Initialize FCM service and get token
-   */
-  async initializeFCM() {
-    try {
-      console.log('🔥 Initializing FCM for registration...');
-
-      // Initialize FCM service first
-      await this.fcmService.initPush();
-
-      // Get FCM token
-      await this.getFCMToken();
-
-      console.log('✅ FCM initialization complete, token ready:', !!this.fcmToken);
-      this.fcmTokenReady = true;
-    } catch (error) {
-      console.error('❌ FCM initialization failed:', error);
-      // Continue without FCM - app should still work
-      this.fcmTokenReady = false;
-    }
-  }
-
-  async getFCMToken() {
-    try {
-      // For browser testing, create a mock token
-      if (!this.platform.is('cordova') && !this.platform.is('capacitor')) {
-        console.log('Running in browser, using mock FCM token');
-        this.fcmToken = 'browser-mock-token-' + Math.random().toString(36).substring(2, 15);
-        console.log('Mock FCM Token:', this.fcmToken);
-        return;
-      }
-
-      // For real devices, use the FCM service
-      console.log('Getting FCM token from service...');
-      this.fcmToken = await this.fcmService.getToken();
-      console.log('✅ FCM Token obtained:', this.fcmToken.substring(0, 20) + '...');
-
-    } catch (error) {
-      console.error('❌ Error getting FCM token from service:', error);
-      // Continue without token - app should still work
-      this.fcmToken = '';
-    }
+    // Initialize FCM token
+    await this.initializeFCMToken();
   }
 
   async onRegister() {
@@ -100,24 +57,13 @@ export class RegisterPage implements OnInit {
       next: async res => {
         console.log('Registration successful:', res);
 
-        // Try to register the FCM token immediately after registration
-        if (this.fcmToken) {
-          console.log('Registering FCM token after registration:', this.fcmToken);
-
-          // Include Firebase project ID in the request
-          const payload = {
+        // Register FCM token if available
+        if (this.fcmTokenReady && this.fcmToken) {
+          await this.registerTokenWithEndpoints({
             token: this.fcmToken,
-            device_type: this.platform.is('ios') ? 'ios' : 'android',
-            project_id: environment.firebase.projectId
-            // Note: We don't have user_id yet since we're not logged in
-          };
-
-          console.log('Token registration payload:', payload);
-
-          // Use the FCM service to register the token
-          this.fcmService.registerTokenWithBackend(this.fcmToken);
-        } else {
-          console.warn('No FCM token available to register after registration');
+            device_type: 'android',
+            user_id: res.user?.id
+          });
         }
 
         await this.presentAlert('Registration Successful', 'Your account has been created successfully. Please log in.');
@@ -131,14 +77,39 @@ export class RegisterPage implements OnInit {
   }
 
   /**
+   * Initialize FCM token
+   */
+  async initializeFCMToken() {
+    try {
+      if (this.platform.is('capacitor')) {
+        console.log('Getting FCM token...');
+        this.fcmToken = await this.fcmService.getFCMToken();
+        if (this.fcmToken) {
+          this.fcmTokenReady = true;
+          console.log('FCM token ready:', this.fcmToken);
+        } else {
+          console.log('No FCM token available');
+        }
+      } else {
+        console.log('FCM not available on this platform');
+      }
+    } catch (error) {
+      console.error('Error initializing FCM token:', error);
+    }
+  }
+
+  /**
    * Helper method to register a token with multiple endpoints
    * @param payload The token payload to send
    */
   async registerTokenWithEndpoints(payload: any) {
+    // Ensure project_id is included
+    if (!payload.project_id) {
+      payload.project_id = environment.firebase.projectId;
+    }
+
     const endpoints = [
-      `${environment.apiUrl}/device-token`,
-      'http://localhost:8000/api/device-token',
-      'https://7af9-43-226-6-217.ngrok-free.app/api/device-token'
+      `${environment.apiUrl}/device-token`
     ];
 
     for (const endpoint of endpoints) {
@@ -168,5 +139,22 @@ export class RegisterPage implements OnInit {
 
   goToLogin() {
     this.router.navigate(['/login']);
+  }
+
+  /**
+   * Copy FCM token to clipboard
+   */
+  async copyToken() {
+    try {
+      await navigator.clipboard.writeText(this.fcmToken);
+      const alert = await this.alertController.create({
+        header: 'Copied!',
+        message: 'FCM token copied to clipboard',
+        buttons: ['OK']
+      });
+      await alert.present();
+    } catch (error) {
+      console.error('Error copying token:', error);
+    }
   }
 }

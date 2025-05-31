@@ -2088,7 +2088,7 @@ export class MapPage implements OnInit, OnDestroy {
         minZoom: 8
       }).addTo(this.map);
     }
-    
+
     this.isOnline = true;
 
     if (this.gpsEnabled) {
@@ -2119,11 +2119,14 @@ export class MapPage implements OnInit, OnDestroy {
     }
 
 
-    if (this.isFilterMode || this.evacuationCenters.length > 0) {
-      console.log('Loading evacuation centers');
+    // Only load evacuation centers if explicitly in filter mode or search mode
+    if (this.isFilterMode && this.currentDisasterType !== 'all') {
+      console.log('Loading evacuation centers for filter mode');
       this.loadEvacuationCenters(lat, lng);
     } else {
-      console.log('Skipping evacuation centers - showing only user location');
+      console.log('🗺️ CLEAN MAP: Skipping evacuation centers - showing only user location');
+      // Clear any existing evacuation centers to ensure clean map
+      this.evacuationCenters = [];
     }
   }
 

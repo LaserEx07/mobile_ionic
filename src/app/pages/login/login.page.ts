@@ -3,12 +3,11 @@ import { IonicModule, AlertController, Platform } from '@ionic/angular';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { FCM } from '@awesome-cordova-plugins/fcm/ngx';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { FcmService } from '../../services/fcm.service';
 import { OfflineStorageService } from '../../services/offline-storage.service';
 import { NetworkService } from '../../services/network.service';
+import { FCMService } from '../../services/fcm.service';
 
 @Component({
   standalone: true,
@@ -35,80 +34,26 @@ export class LoginPage implements OnInit {
     this.router.navigate(['/network-diagnostics']);
   }
 
-  openEnvironmentSwitcher() {
-    this.router.navigate(['/environment-switcher']);
-  }
+
 
   constructor(
     private router: Router,
     private authService: AuthService,
-    private fcm: FCM,
     private http: HttpClient,
     private alertController: AlertController,
     private platform: Platform,
-    private fcmService: FcmService,
     private offlineStorage: OfflineStorageService,
-    private networkService: NetworkService
+    private networkService: NetworkService,
+    private fcmService: FCMService
   ) {}
 
   async ngOnInit() {
     console.log('🔥 Login page initializing...');
-    // Initialize FCM and get token
-    await this.initializeFCM();
+    // Initialize FCM token
+    await this.initializeFCMToken();
   }
 
-  /**
-   * Initialize FCM service and get token
-   */
-  async initializeFCM() {
-    try {
-      console.log('🔥 Initializing FCM for login...');
 
-      // Initialize FCM service first
-      await this.fcmService.initPush();
-
-      // Get FCM token
-      await this.getFCMToken();
-
-      console.log('✅ FCM initialization complete, token ready:', !!this.fcmToken);
-      this.fcmTokenReady = true;
-    } catch (error) {
-      console.error('❌ FCM initialization failed:', error);
-      // Continue without FCM - app should still work
-      this.fcmTokenReady = false;
-    }
-  }
-
-  async getFCMToken() {
-    try {
-      // For browser testing, create a mock token
-      if (!this.platform.is('cordova') && !this.platform.is('capacitor')) {
-        console.log('Running in browser, using mock FCM token');
-        this.fcmToken = 'browser-mock-token-' + Math.random().toString(36).substring(2, 15);
-        console.log('Mock FCM Token:', this.fcmToken);
-        return;
-      }
-
-      // For real devices, use the FCM service (preferred method)
-      console.log('Getting FCM token from service...');
-      this.fcmToken = await this.fcmService.getToken();
-      console.log('✅ FCM Token obtained:', this.fcmToken.substring(0, 20) + '...');
-
-    } catch (error) {
-      console.error('❌ Error getting FCM token from service:', error);
-
-      // Fallback: try direct FCM plugin
-      try {
-        console.log('Trying direct FCM plugin as fallback...');
-        this.fcmToken = await this.fcm.getToken();
-        console.log('✅ FCM Token from direct plugin:', this.fcmToken.substring(0, 20) + '...');
-      } catch (fallbackError) {
-        console.error('❌ All FCM token methods failed:', fallbackError);
-        // Continue without token - app should still work
-        this.fcmToken = '';
-      }
-    }
-  }
 
   /**
    * Helper method to register a token with a specific endpoint
@@ -186,15 +131,8 @@ export class LoginPage implements OnInit {
       }
     }
 
-    // If FCM token is not ready yet, try to get it one more time (only when online)
-    if (isNetworkAvailable && !isOfflineMode && !this.fcmTokenReady && !this.fcmToken) {
-      console.log('🔥 FCM token not ready, attempting to get it now...');
-      try {
-        await this.getFCMToken();
-      } catch (error) {
-        console.warn('⚠️ Could not get FCM token, continuing without it:', error);
-      }
-    }
+    // FCM functionality temporarily disabled
+    console.log('🔥 FCM functionality temporarily disabled');
 
     // Test API connectivity first (only when online and not in offline mode)
     if (isNetworkAvailable && !isOfflineMode) {
@@ -216,35 +154,42 @@ export class LoginPage implements OnInit {
         // Store the authentication token using the auth service
         this.authService.setToken(response.token);
 
-        // Register the FCM token with the backend
-        if (this.fcmToken) {
-          console.log('Registering FCM token with backend:', this.fcmToken);
+        // Store user data for FCM service
+        localStorage.setItem('user', JSON.stringify(response.user));
 
-          // Include Firebase project ID in the request
-          const payload: any = {
-            token: this.fcmToken,
-            device_type: this.platform.is('ios') ? 'ios' : 'android',
-            project_id: environment.firebase.projectId
-          };
-
-          // Only include user_id if it exists
-          if (response.user && response.user.id) {
-            payload.user_id = response.user.id; // Associate the token with the user
+        // Register FCM token after successful login
+        try {
+          console.log('🔥 Attempting FCM token registration after login...');
+          if (this.fcmTokenReady && this.fcmToken) {
+            await this.registerTokenWithEndpoints({
+              token: this.fcmToken,
+              device_type: 'android',
+              project_id: environment.firebase.projectId,
+              user_id: response.user.id
+            });
+            console.log('✅ FCM token registered successfully after login');
+          } else {
+            console.log('⚠️ FCM token not ready, attempting to get token...');
+            // Try to get FCM token if not ready
+            await this.initializeFCMToken();
+            if (this.fcmTokenReady && this.fcmToken) {
+              await this.registerTokenWithEndpoints({
+                token: this.fcmToken,
+                device_type: 'android',
+                project_id: environment.firebase.projectId,
+                user_id: response.user.id
+              });
+              console.log('✅ FCM token registered successfully after retry');
+            } else {
+              console.log('❌ Failed to get FCM token');
+            }
           }
-
-          console.log('Token registration payload:', payload);
-          console.log('API URL:', `${environment.apiUrl}/device-token`);
-
-          // Use the FCM service to register the token with the user ID
-          this.fcmService.registerTokenWithBackend(this.fcmToken, response.user.id);
-
-          // Navigate to welcome page
-          this.router.navigate(['/welcome']);
-        } else {
-          console.warn('No FCM token available to register');
-          // If no FCM token, just navigate to welcome page
-          this.router.navigate(['/welcome']);
+        } catch (error) {
+          console.error('❌ Error registering FCM token after login:', error);
         }
+
+        // Navigate to welcome page
+        this.router.navigate(['/welcome']);
       },
       error: (error) => {
         console.error('❌ Login error:', error);
@@ -384,6 +329,58 @@ export class LoginPage implements OnInit {
     });
 
     await alert.present();
+  }
+
+  /**
+   * Initialize FCM token
+   */
+  async initializeFCMToken() {
+    try {
+      if (this.platform.is('capacitor')) {
+        console.log('Getting FCM token...');
+        this.fcmToken = await this.fcmService.getFCMToken();
+        if (this.fcmToken) {
+          this.fcmTokenReady = true;
+          console.log('FCM token ready:', this.fcmToken);
+        } else {
+          console.log('No FCM token available');
+        }
+      } else {
+        console.log('FCM not available on this platform');
+      }
+    } catch (error) {
+      console.error('Error initializing FCM token:', error);
+    }
+  }
+
+  /**
+   * Helper method to register a token with multiple endpoints
+   * @param payload The token payload to send
+   */
+  async registerTokenWithEndpoints(payload: any) {
+    // Ensure project_id is included
+    if (!payload.project_id) {
+      payload.project_id = environment.firebase.projectId;
+    }
+
+    const endpoints = [
+      `${environment.apiUrl}/device-token`,
+      `${environment.apiUrl}/device-token/register`
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const response = await this.http.post(endpoint, payload).toPromise();
+        console.log(`FCM token registered with ${endpoint}:`, response);
+        // Store the token in localStorage for potential recovery
+        localStorage.setItem('fcm_token', this.fcmToken);
+        // Successfully registered, no need to try other endpoints
+        break;
+      } catch (error) {
+        console.error(`Error registering token with ${endpoint}:`, error);
+        // Continue to the next endpoint
+      }
+    }
   }
 
 }

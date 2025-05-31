@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { Platform } from '@ionic/angular';
-import { FcmService } from './services/fcm.service';
 import { registerIcons } from './icons';
+import { FCMService } from './services/fcm.service';
 
 @Component({
   selector: 'app-root',
@@ -12,7 +12,7 @@ import { registerIcons } from './icons';
 export class AppComponent {
   constructor(
     private platform: Platform,
-    private fcmService: FcmService
+    private fcmService: FCMService
   ) {
     // Register all Ionicons used in the app
     try {
@@ -32,7 +32,7 @@ export class AppComponent {
         // Check for notification in URL parameters
         this.checkForNotificationInUrl();
 
-        // Initialize FCM for push notifications
+        // Initialize FCM
         this.initializeFCM();
 
         console.log('App initialization completed successfully');
@@ -45,19 +45,16 @@ export class AppComponent {
   }
 
   /**
-   * Initialize Firebase Cloud Messaging
+   * Initialize FCM service
    */
-  private initializeFCM() {
-    console.log('🔥 Initializing FCM for all users (authenticated or not)');
-
-    // Always initialize FCM - we need tokens for login/registration
-    // The FCM service will handle user association when available
-    this.fcmService.initPush().then(() => {
-      console.log('✅ FCM initialization completed');
-    }).catch(error => {
-      console.error('❌ FCM initialization failed:', error);
-      // App should continue to work even if FCM fails
-    });
+  private async initializeFCM() {
+    try {
+      console.log('Initializing FCM...');
+      await this.fcmService.initializeFCM();
+      console.log('FCM initialized successfully');
+    } catch (error) {
+      console.error('Error initializing FCM:', error);
+    }
   }
 
   /**

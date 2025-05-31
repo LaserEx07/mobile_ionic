@@ -21,18 +21,9 @@ const routes: Routes = [
     path: 'register',
     loadComponent: () => import('./pages/register/register.page').then(m => m.RegisterPage)
   },
-  {
-    path: 'environment-switcher',
-    loadComponent: () => import('./pages/environment-switcher/environment-switcher.page').then(m => m.EnvironmentSwitcherPage)
-  },
-  {
-    path: 'network-diagnostics',
-    loadComponent: () => import('./pages/login-debug/login-debug.page').then(m => m.LoginDebugPage)
-  },
-  {
-    path: 'notification-test',
-    loadComponent: () => import('./pages/notification-test/notification-test.page').then(m => m.NotificationTestPage)
-  },
+
+
+
   {
     path: 'welcome',
     loadComponent: () => import('./pages/welcome/welcome.page').then(m => m.WelcomePage),

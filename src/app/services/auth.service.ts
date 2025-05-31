@@ -1,26 +1,20 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-import { EnvironmentSwitcherService } from './environment-switcher.service';
+import { ApiConfigService } from './api-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private get apiUrl(): string {
-    // Use dynamic API URL if available, fallback to environment
-    const dynamicUrl = this.envSwitcher?.getCurrentApiUrl();
-    const baseUrl = dynamicUrl || environment.apiUrl;
-    return `${baseUrl}/auth`;
+    return this.apiConfig.getApiUrl();
   }
 
   constructor(
     private http: HttpClient,
-    private envSwitcher: EnvironmentSwitcherService
+    private apiConfig: ApiConfigService
   ) {
     console.log('Auth Service initialized');
-    console.log('Environment API URL:', environment.apiUrl);
-    console.log('Dynamic API URL:', this.envSwitcher.getCurrentApiUrl());
-    console.log('Final API URL:', this.apiUrl);
+    console.log('API URL:', this.apiUrl);
   }
 
   private getHeaders(): HttpHeaders {

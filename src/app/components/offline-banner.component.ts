@@ -17,27 +17,36 @@ import { Geolocation } from '@capacitor/geolocation';
           <div class="banner-subtitle">{{ getBannerSubtitle() }}</div>
         </div>
         <div class="banner-actions">
-          <ion-button 
-            *ngIf="showOfflineButton()" 
-            fill="clear" 
-            size="small" 
+          <ion-button
+            *ngIf="showOfflineButton()"
+            fill="clear"
+            size="small"
             color="light"
             (click)="enableOfflineMode()">
             Continue Offline
           </ion-button>
-          <ion-button 
-            *ngIf="showSyncButton()" 
-            fill="clear" 
-            size="small" 
+          <ion-button
+            *ngIf="showSyncButton()"
+            fill="clear"
+            size="small"
             color="light"
             (click)="syncData()">
             <ion-icon name="sync-outline"></ion-icon>
             Sync
           </ion-button>
-          <ion-button 
-            *ngIf="showPrepareButton()" 
-            fill="clear" 
-            size="small" 
+          <ion-button
+            *ngIf="showOnlineButton()"
+            fill="clear"
+            size="small"
+            color="light"
+            (click)="disableOfflineMode()">
+            <ion-icon name="wifi-outline"></ion-icon>
+            Go Online
+          </ion-button>
+          <ion-button
+            *ngIf="showPrepareButton()"
+            fill="clear"
+            size="small"
             color="light"
             (click)="prepareOfflineData()">
             <ion-icon name="download-outline"></ion-icon>
@@ -45,7 +54,7 @@ import { Geolocation } from '@capacitor/geolocation';
           </ion-button>
         </div>
       </div>
-      
+
       <!-- Progress bar for data preparation -->
       <div *ngIf="isPreparingData" class="preparation-progress">
         <ion-progress-bar [value]="preparationProgress"></ion-progress-bar>
@@ -161,7 +170,7 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
       this.isOnline = true;
       this.checkDataStatus();
     };
-    
+
     this.offlineListener = () => {
       this.isOnline = false;
       this.checkDataStatus();
@@ -184,15 +193,33 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
   }
 
   private async checkDataStatus() {
+    // Check actual network connectivity first
+    this.isOnline = navigator.onLine;
     this.isOfflineMode = this.offlineStorage.isOfflineMode();
     this.hasOfflineData = await this.offlineStorage.isDataAvailable();
     this.lastSyncTime = this.offlineStorage.getLastSyncTime();
+
+    // If we're online but offline mode is enabled, show that we're using offline mode by choice
+    console.log('🔍 OFFLINE BANNER: Network status check:', {
+      navigatorOnline: navigator.onLine,
+      isOfflineMode: this.isOfflineMode,
+      hasOfflineData: this.hasOfflineData
+    });
   }
 
   getBannerClass(): string {
     if (this.isPreparingData) return 'preparing';
+
+    // If we're actually offline (no network)
     if (!this.isOnline) return 'offline';
-    if (this.isOnline && !this.hasOfflineData) return 'warning';
+
+    // If we're online but offline mode is manually enabled
+    if (this.isOnline && this.isOfflineMode) return 'offline';
+
+    // If we're online and not in offline mode
+    if (this.isOnline && !this.isOfflineMode && !this.hasOfflineData) return 'warning';
+    if (this.isOnline && !this.isOfflineMode && this.hasOfflineData) return 'online';
+
     return 'online';
   }
 
@@ -205,9 +232,19 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
 
   getBannerTitle(): string {
     if (this.isPreparingData) return 'Preparing Offline Data';
+
+    // If we're actually offline (no network)
     if (!this.isOnline && this.hasOfflineData) return 'Offline Mode Available';
     if (!this.isOnline && !this.hasOfflineData) return 'No Internet Connection';
-    if (this.isOnline && !this.hasOfflineData) return 'Offline Data Not Ready';
+
+    // If we're online but offline mode is manually enabled
+    if (this.isOnline && this.isOfflineMode && this.hasOfflineData) return 'Offline Mode (Manual)';
+    if (this.isOnline && this.isOfflineMode && !this.hasOfflineData) return 'Offline Mode (No Data)';
+
+    // If we're online and not in offline mode
+    if (this.isOnline && !this.isOfflineMode && !this.hasOfflineData) return 'Online - Offline Data Not Ready';
+    if (this.isOnline && !this.isOfflineMode && this.hasOfflineData) return 'Online & Ready';
+
     return 'Connected & Ready';
   }
 
@@ -216,7 +253,7 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
     if (!this.isOnline && this.hasOfflineData) return 'Emergency data is available offline';
     if (!this.isOnline && !this.hasOfflineData) return 'Limited functionality available';
     if (this.isOnline && !this.hasOfflineData) return 'Prepare offline data for emergencies';
-    
+
     if (this.lastSyncTime) {
       const syncDate = new Date(this.lastSyncTime);
       return `Last synced: ${syncDate.toLocaleDateString()}`;
@@ -236,6 +273,10 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
     return this.isOnline && !this.hasOfflineData && !this.isPreparingData;
   }
 
+  showOnlineButton(): boolean {
+    return this.isOnline && this.isOfflineMode && !this.isPreparingData;
+  }
+
   async enableOfflineMode() {
     const alert = await this.alertCtrl.create({
       header: 'Enable Offline Mode',
@@ -252,6 +293,30 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
             this.isOfflineMode = true;
             this.offlineModeEnabled.emit();
             this.showToast('Offline mode enabled. Using cached data.', 'success');
+          }
+        }
+      ]
+    });
+
+    await alert.present();
+  }
+
+  async disableOfflineMode() {
+    const alert = await this.alertCtrl.create({
+      header: 'Go Online',
+      message: 'Switch back to online mode to get live data from the server?',
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Go Online',
+          handler: () => {
+            this.offlineStorage.setOfflineMode(false);
+            this.isOfflineMode = false;
+            this.checkDataStatus();
+            this.showToast('Online mode enabled. Getting live data.', 'success');
           }
         }
       ]
@@ -346,7 +411,7 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
 
       this.preparationStatus = 'Preparation complete!';
       await this.checkDataStatus();
-      
+
       setTimeout(() => {
         this.isPreparingData = false;
         this.showToast('Offline data prepared successfully!', 'success');

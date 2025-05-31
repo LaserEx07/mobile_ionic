@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { FcmRefreshComponent } from '../../components/fcm-refresh/fcm-refresh.component';
 import { Router } from '@angular/router';
 
 @Component({
@@ -9,7 +8,7 @@ import { Router } from '@angular/router';
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FcmRefreshComponent]
+  imports: [IonicModule, CommonModule]
 })
 export class SettingsPage implements OnInit {
 
@@ -25,7 +24,7 @@ export class SettingsPage implements OnInit {
   logout() {
     // Clear authentication token
     localStorage.removeItem('token');
-    
+
     // Navigate to login page
     this.router.navigate(['/login']);
   }

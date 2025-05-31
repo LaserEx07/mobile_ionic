@@ -28,11 +28,22 @@
       <ion-button expand="block" type="submit" class="register-btn">Register</ion-button>
     </form>
 
+    <!-- Debug: Show FCM Token -->
+    <ion-item *ngIf="fcmToken" lines="none" class="ion-margin-top">
+      <ion-label>
+        <h3>FCM Token (for testing):</h3>
+        <p style="font-size: 10px; word-break: break-all; color: #666;">{{ fcmToken }}</p>
+      </ion-label>
+      <ion-button fill="clear" (click)="copyToken()">
+        <ion-icon name="copy"></ion-icon>
+      </ion-button>
+    </ion-item>
+
     <div class="ion-text-center ion-margin-top">
       <ion-text>Already have an account? </ion-text>
       <a (click)="goToLogin()"><strong><u>Log In</u></strong></a>
     </div>
 
-    
+
   </div>
 </ion-content>

@@ -2,7 +2,6 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ToastController } from '@ionic/angular';
 import { Router } from '@angular/router';
-import { FcmService } from '../../services/fcm.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Subscription, interval } from 'rxjs';
@@ -25,7 +24,6 @@ export class HomePage implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private toastCtrl: ToastController,
-    private fcmService: FcmService,
     private http: HttpClient,
     private offlineStorage: OfflineStorageService
   ) {}
@@ -39,11 +37,6 @@ export class HomePage implements OnInit, OnDestroy {
 
     // Poll for unread count every 30 seconds
     this.pollSubscription = interval(30000).subscribe(() => {
-      this.loadUnreadCount();
-    });
-
-    // Subscribe to new notifications
-    this.notificationSubscription = this.fcmService.notifications$.subscribe(() => {
       this.loadUnreadCount();
     });
   }

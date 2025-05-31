@@ -7,7 +7,8 @@ import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
-import { FCM } from '@awesome-cordova-plugins/fcm/ngx';
+// Temporarily disabled FCM to fix app crashes
+// import { FCM } from '@awesome-cordova-plugins/fcm/ngx';
 import { ErrorHandlerService } from './services/error-handler.service';
 import { HttpErrorInterceptor } from './services/http-error.interceptor';
 import { AuthTokenInterceptor } from './services/auth-token.interceptor';
@@ -25,7 +26,8 @@ import { AuthTokenInterceptor } from './services/auth-token.interceptor';
     { provide: HTTP_INTERCEPTORS, useClass: AuthTokenInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
     provideHttpClient(withInterceptorsFromDi()),
-    FCM
+    // Temporarily disabled FCM to fix app crashes
+    // FCM
   ],
   bootstrap: [AppComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA]

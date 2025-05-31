@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { ApiConfigService } from './api-config.service';
 
 interface UserData {
   full_name: string;
@@ -15,9 +15,14 @@ interface UserData {
   providedIn: 'root'
 })
 export class MobileUserService {
-  private apiUrl = `${environment.apiUrl}/mobile-users`;
+  private get apiUrl(): string {
+    return this.apiConfig.getEndpoint('mobile-users');
+  }
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private apiConfig: ApiConfigService
+  ) {}
 
   saveUserData(data: UserData): Observable<any> {
     return this.http.post(this.apiUrl, data);
