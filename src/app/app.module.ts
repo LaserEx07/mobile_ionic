@@ -12,9 +12,13 @@ import { AppRoutingModule } from './app-routing.module';
 import { ErrorHandlerService } from './services/error-handler.service';
 import { HttpErrorInterceptor } from './services/http-error.interceptor';
 import { AuthTokenInterceptor } from './services/auth-token.interceptor';
+import { NotificationDetailComponent } from './components/notification-detail/notification-detail.component';
 
 @NgModule({
-  declarations: [AppComponent],
+  declarations: [
+    AppComponent,
+    NotificationDetailComponent
+  ],
   imports: [
     BrowserModule,
     IonicModule.forRoot(),
