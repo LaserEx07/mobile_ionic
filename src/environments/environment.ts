@@ -5,21 +5,18 @@
 export const environment = {
   production: false,
 
-  // ===== CURRENT LOCATION CONFIGURATION =====
-  // 🏠 HOME IP: 192.168.112.244 (current location)
-  // 🏫 SCHOOL IP: 172.30.11.217 (when at school)
-  // For mobile device testing, use your computer's actual IP address
-  apiUrl: 'http://192.168.112.244:8000/api', // Current home IP - change this to your computer's IP
+  // API Configuration
+  // Change this to your backend server's IP address and port
+  // Examples:
+  // - Local development: 'http://localhost:8000/api'
+  // - Home network: 'http://192.168.1.100:8000/api'
+  // - School network: 'http://172.30.11.217:8000/api'
+  // - Current network: 'http://192.168.112.210:8000/api'
+  // - ngrok tunnel: 'https://your-ngrok-url.ngrok-free.app/api'
+  apiUrl: 'http://192.168.112.210:8000/api',
 
-  // ===== ALTERNATIVE URLS =====
-  // Switch between these based on your location:
-  // apiUrl: 'http://172.30.11.217:8000/api', // School IP
-  // apiUrl: 'https://2xGdwnDAvorrvfTYkPJwFdH0bl8_7EG3njhPc7viiNrH5QWVN.ngrok-free.app/api', // ngrok URL
-  // apiUrl: 'http://localhost:8000/api', // Only works for web development
-
-  // API endpoints for testing
-  healthCheckUrl: 'http://192.168.112.244:8000/up',
-  testApiUrl: 'http://192.168.112.244:8000/api/test',
+  // Health check endpoint (automatically derived if not specified)
+  healthCheckUrl: 'http://192.168.112.210:8000/up',
 
   // External APIs
   orsApiKey: '5b3ce3597851110001cf6248d05f92e32cab4d1da9db6036a3a53fe7', // Keep for fallback
@@ -32,7 +29,7 @@ export const environment = {
     appId: '1:660101685392:android:c7c81cb0ccca4f30cb7815',
     apiKey: 'AIzaSyA5H6_NGbhDlVZ4l67qEC_JNRmcXPQ-GAo',
     databaseURL: 'https://last-5acaf-default-rtdb.firebaseio.com',
-    storageBucket: 'last-5acaf.appspot.com'
+    storageBucket: 'last-5acaf.firebasestorage.app'
   },
 
   // Communication settings

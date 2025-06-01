@@ -60,10 +60,11 @@ export class OfflineStorageService {
     this.initializeStorage();
   }
 
-  private initializeStorage() {
+  private async initializeStorage() {
     // Initialize storage with empty arrays if not exists
     if (!localStorage.getItem(this.STORAGE_KEYS.EVACUATION_CENTERS)) {
-      localStorage.setItem(this.STORAGE_KEYS.EVACUATION_CENTERS, JSON.stringify([]));
+      // Load default evacuation centers if none exist
+      await this.loadDefaultEvacuationCenters();
     }
     if (!localStorage.getItem(this.STORAGE_KEYS.ROUTES)) {
       localStorage.setItem(this.STORAGE_KEYS.ROUTES, JSON.stringify([]));
@@ -71,7 +72,32 @@ export class OfflineStorageService {
     if (!localStorage.getItem(this.STORAGE_KEYS.MAP_TILES)) {
       localStorage.setItem(this.STORAGE_KEYS.MAP_TILES, JSON.stringify({}));
     }
-    console.log('✅ Offline storage initialized');
+
+    // Force online mode by default - reset any previous offline mode setting
+    localStorage.setItem(this.STORAGE_KEYS.OFFLINE_MODE, 'false');
+
+    console.log('✅ Offline storage initialized - Online mode forced by default');
+  }
+
+  /**
+   * Load default evacuation centers from assets
+   */
+  private async loadDefaultEvacuationCenters(): Promise<void> {
+    try {
+      console.log('📦 Loading default evacuation centers...');
+      const response = await firstValueFrom(
+        this.http.get<EvacuationCenter[]>('assets/data/default-evacuation-centers.json')
+      );
+
+      if (response && response.length > 0) {
+        await this.saveEvacuationCenters(response);
+        console.log(`✅ Loaded ${response.length} default evacuation centers`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load default evacuation centers:', error);
+      // Fallback to empty array
+      localStorage.setItem(this.STORAGE_KEYS.EVACUATION_CENTERS, JSON.stringify([]));
+    }
   }
 
   // ===== EVACUATION CENTERS MANAGEMENT =====
@@ -408,5 +434,13 @@ export class OfflineStorageService {
    */
   isOnline(): boolean {
     return navigator.onLine;
+  }
+
+  /**
+   * Force reset to online mode (for debugging)
+   */
+  forceOnlineMode(): void {
+    localStorage.setItem(this.STORAGE_KEYS.OFFLINE_MODE, 'false');
+    console.log('🔄 Forced online mode enabled');
   }
 }

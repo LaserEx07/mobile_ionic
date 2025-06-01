@@ -6,7 +6,6 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Subscription } from 'rxjs';
-import { FcmService, FCMNotification } from '../../services/fcm.service';
 
 export interface AppNotification {
   id: number;
@@ -40,13 +39,13 @@ export class NotificationsPage implements OnInit, OnDestroy {
 
   constructor(
     private router: Router,
-    private http: HttpClient,
-    private fcmService: FcmService
+    private http: HttpClient
   ) {}
 
   ngOnInit() {
     this.loadNotifications();
-    this.subscribeToNewNotifications();
+    // FCM subscription temporarily disabled
+    // this.subscribeToNewNotifications();
   }
 
   ngOnDestroy() {
@@ -82,26 +81,9 @@ export class NotificationsPage implements OnInit, OnDestroy {
   }
 
   subscribeToNewNotifications() {
-    this.notificationSubscription = this.fcmService.notifications$.subscribe(
-      (fcmNotification: FCMNotification) => {
-        // Convert FCM notification to app notification format
-        const appNotification: AppNotification = {
-          id: Date.now(), // Temporary ID
-          type: this.mapFCMTypeToAppType(fcmNotification.category),
-          title: fcmNotification.title,
-          message: fcmNotification.body,
-          data: fcmNotification,
-          read: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        // Add to the beginning of the list
-        this.notifications.unshift(appNotification);
-        this.unreadCount++;
-        this.filterNotifications();
-      }
-    );
+    // FCM functionality temporarily disabled
+    console.log('FCM subscription temporarily disabled');
+    // TODO: Re-enable when FCM service is restored
   }
 
   mapFCMTypeToAppType(category?: string): AppNotification['type'] {
@@ -143,19 +125,19 @@ export class NotificationsPage implements OnInit, OnDestroy {
     // Navigate based on notification type
     switch (notification.type) {
       case 'evacuation_center_added':
-        this.router.navigate(['/tabs/map'], { 
-          queryParams: { 
+        this.router.navigate(['/tabs/map'], {
+          queryParams: {
             disasterType: 'all',
-            showNewCenters: true 
-          } 
+            showNewCenters: true
+          }
         });
         break;
       case 'emergency_alert':
         const disasterType = this.extractDisasterType(notification);
-        this.router.navigate(['/tabs/map'], { 
-          queryParams: { 
-            disasterType: disasterType 
-          } 
+        this.router.navigate(['/tabs/map'], {
+          queryParams: {
+            disasterType: disasterType
+          }
         });
         break;
       default:
