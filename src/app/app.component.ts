@@ -52,6 +52,12 @@ export class AppComponent {
       console.log('Initializing FCM...');
       await this.fcmService.initializeFCM();
       console.log('FCM initialized successfully');
+
+      // Retry token registration if it failed previously
+      setTimeout(() => {
+        this.fcmService.retryTokenRegistration();
+      }, 2000); // Wait 2 seconds before retrying
+
     } catch (error) {
       console.error('Error initializing FCM:', error);
     }

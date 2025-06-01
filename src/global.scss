@@ -342,3 +342,43 @@
 .general-alert .alert-head::before {
   background-color: #444444;
 }
+
+/* Custom Notification Detail Modal Styles */
+.notification-detail-modal {
+  --height: 90%;
+  --border-radius: 16px 16px 0 0;
+  --box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.notification-detail-modal .modal-wrapper {
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
+}
+
+/* Rich Notification Styles */
+.rich-notification {
+  .notification-category {
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .notification-severity {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+
+    &.high { background-color: #ff4444; }
+    &.medium { background-color: #ff8800; }
+    &.low { background-color: #00aa00; }
+  }
+
+  .notification-areas {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 4px;
+  }
+}

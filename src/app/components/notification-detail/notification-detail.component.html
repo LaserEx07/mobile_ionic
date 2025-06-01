@@ -1,0 +1,111 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Notification Details</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="closeModal()">
+        <ion-icon name="close"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="notification-detail-content">
+  <div class="notification-detail-container">
+    
+    <!-- Category Header -->
+    <div class="category-header" [style.background-color]="getCategoryColor(notification.category)">
+      <div class="category-info">
+        <ion-icon [name]="getCategoryIcon(notification.category)" class="category-icon"></ion-icon>
+        <div class="category-text">
+          <h2 class="category-title">{{ getCategoryDisplayName(notification.category) }}</h2>
+          <p class="severity-badge" [style.background-color]="getSeverityColor(notification.severity)">
+            {{ getSeverityDisplayName(notification.severity) }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Content -->
+    <div class="notification-content">
+      
+      <!-- Title -->
+      <div class="content-section">
+        <h3 class="section-title">Alert Title</h3>
+        <p class="notification-title">{{ notification.title }}</p>
+      </div>
+
+      <!-- Message -->
+      <div class="content-section">
+        <h3 class="section-title">Message</h3>
+        <p class="notification-message">{{ notification.body }}</p>
+      </div>
+
+      <!-- Location Information -->
+      <div class="content-section" *ngIf="notification.barangay">
+        <h3 class="section-title">
+          <ion-icon name="location-outline" class="section-icon"></ion-icon>
+          Location
+        </h3>
+        <p class="location-info">{{ notification.barangay }}</p>
+      </div>
+
+      <!-- Affected Areas -->
+      <div class="content-section" *ngIf="hasMapData()">
+        <h3 class="section-title">
+          <ion-icon name="map-outline" class="section-icon"></ion-icon>
+          Affected Areas
+        </h3>
+        <div class="affected-areas-info">
+          <p class="areas-summary">{{ getAffectedAreasSummary() }}</p>
+          <ion-button 
+            fill="outline" 
+            size="small" 
+            (click)="viewOnMap()"
+            class="view-map-button">
+            <ion-icon name="map" slot="start"></ion-icon>
+            View on Map
+          </ion-button>
+        </div>
+      </div>
+
+      <!-- Timestamp -->
+      <div class="content-section">
+        <h3 class="section-title">
+          <ion-icon name="time-outline" class="section-icon"></ion-icon>
+          Received
+        </h3>
+        <p class="timestamp">{{ getFormattedTimestamp(notification.timestamp) }}</p>
+      </div>
+
+      <!-- Notification ID (for debugging/reference) -->
+      <div class="content-section" *ngIf="notification.notification_id">
+        <h3 class="section-title">Reference ID</h3>
+        <p class="notification-id">{{ notification.notification_id }}</p>
+      </div>
+
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <ion-button 
+        expand="block" 
+        fill="solid" 
+        color="primary"
+        (click)="closeModal()">
+        <ion-icon name="checkmark" slot="start"></ion-icon>
+        Mark as Read
+      </ion-button>
+      
+      <ion-button 
+        expand="block" 
+        fill="outline" 
+        color="medium"
+        *ngIf="hasMapData()"
+        (click)="viewOnMap()">
+        <ion-icon name="navigate" slot="start"></ion-icon>
+        Navigate to Area
+      </ion-button>
+    </div>
+
+  </div>
+</ion-content>
