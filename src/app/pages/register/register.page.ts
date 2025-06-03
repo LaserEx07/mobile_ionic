@@ -10,7 +10,7 @@ import { FCMService } from '../../services/fcm.service';
 
 @Component({
   standalone: true,
-  imports: [IonicModule, FormsModule],
+  imports: [IonicModule, FormsModule, CommonModule],
   selector: 'app-register',
   templateUrl: './register.page.html',
   styleUrls: ['./register.page.scss'],

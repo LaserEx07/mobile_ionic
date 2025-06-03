@@ -1,5 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { ModalController } from '@ionic/angular';
+import { ModalController, IonicModule } from '@ionic/angular';
+import { CommonModule } from '@angular/common';
 
 export interface NotificationDetail {
   id: number;
@@ -14,6 +15,8 @@ export interface NotificationDetail {
 }
 
 @Component({
+  standalone: true,
+  imports: [IonicModule, CommonModule],
   selector: 'app-notification-detail',
   templateUrl: './notification-detail.component.html',
   styleUrls: ['./notification-detail.component.scss']
@@ -141,9 +144,9 @@ export class NotificationDetailComponent implements OnInit {
    * Check if notification has map data
    */
   hasMapData(): boolean {
-    return this.notification.affected_areas && 
-           Array.isArray(this.notification.affected_areas) && 
-           this.notification.affected_areas.length > 0;
+    return !!(this.notification.affected_areas &&
+           Array.isArray(this.notification.affected_areas) &&
+           this.notification.affected_areas.length > 0);
   }
 
   /**

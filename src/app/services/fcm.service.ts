@@ -52,6 +52,8 @@ export class FCMService {
     }
   }
 
+
+
   /**
    * Request notification permissions
    */
@@ -104,20 +106,21 @@ export class FCMService {
    * Listen for incoming messages
    */
   private listenForMessages(): void {
-    // Listen for messages when app is in foreground
+    // Listen for messages (both foreground and background)
     FirebaseMessaging.addListener('notificationReceived', (event) => {
-      console.log('📱 FCM notification received in foreground:', {
+      console.log('📱 FCM notification received:', {
         notification: event.notification,
         timestamp: new Date().toISOString()
       });
 
-      // Always show local notification for foreground messages
+      // For foreground messages, show local notification
+      // Background messages are handled automatically by the system
       this.showLocalNotification(event.notification);
     });
 
     // Listen for notification actions (when user taps notification)
     FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
-      console.log('FCM notification action performed:', {
+      console.log('📱 FCM notification action performed:', {
         action: action,
         timestamp: new Date().toISOString()
       });
@@ -144,7 +147,7 @@ export class FCMService {
    */
   private async showLocalNotification(notification: any): Promise<void> {
     try {
-      console.log('📱 [FOREGROUND] Attempting to show notification:', JSON.stringify(notification, null, 2));
+      console.log('� [FOREGROUND] Attempting to show notification:', JSON.stringify(notification, null, 2));
 
       // Check if we have notification permissions
       const permissionStatus = await LocalNotifications.checkPermissions();
@@ -653,45 +656,7 @@ export class FCMService {
     }
   }
 
-  /**
-   * Debug method to test foreground notifications
-   */
-  async testForegroundNotification(): Promise<void> {
-    console.log('🧪 [TEST] Starting foreground notification test...');
-    console.log('🧪 [TEST] Platform info:', {
-      isCapacitor: this.platform.is('capacitor'),
-      isAndroid: this.platform.is('android'),
-      isIOS: this.platform.is('ios'),
-      platforms: this.platform.platforms()
-    });
 
-    // Check permissions first
-    try {
-      const permissions = await LocalNotifications.checkPermissions();
-      console.log('🧪 [TEST] Current permissions:', permissions);
-    } catch (error) {
-      console.error('🧪 [TEST] Error checking permissions:', error);
-    }
-
-    const testNotification = {
-      title: 'Test Foreground Notification',
-      body: 'This is a test to check if foreground notifications work on your device',
-      data: {
-        category: 'flood',
-        severity: 'high',
-        barangay: 'Test Area',
-        notification_id: 'test-123',
-        affected_areas: JSON.stringify([
-          { name: 'Test Area 1' },
-          { name: 'Test Area 2' }
-        ])
-      }
-    };
-
-    console.log('🧪 [TEST] Test notification payload:', testNotification);
-    await this.showLocalNotification(testNotification);
-    console.log('🧪 [TEST] Test completed - check your notification panel');
-  }
 
   /**
    * Check FCM service status
