@@ -1,8 +1,18 @@
-import { enableProdMode } from '@angular/core';
-import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
-import { AppModule } from './app/app.module';
+import { enableProdMode, importProvidersFrom } from '@angular/core';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { RouteReuseStrategy, provideRouter, withPreloading, PreloadAllModules, withHashLocation } from '@angular/router';
+import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalone';
+import { IonicModule } from '@ionic/angular';
+import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
+
+import { AppComponent } from './app/app.component';
+import { routes } from './app/app.routes';
 import { environment } from './environments/environment';
 import { registerIcons } from './app/icons';
+import { ErrorHandlerService } from './app/services/error-handler.service';
+import { HttpErrorInterceptor } from './app/services/http-error.interceptor';
+import { AuthTokenInterceptor } from './app/services/auth-token.interceptor';
+import { ErrorHandler } from '@angular/core';
 
 // Register Ionic icons
 registerIcons();
@@ -11,5 +21,15 @@ if (environment.production) {
   enableProdMode();
 }
 
-platformBrowserDynamic().bootstrapModule(AppModule)
-  .catch(err => console.log(err));
+bootstrapApplication(AppComponent, {
+  providers: [
+    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
+    { provide: ErrorHandler, useClass: ErrorHandlerService },
+    { provide: HTTP_INTERCEPTORS, useClass: AuthTokenInterceptor, multi: true },
+    { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
+    provideIonicAngular({}),
+    importProvidersFrom(IonicModule.forRoot()),
+    provideRouter(routes, withHashLocation(), withPreloading(PreloadAllModules)),
+    provideHttpClient(withInterceptorsFromDi()),
+  ],
+}).catch(err => console.log(err));

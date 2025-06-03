@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { Platform } from '@ionic/angular';
+import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { registerIcons } from './icons';
 import { FCMService } from './services/fcm.service';
 
@@ -7,7 +8,8 @@ import { FCMService } from './services/fcm.service';
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  standalone: false
+  standalone: true,
+  imports: [IonApp, IonRouterOutlet]
 })
 export class AppComponent {
   constructor(
