@@ -440,10 +440,10 @@ export class PrivacyModalComponent {
 })
 export class GuideModalComponent {
   legendItems = [
-    { icon: '🟢', label: 'Your Location' },
-    { icon: '🟡', label: 'for Earthquake' },
-    { icon: '⚫', label: 'for Typhoon' },
-    { icon: '🔵', label: 'for Flash flood' }
+    { icon: '', label: 'Your Location', isCustom: true, iconType: 'diamond' },
+    { icon: '', label: 'for Earthquake', isCustom: true, iconType: 'pin', color: '#ff9500' },
+    { icon: '', label: 'for Typhoon', isCustom: true, iconType: 'pin', color: '#22c55e' },
+    { icon: '', label: 'for Flash flood', isCustom: true, iconType: 'pin', color: '#3dc2ff' }
   ];
 
   constructor(private modalCtrl: ModalController) {}

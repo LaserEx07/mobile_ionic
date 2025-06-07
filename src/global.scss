@@ -146,6 +146,13 @@
   opacity: 0.5;
 }
 
+:root {
+  --ion-tab-bar-background: #007bff;  /* This sets the background to blue */
+  --ion-tab-bar-border-color: #007bff; /* This sets the border color to blue (optional) */
+  --ion-tab-bar-icon-color: #ffffff;  /* This sets the icon color to white */
+  --ion-tab-bar-text-color: #ffffff;  /* This sets the text color to white */
+}
+
 /* Emergency Alert Styles */
 .emergency-alert {
   --backdrop-opacity: 0.9;

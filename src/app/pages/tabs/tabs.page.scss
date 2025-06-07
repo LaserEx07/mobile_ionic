@@ -5,8 +5,15 @@
 }
 
 ion-tab-bar {
-  --background: #fff;
+  --background: #2196f3 !important;
+  background: #2196f3 !important;
   box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
+  
+  /* Force background color on all states */
+  &, &:hover, &:active, &:focus {
+    --background: #2196f3 !important;
+    background: #2196f3 !important;
+  }
 }
 
 ion-tab-button {
@@ -14,21 +21,76 @@ ion-tab-button {
   border-radius: 12px 12px 0 0;
   margin: 0 2px;
   padding-bottom: 2px;
+  color: white; /* White text on blue background */
 }
 
 ion-tab-button.tab-selected {
-  color: #2196f3;
+  color: white !important; /* White text for selected tab */
   font-weight: bold;
+  background: rgba(255, 255, 255, 0.2); /* Slight highlight for selected tab */
 }
 
+/* Make all tab icons white */
 ion-tab-button img {
-  filter: grayscale(0.3);
+  filter: brightness(0) invert(1) !important; /* Force white color */
+  -webkit-filter: brightness(0) invert(1) !important; /* For iOS */
+  opacity: 1 !important;
 }
 
+/* Ensure icons stay white in all states */
+ion-tab-button:hover img,
+ion-tab-button:active img,
+ion-tab-button:focus img,
 ion-tab-button.tab-selected img {
-  filter: none;
+  filter: brightness(0) invert(1) !important;
+  -webkit-filter: brightness(0) invert(1) !important;
+  opacity: 1 !important;
 }
 
+/* Override any Ionic default styles that might affect the icons */
+ion-tab-button {
+  --color: white !important;
+  --color-selected: white !important;
+  --color-focused: white !important;
+}
+
+/* Apply underline to the label for proper positioning */
 ion-tab-button.tab-selected ion-label {
-  text-decoration: underline;
+  text-decoration: none !important; /* Remove default underline */
+  padding-bottom: 8px !important; /* Add space for the underline */
+}
+
+/* Apply positioning to the entire tab button */
+ion-tab-button.tab-selected {
+  position: relative !important;
+}
+
+/* Custom balanced underline positioned below the text using tab button as container */
+ion-tab-button.tab-selected::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 5px !important; /* Position near bottom of tab button */
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 65% !important; /* 65% of the entire tab button width - slightly shorter */
+  height: 3px !important;
+  background-color: white !important;
+}
+
+/* Additional styles to ensure blue background */
+ion-tabs ion-tab-bar {
+  --background: #2196f3 !important;
+  background-color: #2196f3 !important;
+}
+
+/* Force the background on the actual tab bar element */
+.tab-bar, .tabs-inner {
+  background: #2196f3 !important;
+  --background: #2196f3 !important;
+}
+
+/* Ensure all possible tab bar elements have the correct background */
+ion-tab-bar, .tabbar, .tabs-ios, .tabs-md, .tabs-wp {
+  --background: #2196f3 !important;
+  background: #2196f3 !important;
 }
