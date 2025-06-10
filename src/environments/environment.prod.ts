@@ -2,7 +2,7 @@ export const environment = {
   production: true,
   // Using local IP address for device testing
   // 🏠 HOME IP (current location)
-  apiUrl: 'http://192.168.112.244:8000/api',
+  apiUrl: 'http://192.168.110.9:8000/api',
   // 🏫 SCHOOL IP: 'http://172.30.11.217:8000/api', // Your computer's IP address
   orsApiKey: '5b3ce3597851110001cf6248d05f92e32cab4d1da9db6036a3a53fe7', // Keep for fallback
   mapboxAccessToken: 'pk.eyJ1IjoianVucmVsMDcwNDA1IiwiYSI6ImNtYjNocGs1YjBxc2cydnB5OG14NmNzYTIifQ.FGsozY9ibdn28Rg91_msIg',
