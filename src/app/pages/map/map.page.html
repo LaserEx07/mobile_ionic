@@ -19,12 +19,7 @@
     <p class="location-help-text">Tap the button above to enable location access</p>
   </div>
 
-  <!-- Default Map Message - Only show when in default map view -->
-  <div *ngIf="!isFilterMode && evacuationCenters.length === 0" class="map-default-message">
-    <ion-icon name="information-circle-outline"></ion-icon>
-    <p>Showing your current location</p>
-    <small>Search for evacuation centers or select a disaster type to see routes</small>
-  </div>
+
 
   <!-- Route Summary Card -->
   <div *ngIf="routeTime && routeDistance" class="route-summary-card" (click)="showDirectionsPanel = true">
@@ -56,46 +51,21 @@
 
   <!-- GPS Toggle Button -->
   <ion-fab vertical="top" horizontal="end" slot="fixed">
-    <ion-fab-button size="small" (click)="toggleGps({detail: {checked: !gpsEnabled}})" [color]="gpsEnabled ? 'primary' : 'medium'">
+    <ion-fab-button size="small" (click)="toggleGps({detail: {checked: !gpsEnabled}})" [color]="gpsEnabled ? 'success' : 'medium'">
       <ion-icon [name]="gpsEnabled ? 'locate' : 'locate-outline'"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 
   <!-- Offline Mode Toggle Button (for testing) -->
   <ion-fab vertical="top" horizontal="end" slot="fixed" style="top: 60px;">
-    <ion-fab-button size="small" [color]="offlineStorage.isOfflineMode() ? 'warning' : 'medium'" (click)="toggleOfflineMode()">
-      <ion-icon name="cloud-offline"></ion-icon>
+    <ion-fab-button size="small" [color]="offlineStorage.isOfflineMode() ? 'warning' : 'light'" (click)="toggleOfflineMode()">
+      <img src="assets/download.png" alt="Download" style="width: 24px; height: 24px;">
     </ion-fab-button>
   </ion-fab>
 
-  <!-- Debug: Offline Data Testing Buttons -->
-  <ion-fab vertical="top" horizontal="end" slot="fixed" style="top: 120px;">
-    <ion-fab-button size="small" color="danger">
-      <ion-icon name="bug"></ion-icon>
-    </ion-fab-button>
-    <ion-fab-list side="start">
-      <ion-fab-button size="small" color="warning" (click)="debugLoadOfflineData()">
-        <ion-icon name="globe"></ion-icon>
-      </ion-fab-button>
-      <ion-fab-button size="small" color="primary" (click)="loadOfflineEvacuationCenters('earthquake')">
-        <ion-icon name="earth"></ion-icon>
-      </ion-fab-button>
-      <ion-fab-button size="small" color="danger" (click)="loadOfflineEvacuationCenters('typhoon')">
-        <ion-icon name="thunderstorm"></ion-icon>
-      </ion-fab-button>
-      <ion-fab-button size="small" color="success" (click)="loadOfflineEvacuationCenters('flood')">
-        <ion-icon name="water"></ion-icon>
-      </ion-fab-button>
-    </ion-fab-list>
-  </ion-fab>
 
-  <!-- Download Map Button -->
-  <ion-fab vertical="top" horizontal="start" slot="fixed">
-    <ion-fab-button size="small" (click)="downloadMap()" color="success">
-      <ion-icon name="download-outline"></ion-icon>
-    </ion-fab-button>
-    <ion-label class="fab-label">Save Map</ion-label>
-  </ion-fab>
+
+
 
   <!-- GPS Status Indicator -->
   <div class="gps-status" [class.active]="gpsEnabled" (click)="showLocationHelp()">
@@ -128,19 +98,5 @@
     <ion-label class="fab-label">Show Directions</ion-label>
   </ion-fab>
 
-  <!-- Offline Data Actions -->
-  <ion-fab vertical="bottom" horizontal="center" slot="fixed">
-    <ion-fab-button color="secondary">
-      <ion-icon name="cloud-offline-outline"></ion-icon>
-    </ion-fab-button>
-    <ion-fab-list side="top">
-      <ion-fab-button color="warning" (click)="exportOfflineData()">
-        <ion-icon name="download-outline"></ion-icon>
-      </ion-fab-button>
-      <ion-fab-button color="success" (click)="shareOfflineData()">
-        <ion-icon name="share-outline"></ion-icon>
-      </ion-fab-button>
-    </ion-fab-list>
-    <ion-label class="fab-label">Offline Data</ion-label>
-  </ion-fab>
+
 </ion-content>

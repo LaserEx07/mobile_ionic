@@ -2,34 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface EvacuationCenter {
-  id: number;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  capacity?: number;
-  status?: string;
-  disaster_type?: string;
-  contact?: string;
-  image_url?: string;
-  last_updated?: string;
-}
-
-export interface OfflineRoute {
-  id?: string;
-  start_lat: number;
-  start_lng: number;
-  end_lat: number;
-  end_lng: number;
-  disaster_type: string;
-  route_data: string; // JSON string of route coordinates
-  distance: number;
-  duration: number;
-  travel_mode: string;
-  created_at?: string;
-}
+import { EvacuationCenter, OfflineRoute } from '../interfaces/evacuation-center.interface';
 
 export interface OfflineMapTile {
   key: string; // z_x_y format
@@ -63,8 +36,9 @@ export class OfflineStorageService {
   private async initializeStorage() {
     // Initialize storage with empty arrays if not exists
     if (!localStorage.getItem(this.STORAGE_KEYS.EVACUATION_CENTERS)) {
-      // Load default evacuation centers if none exist
-      await this.loadDefaultEvacuationCenters();
+      // Initialize with empty array - no default evacuation centers
+      localStorage.setItem(this.STORAGE_KEYS.EVACUATION_CENTERS, JSON.stringify([]));
+      console.log('🔄 Initialized empty evacuation centers storage - will fetch from API');
     }
     if (!localStorage.getItem(this.STORAGE_KEYS.ROUTES)) {
       localStorage.setItem(this.STORAGE_KEYS.ROUTES, JSON.stringify([]));
@@ -79,26 +53,7 @@ export class OfflineStorageService {
     console.log('✅ Offline storage initialized - Online mode forced by default');
   }
 
-  /**
-   * Load default evacuation centers from assets
-   */
-  private async loadDefaultEvacuationCenters(): Promise<void> {
-    try {
-      console.log('📦 Loading default evacuation centers...');
-      const response = await firstValueFrom(
-        this.http.get<EvacuationCenter[]>('assets/data/default-evacuation-centers.json')
-      );
 
-      if (response && response.length > 0) {
-        await this.saveEvacuationCenters(response);
-        console.log(`✅ Loaded ${response.length} default evacuation centers`);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load default evacuation centers:', error);
-      // Fallback to empty array
-      localStorage.setItem(this.STORAGE_KEYS.EVACUATION_CENTERS, JSON.stringify([]));
-    }
-  }
 
   // ===== EVACUATION CENTERS MANAGEMENT =====
 
@@ -163,7 +118,13 @@ export class OfflineStorageService {
       const centers: EvacuationCenter[] = JSON.parse(stored);
 
       if (disasterType) {
-        return centers.filter(center => center.disaster_type === disasterType);
+        return centers.filter(center => {
+          // Handle both array and string formats for disaster_type
+          if (Array.isArray(center.disaster_type)) {
+            return center.disaster_type.includes(disasterType);
+          }
+          return center.disaster_type === disasterType;
+        });
       }
 
       return centers;

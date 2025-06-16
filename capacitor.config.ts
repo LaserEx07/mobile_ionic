@@ -22,8 +22,14 @@ const config: CapacitorConfig = {
       'http://*.ngrok.io',
       'https://api.openrouteservice.org',
       'https://*.openstreetmap.org',
+      'https://tile.openstreetmap.org',
+      'https://a.tile.openstreetmap.org',
+      'https://b.tile.openstreetmap.org',
+      'https://c.tile.openstreetmap.org',
       'https://api.mapbox.com',
-      'https://*.mapbox.com'
+      'https://*.mapbox.com',
+      'https://*.tile.openstreetmap.fr',
+      'https://cartodb-basemaps-*.global.ssl.fastly.net'
     ]
     // Comment out the development server URL for production builds
     // url: 'http://localhost:8100',

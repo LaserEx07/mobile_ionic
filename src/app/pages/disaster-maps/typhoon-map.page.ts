@@ -9,18 +9,8 @@ import { Geolocation } from '@capacitor/geolocation';
 import * as L from 'leaflet';
 import { MapboxRoutingService } from '../../services/mapbox-routing.service';
 import { OfflineStorageService } from '../../services/offline-storage.service';
-
-interface EvacuationCenter {
-  id: number;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  capacity?: number;
-  status?: string;
-  disaster_type?: string;
-  contact?: string;
-}
+import { EnhancedDownloadService } from '../../services/enhanced-download.service';
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
 @Component({
   selector: 'app-typhoon-map',
@@ -41,6 +31,15 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   public centerLat: number | null = null;
   public centerLng: number | null = null;
 
+  // Navigation panel properties
+  public selectedCenter: EvacuationCenter | null = null;
+  public selectedTransportMode: 'walking' | 'cycling' | 'driving' | null = null;
+  public routeInfo: {
+    walking?: { duration: number; distance: number };
+    cycling?: { duration: number; distance: number };
+    driving?: { duration: number; distance: number };
+  } = {};
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -49,6 +48,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   private route = inject(ActivatedRoute);
   private mapboxRouting = inject(MapboxRoutingService);
   private offlineStorage = inject(OfflineStorageService);
+  private enhancedDownload = inject(EnhancedDownloadService);
 
   ngOnInit() {
     console.log('🟢 TYPHOON MAP: Component initialized...');
@@ -212,10 +212,13 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         }
       }
 
-      // Filter for TYPHOON ONLY
-      this.evacuationCenters = allCenters.filter(center =>
-        center.disaster_type === 'Typhoon'
-      );
+      // Filter for TYPHOON ONLY - handle both array and string formats
+      this.evacuationCenters = allCenters.filter(center => {
+        if (Array.isArray(center.disaster_type)) {
+          return center.disaster_type.includes('Typhoon');
+        }
+        return center.disaster_type === 'Typhoon';
+      });
 
       console.log(`🟢 TYPHOON MAP: Filtered to ${this.evacuationCenters.length} typhoon centers`);
 
@@ -249,12 +252,12 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
 
           const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-          // Make marker clickable with transportation options (only if online)
+          // Make marker clickable with navigation panel (only if online)
           marker.on('click', () => {
             if (isOfflineMode) {
               this.showOfflineMarkerInfo(center, distance);
             } else {
-              this.showTransportationOptions(center);
+              this.openNavigationPanel(center);
             }
           });
 
@@ -456,12 +459,17 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   }
 
   // Open evacuation center in external maps app
-  async openInExternalMaps(center: EvacuationCenter) {
+  async openInExternalMaps(center: EvacuationCenter, travelMode?: 'walking' | 'cycling' | 'driving') {
     const lat = Number(center.latitude);
     const lng = Number(center.longitude);
 
+    // Map travel modes to Google Maps format
+    let googleTravelMode = 'walking';
+    if (travelMode === 'driving') googleTravelMode = 'driving';
+    else if (travelMode === 'cycling') googleTravelMode = 'bicycling';
+
     // Create maps URL that works on both Android and iOS
-    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=${googleTravelMode}`;
 
     try {
       window.open(mapsUrl, '_system');
@@ -476,51 +484,137 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     }
   }
 
-  // Show transportation options when marker is clicked (online mode)
-  async showTransportationOptions(center: EvacuationCenter) {
-    // Check if we're offline before showing transportation options
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
+  // Open navigation panel when marker is clicked
+  async openNavigationPanel(center: EvacuationCenter) {
+    this.selectedCenter = center;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
 
-    if (isOfflineMode) {
-      const distance = this.calculateDistance(
-        this.userLocation?.lat || 0,
-        this.userLocation?.lng || 0,
-        Number(center.latitude),
-        Number(center.longitude)
-      );
-      await this.showOfflineMarkerInfo(center, distance);
-      return;
+    // Calculate routes for all transport modes
+    await this.calculateAllRoutes(center);
+  }
+
+  // Close navigation panel
+  closeNavigationPanel() {
+    this.selectedCenter = null;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
+  }
+
+  // Select transport mode and show route
+  selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
+    this.selectedTransportMode = mode;
+    if (this.selectedCenter) {
+      this.showRouteOnMap(this.selectedCenter, mode);
     }
-    const alert = await this.alertCtrl.create({
-      header: `Route to ${center.name}`,
-      message: 'Choose your transportation mode:',
-      buttons: [
-        {
-          text: '🚶‍♂️ Walk',
-          handler: () => {
-            this.routeToCenter(center, 'walking');
-          }
-        },
-        {
-          text: '🚴‍♂️ Cycle',
-          handler: () => {
-            this.routeToCenter(center, 'cycling');
-          }
-        },
-        {
-          text: '🚗 Drive',
-          handler: () => {
-            this.routeToCenter(center, 'driving');
-          }
-        },
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        }
-      ]
-    });
+  }
 
-    await alert.present();
+  // Calculate routes for all transport modes
+  async calculateAllRoutes(center: EvacuationCenter) {
+    if (!this.userLocation) return;
+
+    const modes: ('walking' | 'cycling' | 'driving')[] = ['walking', 'cycling', 'driving'];
+
+    for (const mode of modes) {
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/${mode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            this.routeInfo[mode] = {
+              duration: route.duration,
+              distance: route.distance
+            };
+          }
+        }
+      } catch (error) {
+        console.error(`Error calculating ${mode} route:`, error);
+      }
+    }
+  }
+
+  // Show selected route on map
+  async showRouteOnMap(center: EvacuationCenter, mode: 'walking' | 'cycling' | 'driving') {
+    if (!this.userLocation) return;
+
+    // Clear previous routes
+    this.clearRoutes();
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/${mode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const routeGeoJSON = {
+            type: 'Feature' as const,
+            geometry: route.geometry,
+            properties: {}
+          };
+
+          // Add route to map with typhoon color (green)
+          L.geoJSON(routeGeoJSON as any, {
+            style: {
+              color: '#008000', // Green for typhoon
+              weight: 4,
+              opacity: 0.8
+            }
+          }).addTo(this.map);
+        }
+      }
+    } catch (error) {
+      console.error('Error showing route on map:', error);
+    }
+  }
+
+  // Start navigation
+  async startNavigation() {
+    if (!this.selectedCenter || !this.selectedTransportMode) return;
+
+    // Route to the selected center with selected mode
+    await this.routeToCenter(this.selectedCenter, this.selectedTransportMode);
+
+    // Close the navigation panel
+    this.closeNavigationPanel();
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🧭 Navigation started to ${this.selectedCenter.name}`,
+      duration: 3000,
+      color: 'success',
+      position: 'top'
+    });
+    await toast.present();
+  }
+
+  // Format time helper
+  formatTime(seconds: number | undefined): string {
+    if (!seconds) return '';
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) {
+      return `${minutes}m`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return `${hours}h ${remainingMinutes}m`;
+    }
+  }
+
+  // Format distance helper
+  formatDistance(meters: number | undefined): string {
+    if (!meters) return '';
+    if (meters < 1000) {
+      return `${Math.round(meters)}m`;
+    } else {
+      return `${(meters / 1000).toFixed(1)}km`;
+    }
   }
 
   // Route to specific center with chosen transportation mode
@@ -629,6 +723,39 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   goBack() {
     this.router.navigate(['/tabs/home']);
   }
+
+  // Enhanced download map functionality with routes
+  async downloadMap() {
+    if (!this.map) {
+      const toast = await this.toastCtrl.create({
+        message: 'Map not loaded yet. Please wait and try again.',
+        duration: 3000,
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+
+    try {
+      await this.enhancedDownload.downloadMapWithRoutes(
+        'typhoon-map',
+        this.map,
+        'Typhoon',
+        true // Include routes
+      );
+    } catch (error) {
+      console.error('Enhanced download error:', error);
+
+      const toast = await this.toastCtrl.create({
+        message: 'Failed to download map. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
+
 
   ionViewWillLeave() {
     if (this.map) {

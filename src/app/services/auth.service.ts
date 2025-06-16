@@ -34,7 +34,7 @@ export class AuthService {
     });
   }
 
-  register(data: { full_name: string, email: string, password: string, password_confirmation?: string }): Observable<any> {
+  register(data: { email: string, password: string, password_confirmation?: string }): Observable<any> {
     console.log('📝 Making registration request to:', `${this.apiUrl}/auth/signup`);
     console.log('👤 Registration data:', { ...data, password: '***', password_confirmation: '***' });
 
@@ -44,8 +44,25 @@ export class AuthService {
   }
 
   setToken(token: string) {
-    // Store token consistently as 'token' to match what's used in authGuard
     localStorage.setItem('token', token);
     console.log('🔑 Token stored successfully');
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getToken();
+  }
+
+  logout() {
+    // Clear all authentication and user data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('offline_credentials');
+
+    // Note: We keep onboardingComplete so user doesn't have to go through onboarding again
+    console.log('🚪 Auth service - User logged out');
   }
 }

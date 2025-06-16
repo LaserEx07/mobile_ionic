@@ -1,12 +1,14 @@
 import { Routes } from '@angular/router';
-import { onboardingGuard } from './services/onboarding.guard';
-import { authGuard } from './services/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'loading',
+    redirectTo: '/loading',
     pathMatch: 'full',
+  },
+  {
+    path: 'intro',
+    loadComponent: () => import('./pages/intro/intro.page').then(m => m.IntroPage)
   },
   {
     path: 'loading',
@@ -22,49 +24,48 @@ export const routes: Routes = [
   },
   {
     path: 'welcome',
-    loadComponent: () => import('./pages/welcome/welcome.page').then(m => m.WelcomePage),
-    canActivate: [authGuard]
+    loadComponent: () => import('./pages/welcome/welcome.page').then(m => m.WelcomePage)
   },
   {
-    path: 'data',
-    loadComponent: () => import('./pages/data/data.page').then(m => m.DataPage),
-    canActivate: [authGuard]
-  },
-
-  {
-    path: 'test-icons',
-    loadComponent: () => import('./pages/test-icons/test-icons.page').then(m => m.TestIconsPage)
+    path: 'onboarding-2',
+    loadComponent: () => import('./pages/onboarding-2/onboarding-2.page').then(m => m.Onboarding2Page)
   },
   {
-    path: 'data-debug',
-    loadComponent: () => import('./pages/data-debug/data-debug.page').then(m => m.DataDebugPage),
-    canActivate: [authGuard]
+    path: 'onboarding-3',
+    loadComponent: () => import('./pages/onboarding-3/onboarding-3.page').then(m => m.Onboarding3Page)
+  },
+  {
+    path: 'onboarding-4',
+    loadComponent: () => import('./pages/onboarding-4/onboarding-4.page').then(m => m.Onboarding4Page)
   },
   // Disaster-specific maps
   {
     path: 'earthquake-map',
-    loadComponent: () => import('./pages/disaster-maps/earthquake-map.page').then(m => m.EarthquakeMapPage),
-    canActivate: [authGuard]
+    loadComponent: () => import('./pages/disaster-maps/earthquake-map.page').then(m => m.EarthquakeMapPage)
   },
   {
     path: 'typhoon-map',
-    loadComponent: () => import('./pages/disaster-maps/typhoon-map.page').then(m => m.TyphoonMapPage),
-    canActivate: [authGuard]
+    loadComponent: () => import('./pages/disaster-maps/typhoon-map.page').then(m => m.TyphoonMapPage)
   },
   {
     path: 'flood-map',
-    loadComponent: () => import('./pages/disaster-maps/flood-map.page').then(m => m.FloodMapPage),
-    canActivate: [authGuard]
+    loadComponent: () => import('./pages/disaster-maps/flood-map.page').then(m => m.FloodMapPage)
+  },
+  {
+    path: 'fire-map',
+    loadComponent: () => import('./pages/disaster-maps/fire-map.page').then(m => m.FireMapPage)
+  },
+  {
+    path: 'landslide-map',
+    loadComponent: () => import('./pages/disaster-maps/landslide-map.page').then(m => m.LandslideMapPage)
   },
   {
     path: 'all-maps',
-    loadComponent: () => import('./pages/disaster-maps/all-maps.page').then(m => m.AllMapsPage),
-    canActivate: [authGuard]
+    loadComponent: () => import('./pages/disaster-maps/all-maps.page').then(m => m.AllMapsPage)
   },
   {
     path: 'tabs',
     loadComponent: () => import('./pages/tabs/tabs.page').then(m => m.TabsPage),
-    canActivate: [authGuard, onboardingGuard],
     children: [
       {
         path: 'home',
@@ -81,6 +82,31 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () => import('./pages/profile/profile.page').then(m => m.ProfilePage)
+      },
+      // Disaster maps accessible through tabs (for navigation consistency)
+      {
+        path: 'earthquake-map',
+        loadComponent: () => import('./pages/disaster-maps/earthquake-map.page').then(m => m.EarthquakeMapPage)
+      },
+      {
+        path: 'typhoon-map',
+        loadComponent: () => import('./pages/disaster-maps/typhoon-map.page').then(m => m.TyphoonMapPage)
+      },
+      {
+        path: 'flood-map',
+        loadComponent: () => import('./pages/disaster-maps/flood-map.page').then(m => m.FloodMapPage)
+      },
+      {
+        path: 'fire-map',
+        loadComponent: () => import('./pages/disaster-maps/fire-map.page').then(m => m.FireMapPage)
+      },
+      {
+        path: 'landslide-map',
+        loadComponent: () => import('./pages/disaster-maps/landslide-map.page').then(m => m.LandslideMapPage)
+      },
+      {
+        path: 'all-maps',
+        loadComponent: () => import('./pages/disaster-maps/all-maps.page').then(m => m.AllMapsPage)
       },
       {
         path: '',

@@ -2,7 +2,7 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
     <ion-title >
-      Alerto
+      ALERTO!
     </ion-title>
     <ion-buttons slot="end">
       <ion-button (click)="openNotifications()" class="notification-button">
@@ -16,51 +16,56 @@
 </ion-header>
 
 <ion-content>
-  <!-- Offline Banner -->
-  <app-offline-banner
-    (offlineModeEnabled)="onOfflineModeEnabled()"
-    (dataSynced)="onDataSynced()">
-  </app-offline-banner>
-
-  <div class="ion-padding">
+ 
+  <div class="home-content">
     <div class="disaster-container">
-      <div class="home-title"><img src="assets/ALERTO.png" alt="App Logo" class="home-logo"/> <div style="font-size: 22px;">Hi, Welcome to <p style="font-size: 35px; color: #1565c0; margin-top: 0px;">Safe Area!</p></div></div>
-      <div class="top-disaster">
+      <div class="disaster-grid">
 
       <ion-card class="disaster earthquake" (click)="openDisasterMap('earthquake')">
         <ion-card-content>
-          <img src="assets/earthquake.png" alt="Earthquake">
+          <img src="assets/icon/linog icon.png" alt="Earthquake">
           <ion-text><u>Earthquake</u></ion-text>
         </ion-card-content>
       </ion-card>
 
       <ion-card class="disaster typhoon" (click)="openDisasterMap('typhoon')">
         <ion-card-content>
-          <img src="assets/typhoon.png" alt="Typhoon">
+          <img src="assets/icon/bagyo.png" alt="Typhoon">
           <ion-text><u>Typhoon</u></ion-text>
         </ion-card-content>
       </ion-card>
 
       <ion-card class="disaster flood" (click)="openDisasterMap('flashflood')">
         <ion-card-content>
-          <img src="assets/flood.png" alt="Flood">
+          <img src="assets/icon/baha.jpg" alt="Flood">
           <ion-text><u>Flash Flood</u></ion-text>
         </ion-card-content>
       </ion-card>
+
+      <ion-card class="disaster fire" (click)="openDisasterMap('fire')">
+        <ion-card-content>
+          <img src="assets/icon/fire.jpg" alt="Fire">
+          <ion-text><u>Fire</u></ion-text>
+        </ion-card-content>
+      </ion-card>
+
+      <ion-card class="disaster landslide" (click)="openDisasterMap('landslide')">
+        <ion-card-content>
+          <img src="assets/icon/lanslide.jpg" alt="Landslide">
+          <ion-text><u>Landslide</u></ion-text>
+        </ion-card-content>
+      </ion-card>
+
     </div>
 
-    <ion-button expand="block" class="view-map" (click)="viewMap()" [disabled]="isOffline" style="margin-top: 24px; width: 80%; height: 45px; --border-radius: 25px;">
-      <ion-icon name="map" slot="start"></ion-icon>
-      See the Whole Map
-    </ion-button>
+    <!-- See Whole Map Button -->
+    <div class="map-button-container">
+      <ion-button expand="block" class="see-map-btn" (click)="viewMap()" [disabled]="isOffline">
+        See the whole map
+      </ion-button>
+    </div>
 
-    <!-- Debug Button (temporary) - HIDDEN -->
-    <!--
-    <ion-button expand="block" fill="outline" color="warning" (click)="openDataDebug()" style="margin-top: 12px; width: 80%; height: 40px; --border-radius: 20px;">
-      <ion-icon name="bug" slot="start"></ion-icon>
-      Debug Data
-    </ion-button>
-    -->
+  
 
   </div>
 </div>

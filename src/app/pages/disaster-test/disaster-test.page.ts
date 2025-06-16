@@ -4,15 +4,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
-
-interface EvacuationCenter {
-  id: number;
-  name: string;
-  disaster_type: string;
-  latitude: number;
-  longitude: number;
-  status: string;
-}
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
 @Component({
   selector: 'app-disaster-test',
@@ -92,11 +84,13 @@ export class DisasterTestPage implements OnInit {
 
   testEarthquakeFiltering() {
     console.log('\n🔍 Testing Earthquake filtering...');
-    
+
     this.earthquakeCenters = this.allCenters.filter(center => {
-      const isMatch = center.disaster_type === 'Earthquake';
+      const isMatch = Array.isArray(center.disaster_type)
+        ? center.disaster_type.includes('Earthquake')
+        : center.disaster_type === 'Earthquake';
       if (isMatch) {
-        console.log(`✅ Earthquake center: ${center.name} (${center.disaster_type})`);
+        console.log(`✅ Earthquake center: ${center.name} (${JSON.stringify(center.disaster_type)})`);
       }
       return isMatch;
     });
@@ -107,11 +101,13 @@ export class DisasterTestPage implements OnInit {
 
   testTyphoonFiltering() {
     console.log('\n🔍 Testing Typhoon filtering...');
-    
+
     this.typhoonCenters = this.allCenters.filter(center => {
-      const isMatch = center.disaster_type === 'Typhoon';
+      const isMatch = Array.isArray(center.disaster_type)
+        ? center.disaster_type.includes('Typhoon')
+        : center.disaster_type === 'Typhoon';
       if (isMatch) {
-        console.log(`✅ Typhoon center: ${center.name} (${center.disaster_type})`);
+        console.log(`✅ Typhoon center: ${center.name} (${JSON.stringify(center.disaster_type)})`);
       }
       return isMatch;
     });
@@ -122,11 +118,13 @@ export class DisasterTestPage implements OnInit {
 
   testFloodFiltering() {
     console.log('\n🔍 Testing Flood filtering...');
-    
+
     this.floodCenters = this.allCenters.filter(center => {
-      const isMatch = center.disaster_type === 'Flood';
+      const isMatch = Array.isArray(center.disaster_type)
+        ? center.disaster_type.includes('Flood')
+        : center.disaster_type === 'Flood';
       if (isMatch) {
-        console.log(`✅ Flood center: ${center.name} (${center.disaster_type})`);
+        console.log(`✅ Flood center: ${center.name} (${JSON.stringify(center.disaster_type)})`);
       }
       return isMatch;
     });

@@ -39,30 +39,41 @@ export class LoadingPage implements OnInit {
     const token = localStorage.getItem('token');
     const onboardingComplete = localStorage.getItem('onboardingComplete');
 
-    console.log('Auth status - Token:', !!token, 'Onboarding complete:', onboardingComplete === 'true', 'Online:', this.isOnline);
+    console.log('🔍 Loading page - Auth status check:', {
+      hasToken: !!token,
+      onboardingComplete: onboardingComplete === 'true',
+      isOnline: this.isOnline
+    });
 
     setTimeout(() => {
       if (token && onboardingComplete === 'true') {
-        // User is returning and has completed onboarding - go directly to tabs
-        console.log('User is authenticated and onboarding complete - navigating to tabs/home');
+        // User is authenticated and has completed onboarding - go directly to tabs
+        console.log('✅ User authenticated & onboarded → navigating to tabs/home');
         if (win.appDebug) {
           win.appDebug('LoadingPage navigating to tabs/home (authenticated & onboarded)');
         }
         this.router.navigate(['/tabs/home']);
-      } else if (token) {
+      } else if (token && onboardingComplete !== 'true') {
         // User is authenticated but hasn't completed onboarding
-        console.log('User is authenticated but onboarding incomplete - navigating to welcome');
+        console.log('✅ User authenticated but not onboarded → navigating to welcome');
         if (win.appDebug) {
           win.appDebug('LoadingPage navigating to welcome (authenticated but not onboarded)');
         }
         this.router.navigate(['/welcome']);
-      } else {
-        // New or logged out user - go to login
-        console.log('User is not authenticated - navigating to login');
+      } else if (!token && onboardingComplete === 'true') {
+        // User has completed onboarding before but is not authenticated - skip intro
+        console.log('🔑 User not authenticated but has onboarded before → navigating to login');
         if (win.appDebug) {
-          win.appDebug('LoadingPage navigating to login (not authenticated)');
+          win.appDebug('LoadingPage navigating to login (not authenticated but onboarded)');
         }
         this.router.navigate(['/login']);
+      } else {
+        // New user - go to intro page
+        console.log('👋 New user → navigating to intro');
+        if (win.appDebug) {
+          win.appDebug('LoadingPage navigating to intro (new user)');
+        }
+        this.router.navigate(['/intro']);
       }
     }, 1000); // Reduced wait time to 1 second for better UX
   }

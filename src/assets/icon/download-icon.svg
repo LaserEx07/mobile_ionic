@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor">
+  <!-- Dotted line at top -->
+  <rect x="40" y="10" width="4" height="4" fill="currentColor"/>
+  <rect x="40" y="18" width="4" height="4" fill="currentColor"/>
+  <rect x="40" y="26" width="4" height="4" fill="currentColor"/>
+  <rect x="40" y="34" width="4" height="4" fill="currentColor"/>
+  <rect x="40" y="42" width="4" height="4" fill="currentColor"/>
+  
+  <!-- Arrow shaft -->
+  <rect x="40" y="50" width="4" height="20" fill="currentColor"/>
+  
+  <!-- Arrow head -->
+  <polygon points="32,62 42,72 52,62" fill="currentColor"/>
+  
+  <!-- Download tray/base -->
+  <rect x="20" y="80" width="4" height="8" fill="currentColor"/>
+  <rect x="24" y="84" width="36" height="4" fill="currentColor"/>
+  <rect x="60" y="80" width="4" height="8" fill="currentColor"/>
+</svg>

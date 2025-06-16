@@ -1,0 +1,46 @@
+<ion-content class="onboarding-bg">
+  <div class="onboarding-wrapper">
+    <!-- Skip button -->
+    <div class="skip-container">
+      <ion-button fill="clear" class="skip-btn" (click)="skipOnboarding()">
+        Skip
+      </ion-button>
+    </div>
+
+    <!-- Illustration -->
+    <div class="illustration-container">
+      <div class="payment-illustration">
+        <img src="assets/icon/mapMobile.png" alt="Find Safety" class="payment-icon" />
+        <ion-icon name="checkmark-circle" class="check-icon"></ion-icon>
+      </div>
+    </div>
+    
+    <!-- Content -->
+    <div class="content-container">
+      <h2 class="onboarding-title">Find Safety at Your Fingertips</h2>
+      <p class="onboarding-description">
+        Locate the nearest safe zone during emergencies. Stay one step ahead by knowing your safest route before disaster strikes.
+      </p>
+    </div>
+
+    <!-- Page indicators -->
+    <div class="indicators-container">
+      <div class="indicator"></div>
+      <div class="indicator"></div>
+      <div class="indicator active"></div>
+      <div class="indicator"></div>
+    </div>
+
+    <!-- Navigation buttons -->
+    <div class="button-container">
+      <div class="nav-buttons">
+        <ion-button fill="clear" class="back-btn" (click)="previousPage()">
+          Back
+        </ion-button>
+        <ion-button expand="block" class="next-btn" (click)="nextPage()">
+          Next
+        </ion-button>
+      </div>
+    </div>
+  </div>
+</ion-content>

@@ -152,7 +152,7 @@ ion-fab-button[activated] {
   position: absolute;
   top: 10px;
   left: 70px; /* Moved to the right to make room for the download button */
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--ion-color-medium);
   border-radius: 20px;
   padding: 8px 12px;
   display: flex;
@@ -161,12 +161,12 @@ ion-fab-button[activated] {
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-size: 14px;
-  color: var(--ion-color-medium);
+  color: white;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 1);
+    background: var(--ion-color-medium-shade);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
   }
@@ -176,15 +176,16 @@ ion-fab-button[activated] {
   }
 
   &.active {
-    color: var(--ion-color-primary);
-    background: rgba(var(--ion-color-primary-rgb), 0.1);
+    color: white;
+    background: var(--ion-color-success);
 
     &:hover {
-      background: rgba(var(--ion-color-primary-rgb), 0.2);
+      background: var(--ion-color-success-shade);
     }
 
     ion-icon {
       animation: pulse 1.5s infinite;
+      color: white;
     }
   }
 

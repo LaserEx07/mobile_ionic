@@ -14,7 +14,17 @@ import { Router } from '@angular/router';
 export class WelcomePage {
   constructor(private router: Router) {}
 
-  getStarted() {
-    this.router.navigate(['/data']);
+  nextPage() {
+    this.router.navigate(['/onboarding-2']);
   }
-} 
+
+  previousPage() {
+    this.router.navigate(['/intro']);
+  }
+
+  skipOnboarding() {
+    // Mark onboarding as complete and go to main app
+    localStorage.setItem('onboardingComplete', 'true');
+    this.router.navigate(['/tabs/home']);
+  }
+}

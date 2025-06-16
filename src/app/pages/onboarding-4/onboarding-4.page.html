@@ -1,0 +1,39 @@
+<ion-content class="onboarding-bg">
+  <div class="onboarding-wrapper">
+    <!-- Illustration -->
+    <div class="illustration-container">
+      <div class="shopping-illustration">
+        <img src="assets/icon/finalMap.png" alt="Know Your Route" class="shopping-icon" />
+        <ion-icon name="happy" class="happy-icon"></ion-icon>
+      </div>
+    </div>
+    
+    <!-- Content -->
+    <div class="content-container">
+      <h2 class="onboarding-title">Know Your Route, Know You're Safe</h2>
+      <p class="onboarding-description">
+        Knowing your location is helpful, but knowing your nearest safe zone can save your life. Always map your escape routes.
+      </p>
+    </div>
+
+    <!-- Page indicators -->
+    <div class="indicators-container">
+      <div class="indicator"></div>
+      <div class="indicator"></div>
+      <div class="indicator"></div>
+      <div class="indicator active"></div>
+    </div>
+
+    <!-- Navigation buttons -->
+    <div class="button-container">
+      <div class="nav-buttons">
+        <ion-button fill="clear" class="back-btn" (click)="previousPage()">
+          Back
+        </ion-button>
+        <ion-button expand="block" class="get-started-btn" (click)="completeOnboarding()">
+          Get Started
+        </ion-button>
+      </div>
+    </div>
+  </div>
+</ion-content>

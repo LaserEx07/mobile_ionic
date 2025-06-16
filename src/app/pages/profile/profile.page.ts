@@ -26,9 +26,7 @@ export class ProfilePage {
     this.loadUserData();
   }
 
-  goToSettings() {
-    this.router.navigate(['/settings']);
-  }
+
 
   loadUserData() {
     const data = localStorage.getItem('userData');
@@ -77,13 +75,7 @@ export class ProfilePage {
     await modal.present();
   }
 
-  async openAccountInfoModal() {
-    const modal = await this.modalCtrl.create({
-      component: AccountInfoModalComponent,
-      cssClass: 'account-info-modal'
-    });
-    await modal.present();
-  }
+
 
   async testFCM() {
     // First, check if Google Play Services is missing
@@ -400,7 +392,11 @@ export class PrivacyModalComponent {
       <div class="legend-items">
         <div class="legend-item" *ngFor="let item of legendItems">
           <div class="legend-icon-container">
-            <span class="legend-icon">{{ item.icon }}</span>
+            <img *ngIf="item.label === 'Your Location'" src="assets/Location.png" class="legend-icon-img" />
+            <img *ngIf="item.label === 'for Earthquake'" src="assets/forEarthquake.png" class="legend-icon-img" />
+            <img *ngIf="item.label === 'for Typhoon'" src="assets/forTyphoon.png" class="legend-icon-img" />
+            <img *ngIf="item.label === 'for Flash flood'" src="assets/forFlood.png" class="legend-icon-img" />
+            <span *ngIf="item.label !== 'Your Location' && item.label !== 'for Earthquake' && item.label !== 'for Typhoon' && item.label !== 'for Flash flood'" class="legend-icon">{{ item.icon }}</span>
             <span class="legend-label">{{ item.label }}</span>
           </div>
         </div>
@@ -434,6 +430,11 @@ export class PrivacyModalComponent {
     .legend-label {
       flex-grow: 1;
     }
+    .legend-icon-img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
   `],
   standalone: true,
   imports: [IonicModule, CommonModule]
@@ -453,78 +454,7 @@ export class GuideModalComponent {
   }
 }
 
-// Account Info Modal
-@Component({
-  template: `
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Account Information</ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="dismiss()">Close</ion-button>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content class="ion-padding">
-      <ion-list>
-        <ion-item>
-          <ion-icon name="person-outline" slot="start"></ion-icon>
-          <ion-label>
-            <h2>Full Name</h2>
-            <p>{{ userData.full_name }}</p>
-          </ion-label>
-        </ion-item>
-        <ion-item>
-          <ion-icon name="call-outline" slot="start"></ion-icon>
-          <ion-label>
-            <h2>Contact Number</h2>
-            <p>{{ userData.mobile_number }}</p>
-          </ion-label>
-        </ion-item>
-        <ion-item>
-          <ion-icon name="calendar-outline" slot="start"></ion-icon>
-          <ion-label>
-            <h2>Age</h2>
-            <p>{{ userData.age }}</p>
-          </ion-label>
-        </ion-item>
-        <ion-item>
-          <ion-icon name="male-female-outline" slot="start"></ion-icon>
-          <ion-label>
-            <h2>Gender</h2>
-            <p>{{ userData.gender }}</p>
-          </ion-label>
-        </ion-item>
-        <ion-item>
-          <ion-icon name="location-outline" slot="start"></ion-icon>
-          <ion-label>
-            <h2>Address</h2>
-            <p>{{ userData.address }}</p>
-          </ion-label>
-        </ion-item>
-      </ion-list>
-    </ion-content>
-  `,
-  standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule]
-})
-export class AccountInfoModalComponent {
-  userData: any = {};
 
-  constructor(private modalCtrl: ModalController) {
-    this.loadUserData();
-  }
-
-  loadUserData() {
-    const data = localStorage.getItem('userData');
-    if (data) {
-      this.userData = JSON.parse(data);
-    }
-  }
-
-  dismiss() {
-    this.modalCtrl.dismiss();
-  }
-}
 
 // Emergency Contacts Modal
 @Component({
@@ -549,22 +479,22 @@ export class AccountInfoModalComponent {
         <ion-item>
           <ion-icon name="call-outline" slot="start"></ion-icon>
           <ion-label>
-            <h2>Fire Department</h2>
-            <p>160</p>
+            <h2>Bureau of Fire Protection</h2>
+            <p>256-0541/42</p>
           </ion-label>
         </ion-item>
         <ion-item>
           <ion-icon name="call-outline" slot="start"></ion-icon>
           <ion-label>
-            <h2>Police</h2>
-            <p>117</p>
+            <h2>Cebu City Police Hotline</h2>
+            <p>166</p>
           </ion-label>
         </ion-item>
         <ion-item>
           <ion-icon name="call-outline" slot="start"></ion-icon>
           <ion-label>
-            <h2>Red Cross</h2>
-            <p>143</p>
+            <h2>Red Cross Cebu Chapter</h2>
+            <p>(032) 253-4611</p>
           </ion-label>
         </ion-item>
         <ion-item>
@@ -607,79 +537,281 @@ export class EmergencyContactsModalComponent {
   template: `
     <ion-header>
       <ion-toolbar>
-        <ion-title class="modal-title">Safety Tips</ion-title>
+        <ion-title class="modal-title">Helpful Tips to Prepare for Disasters</ion-title>
         <ion-buttons slot="end">
           <ion-button (click)="dismiss()">Close</ion-button>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
-      <ion-list>
-        <ion-item>
-          <ion-label>
-            <h2>Earthquake</h2>
-            <ul>
-              <li>Drop, Cover, and Hold On.</li>
-              <li>Stay away from windows and heavy objects.</li>
-              <li>Evacuate only when safe.</li>
+      <div class="safety-tips-container">
+
+        <!-- Earthquake Card -->
+        <ion-card class="disaster-card earthquake-card">
+          <ion-card-header (click)="toggleCard('earthquake')" class="card-header-clickable">
+            <ion-card-title>
+              <ion-icon name="pulse-outline" class="disaster-icon"></ion-icon>
+              <span class="disaster-text">Earthquake</span>
+              <ion-icon [name]="expandedCards.earthquake ? 'chevron-down-outline' : 'chevron-up-outline'" class="expand-icon"></ion-icon>
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content *ngIf="expandedCards.earthquake" class="disaster-content">
+            <div class="disaster-image-header">
+              <img src="assets/linogs.jpg" alt="Earthquake Safety" class="disaster-header-image">
+            </div>
+            <ul class="safety-tips-list">
+              <li>Drop, Cover, and Hold On during shaking</li>
+              <li>Stay away from windows, mirrors, and heavy objects</li>
+              <li>If outdoors, move away from buildings and power lines</li>
+              <li>Keep emergency supplies: water, food, flashlight, radio</li>
+              <li>Secure heavy furniture and appliances to walls</li>
+              <li>Know your evacuation routes and meeting points</li>
+              <li>Practice earthquake drills regularly</li>
             </ul>
-          </ion-label>
-        </ion-item>
-        <ion-item>
-          <ion-label>
-            <h2>Flood</h2>
-            <ul>
-              <li>Move to higher ground immediately.</li>
-              <li>Avoid walking or driving through floodwaters.</li>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Flood Card -->
+        <ion-card class="disaster-card flood-card">
+          <ion-card-header (click)="toggleCard('flood')" class="card-header-clickable">
+            <ion-card-title>
+              <span class="disaster-text">Flood</span>
+              <ion-icon [name]="expandedCards.flood ? 'chevron-down-outline' : 'chevron-up-outline'" class="expand-icon"></ion-icon>
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content *ngIf="expandedCards.flood" class="disaster-content">
+            <div class="disaster-image-header">
+              <img src="assets/floods.jpg" alt="Flood Safety" class="disaster-header-image">
+            </div>
+            <ul class="safety-tips-list">
+              <li>Move to higher ground immediately</li>
+              <li>Never walk or drive through flood water</li>
+              <li>Turn off utilities (gas, electricity, water) if instructed</li>
+              <li>Keep important documents in waterproof containers</li>
+              <li>Have a battery-powered radio for emergency updates</li>
+              <li>Stock non-perishable food and clean water</li>
+              <li>Know your area's flood risk and evacuation routes</li>
             </ul>
-          </ion-label>
-        </ion-item>
-        <ion-item>
-          <ion-label>
-            <h2>Typhoon</h2>
-            <ul>
-              <li>Stay indoors and away from glass windows.</li>
-              <li>Prepare an emergency kit.</li>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Typhoon Card -->
+        <ion-card class="disaster-card typhoon-card">
+          <ion-card-header (click)="toggleCard('typhoon')" class="card-header-clickable">
+            <ion-card-title>
+              <ion-icon name="cloudy-outline" class="disaster-icon"></ion-icon>
+              <span class="disaster-text">Typhoon</span>
+              <ion-icon [name]="expandedCards.typhoon ? 'chevron-down-outline' : 'chevron-up-outline'" class="expand-icon"></ion-icon>
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content *ngIf="expandedCards.typhoon" class="disaster-content">
+            <div class="disaster-image-header">
+              <img src="assets/typhoons.jpg" alt="Typhoon Safety" class="disaster-header-image">
+            </div>
+            <ul class="safety-tips-list">
+              <li>Monitor weather updates and warnings</li>
+              <li>Secure or bring in outdoor furniture and objects</li>
+              <li>Stock up on food, water, and medications</li>
+              <li>Charge all electronic devices and have backup power</li>
+              <li>Stay indoors and away from windows</li>
+              <li>Prepare for power outages and flooding</li>
+              <li>Have evacuation plan ready if in high-risk areas</li>
             </ul>
-          </ion-label>
-        </ion-item>
-        <ion-item>
-          <ion-label>
-            <h2>General</h2>
-            <ul>
-              <li>Keep emergency contacts accessible.</li>
-              <li>Prepare a Go Bag with essentials.</li>
-              <li>Stay informed via official channels.</li>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Fire Card -->
+        <ion-card class="disaster-card fire-card">
+          <ion-card-header (click)="toggleCard('fire')" class="card-header-clickable">
+            <ion-card-title>
+              <ion-icon name="flame-outline" class="disaster-icon"></ion-icon>
+              <span class="disaster-text">Fire</span>
+              <ion-icon [name]="expandedCards.fire ? 'chevron-down-outline' : 'chevron-up-outline'" class="expand-icon"></ion-icon>
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content *ngIf="expandedCards.fire" class="disaster-content">
+            <div class="disaster-image-header">
+              <img src="assets/fires.jpg" alt="Fire Safety" class="disaster-header-image">
+            </div>
+            <ul class="safety-tips-list">
+              <li>Install smoke detectors and check batteries regularly</li>
+              <li>Create and practice a fire escape plan</li>
+              <li>Keep fire extinguishers in key locations</li>
+              <li>Stay low to avoid smoke when escaping</li>
+              <li>Never use elevators during a fire</li>
+              <li>Feel doors before opening - if hot, find another way</li>
+              <li>Have a designated meeting point outside</li>
             </ul>
-          </ion-label>
-        </ion-item>
-      </ion-list>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- Landslide Card -->
+        <ion-card class="disaster-card landslide-card">
+          <ion-card-header (click)="toggleCard('landslide')" class="card-header-clickable">
+            <ion-card-title>
+              <ion-icon name="triangle-outline" class="disaster-icon"></ion-icon>
+              <span class="disaster-text">Landslide</span>
+              <ion-icon [name]="expandedCards.landslide ? 'chevron-down-outline' : 'chevron-up-outline'" class="expand-icon"></ion-icon>
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content *ngIf="expandedCards.landslide" class="disaster-content">
+            <div class="disaster-image-header">
+              <img src="assets/landslides.jpg" alt="Landslide Safety" class="disaster-header-image">
+            </div>
+            <ul class="safety-tips-list">
+              <li>Watch for warning signs: tilting trees, cracks in ground</li>
+              <li>Listen for unusual sounds like trees cracking or boulders knocking</li>
+              <li>Move away from the path of a landslide quickly</li>
+              <li>Avoid river valleys and low-lying areas</li>
+              <li>Stay alert during heavy rainfall</li>
+              <li>Have evacuation routes planned from high-risk areas</li>
+              <li>Report landslide hazards to local authorities</li>
+            </ul>
+          </ion-card-content>
+        </ion-card>
+
+        <!-- General Emergency Card -->
+        <ion-card class="disaster-card general-card">
+          <ion-card-header (click)="toggleCard('general')" class="card-header-clickable">
+            <ion-card-title>
+              <span class="disaster-text">General Emergency</span>
+              <ion-icon [name]="expandedCards.general ? 'chevron-down-outline' : 'chevron-up-outline'" class="expand-icon"></ion-icon>
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content *ngIf="expandedCards.general" class="disaster-content">
+            <div class="disaster-image-header">
+              <img src="assets/icon/generalSettings.png" alt="General Emergency Safety" class="disaster-header-image">
+            </div>
+            <ul class="safety-tips-list">
+              <li>Keep emergency contact numbers readily available</li>
+              <li>Maintain a first aid kit and know basic first aid</li>
+              <li>Store emergency supplies: water (1 gallon per person per day)</li>
+              <li>Have non-perishable food for at least 3 days</li>
+              <li>Keep flashlights, batteries, and portable radio</li>
+              <li>Have copies of important documents in waterproof container</li>
+              <li>Know your local emergency services and evacuation procedures</li>
+            </ul>
+          </ion-card-content>
+        </ion-card>
+
+      </div>
     </ion-content>
   `,
   styles: [`
     .modal-title {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       font-weight: bold;
     }
-    h2 {
-      font-size: 1rem;
-      margin-bottom: 4px;
+
+    .safety-tips-container {
+      padding: 0;
+      max-width: 400px;
+      margin: 0 auto;
     }
-    ul {
-      margin: 0;
-      padding-left: 18px;
-      font-size: 0.95rem;
-      color: var(--ion-color-medium);
+
+    .disaster-card {
+      margin: 8px 0;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+      .card-header-clickable {
+        cursor: pointer;
+        padding: 12px 16px;
+        transition: background-color 0.2s ease;
+
+        ion-card-title {
+          display: flex;
+          align-items: center;
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: black !important;
+          padding-left: 20px;
+
+          .disaster-icon {
+            width: 24px;
+            margin-right: 12px;
+            font-size: 1.3rem;
+            text-align: center;
+          }
+
+          .disaster-text {
+            flex: 1;
+            margin-left: 36px;
+          }
+
+          .expand-icon {
+            margin-left: auto;
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+          }
+        }
+        &:hover {
+          background-color: var(--ion-color-light);
+        }
+      }
+
+      .disaster-content {
+        padding: 0 16px 16px 16px;
+
+        .disaster-image-header {
+          text-align: center;
+          margin-bottom: 16px;
+
+          .disaster-header-image {
+            width: 100%;
+            max-width: 300px;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          }
+        }
+
+        .safety-tips-list {
+          margin: 0;
+          padding-left: 20px;
+
+          li {
+            margin-bottom: 8px;
+            line-height: 1.4;
+            color: var(--ion-color-dark);
+            font-size: 0.95rem;
+
+            &:last-child {
+              margin-bottom: 0;
+            }
+          }
+        }
+      }
     }
-    li {
-      margin-bottom: 4px;
+
+    // For cards without icons, add consistent spacing
+    .flood-card .card-header-clickable ion-card-title,
+    .general-card .card-header-clickable ion-card-title {
+      padding-left: 56px;
     }
+
+    // All disaster types now have black text - removed individual color styling
   `],
   standalone: true,
   imports: [IonicModule, CommonModule]
 })
 export class SafetyTipsModalComponent {
+  expandedCards = {
+    earthquake: false,
+    flood: false,
+    typhoon: false,
+    fire: false,
+    landslide: false,
+    general: false
+  };
+
   constructor(private modalCtrl: ModalController) {}
+
+  toggleCard(cardType: string) {
+    this.expandedCards[cardType as keyof typeof this.expandedCards] =
+      !this.expandedCards[cardType as keyof typeof this.expandedCards];
+  }
 
   dismiss() {
     this.modalCtrl.dismiss();

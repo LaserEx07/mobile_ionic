@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { OfflineStorageService, OfflineRoute } from './offline-storage.service';
+import { OfflineStorageService } from './offline-storage.service';
+import { OfflineRoute } from '../interfaces/evacuation-center.interface';
 import { MapboxRoutingService } from './mapbox-routing.service';
 import * as L from 'leaflet';
 

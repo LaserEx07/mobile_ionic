@@ -125,12 +125,26 @@ export class NotificationsPage implements OnInit, OnDestroy {
     // Navigate based on notification type
     switch (notification.type) {
       case 'evacuation_center_added':
-        this.router.navigate(['/tabs/map'], {
-          queryParams: {
-            disasterType: 'all',
-            showNewCenters: true
-          }
-        });
+        // Extract center data from notification
+        const centerData = notification.data ? JSON.parse(notification.data) : null;
+        if (centerData && centerData.center_id) {
+          // Navigate to map with specific center highlighted
+          this.router.navigate(['/tabs/map'], {
+            queryParams: {
+              centerId: centerData.center_id,
+              highlight: true,
+              disasterType: 'all'
+            }
+          });
+        } else {
+          // Fallback to general map
+          this.router.navigate(['/tabs/map'], {
+            queryParams: {
+              disasterType: 'all',
+              showNewCenters: true
+            }
+          });
+        }
         break;
       case 'emergency_alert':
         const disasterType = this.extractDisasterType(notification);
@@ -237,6 +251,10 @@ export class NotificationsPage implements OnInit, OnDestroy {
   getNotificationTitle(notification: AppNotification): string {
     switch (notification.type) {
       case 'evacuation_center_added':
+        const data = notification.data ? JSON.parse(notification.data) : null;
+        if (data && data.center_name) {
+          return `New Evacuation Center: ${data.center_name}`;
+        }
         return 'New evacuation center added.';
       case 'emergency_alert':
         return notification.title;
@@ -246,6 +264,15 @@ export class NotificationsPage implements OnInit, OnDestroy {
   }
 
   getNotificationDescription(notification: AppNotification): string {
+    if (notification.type === 'evacuation_center_added') {
+      const data = notification.data ? JSON.parse(notification.data) : null;
+      if (data) {
+        const disasterTypes = Array.isArray(data.disaster_types)
+          ? data.disaster_types.join(', ')
+          : data.disaster_types || 'Emergency';
+        return `Added in ${data.barangay || 'your area'} for ${disasterTypes} emergencies. Tap to view on map.`;
+      }
+    }
     return notification.message;
   }
 

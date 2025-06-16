@@ -3,6 +3,7 @@ import { Platform } from '@ionic/angular';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { registerIcons } from './icons';
 import { FCMService } from './services/fcm.service';
+import { EmergencyOverlayService } from './services/emergency-overlay.service';
 
 @Component({
   selector: 'app-root',
@@ -14,7 +15,8 @@ import { FCMService } from './services/fcm.service';
 export class AppComponent {
   constructor(
     private platform: Platform,
-    private fcmService: FCMService
+    private fcmService: FCMService,
+    private emergencyOverlay: EmergencyOverlayService
   ) {
     // Register all Ionicons used in the app
     try {

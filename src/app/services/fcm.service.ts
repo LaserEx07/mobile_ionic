@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { NotificationDetailComponent } from '../components/notification-detail/notification-detail.component';
+import { EmergencyOverlayService, EmergencyNotification } from './emergency-overlay.service';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +18,8 @@ export class FCMService {
   constructor(
     private platform: Platform,
     private http: HttpClient,
-    private modalController: ModalController
+    private modalController: ModalController,
+    private emergencyOverlay: EmergencyOverlayService
   ) {}
 
   /**
@@ -113,9 +115,13 @@ export class FCMService {
         timestamp: new Date().toISOString()
       });
 
-      // For foreground messages, show local notification
-      // Background messages are handled automatically by the system
-      this.showLocalNotification(event.notification);
+      // Check if this is an emergency notification
+      if (this.isEmergencyNotification(event.notification)) {
+        this.handleEmergencyNotification(event.notification);
+      } else {
+        // For regular foreground messages, show local notification
+        this.showLocalNotification(event.notification);
+      }
     });
 
     // Listen for notification actions (when user taps notification)
@@ -140,6 +146,87 @@ export class FCMService {
       });
       this.handleNotificationAction(action);
     });
+  }
+
+  /**
+   * Check if notification is an emergency notification
+   */
+  private isEmergencyNotification(notification: any): boolean {
+    const data = notification.data || {};
+    const category = data.category?.toLowerCase() || '';
+    const severity = data.severity?.toLowerCase() || '';
+
+    // Emergency categories
+    const emergencyCategories = ['earthquake', 'flood', 'typhoon', 'fire', 'landslide'];
+
+    // Check if it's an emergency category or high/critical severity
+    return emergencyCategories.includes(category) ||
+           severity === 'high' ||
+           severity === 'critical' ||
+           data.emergency === 'true' ||
+           data.emergency === true;
+  }
+
+  /**
+   * Handle emergency notification with overlay
+   */
+  private async handleEmergencyNotification(notification: any): Promise<void> {
+    try {
+      console.log('🚨 EMERGENCY NOTIFICATION RECEIVED:', notification);
+
+      const data = notification.data || {};
+
+      // Create emergency notification object
+      const emergencyNotification: EmergencyNotification = {
+        id: data.notification_id || `emergency_${Date.now()}`,
+        title: notification.title || 'Emergency Alert',
+        message: notification.body || 'Emergency notification received',
+        category: this.mapToEmergencyCategory(data.category || 'General'),
+        severity: this.mapToEmergencySeverity(data.severity || 'medium'),
+        timestamp: new Date().toISOString(),
+        data: data
+      };
+
+      // Show emergency overlay
+      await this.emergencyOverlay.showEmergencyNotification(emergencyNotification);
+
+    } catch (error) {
+      console.error('Error handling emergency notification:', error);
+      // Fallback to regular notification if emergency overlay fails
+      this.showLocalNotification(notification);
+    }
+  }
+
+  /**
+   * Map category to emergency category type
+   */
+  private mapToEmergencyCategory(category: string): 'Earthquake' | 'Flood' | 'Typhoon' | 'Fire' | 'Landslide' | 'General' {
+    const categoryMap: { [key: string]: 'Earthquake' | 'Flood' | 'Typhoon' | 'Fire' | 'Landslide' | 'General' } = {
+      'earthquake': 'Earthquake',
+      'flood': 'Flood',
+      'typhoon': 'Typhoon',
+      'fire': 'Fire',
+      'landslide': 'Landslide',
+      'general': 'General',
+      'emergency': 'General'
+    };
+
+    return categoryMap[category.toLowerCase()] || 'General';
+  }
+
+  /**
+   * Map severity to emergency severity type
+   */
+  private mapToEmergencySeverity(severity: string): 'low' | 'medium' | 'high' | 'critical' {
+    const severityMap: { [key: string]: 'low' | 'medium' | 'high' | 'critical' } = {
+      'low': 'low',
+      'medium': 'medium',
+      'high': 'high',
+      'critical': 'critical',
+      'urgent': 'critical'
+    };
+
+    return severityMap[severity.toLowerCase()] || 'medium';
   }
 
   /**

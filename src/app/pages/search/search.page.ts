@@ -7,18 +7,7 @@ import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
 import { EvacuationCenterModalComponent } from './evacuation-center-modal.component';
 import { LoadingService } from '../../services/loading.service';
-
-interface EvacuationCenter {
-  id: number;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  capacity?: number;
-  status?: string;
-  disaster_type?: string;
-  contact?: string;
-}
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
 @Component({
   selector: 'app-search',
@@ -101,8 +90,17 @@ export class SearchPage implements OnInit {
       // Search by address
       const addressIncludes = center.address?.toLowerCase().includes(query);
 
-      // Search by disaster type
-      const disasterTypeIncludes = center.disaster_type?.toLowerCase().includes(query);
+      // Search by disaster type - handle both array and string formats
+      let disasterTypeIncludes = false;
+      if (center.disaster_type) {
+        if (Array.isArray(center.disaster_type)) {
+          disasterTypeIncludes = center.disaster_type.some(type =>
+            type.toLowerCase().includes(query)
+          );
+        } else {
+          disasterTypeIncludes = center.disaster_type.toLowerCase().includes(query);
+        }
+      }
 
       // Prioritize exact matches and "starts with" matches
       return nameStartsWith || nameIncludes || addressIncludes || disasterTypeIncludes;

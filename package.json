@@ -27,6 +27,7 @@
     "@capacitor/android": "7.2.0",
     "@capacitor/app": "7.0.1",
     "@capacitor/core": "7.2.0",
+    "@capacitor/filesystem": "^7.1.1",
     "@capacitor/geolocation": "^7.1.1",
     "@capacitor/haptics": "7.0.1",
     "@capacitor/ios": "7.2.0",
@@ -75,7 +76,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.6.3"
+    "typescript": "~5.5.0"
   },
   "description": "Alerto - Evacuation Center Mapping System"
 }

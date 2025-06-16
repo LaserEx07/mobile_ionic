@@ -1,31 +1,51 @@
 
 
-<ion-content class="ion-padding register-bg">
-  <div class="register-wrapper">
-    <img src="assets/ALERTO.png" alt="App Logo" class="register-logo" />
-    <h1 class="register-title">Sign Up Here!</h1>
+<ion-content class="register-bg" >
+  <div class="register-wrapper" style="margin-top: 100px;">
+    <!-- Logo -->
+   <h2 style="text-align: left; color: black;">Sign Up Here!</h2>
+
     <form (ngSubmit)="onRegister()" class="register-form">
-      <ion-item>
-        <ion-label position="floating">Full Name:</ion-label>
-        <ion-input type="text" [(ngModel)]="user.full_name" name="full_name" required></ion-input>
-      </ion-item>
+      <div class="input-group">
+        <ion-input
+          type="email"
+          [(ngModel)]="user.email"
+          name="email"
+          placeholder="Email"
+          class="modern-input"
+          required>
+        </ion-input>
+      </div>
 
-      <ion-item>
-        <ion-label position="floating">Email:</ion-label>
-        <ion-input type="email" [(ngModel)]="user.email" name="email" required></ion-input>
-      </ion-item>
+      <div class="input-group">
+        <ion-input
+          type="password"
+          [(ngModel)]="user.password"
+          name="password"
+          placeholder="Password"
+          class="modern-input"
+          required>
+        </ion-input>
+      </div>
 
-      <ion-item>
-        <ion-label position="floating">Password:</ion-label>
-        <ion-input type="password" [(ngModel)]="user.password" name="password" required></ion-input>
-      </ion-item>
+      <div class="input-group">
+        <ion-input
+          type="password"
+          [(ngModel)]="user.confirmPassword"
+          name="confirmPassword"
+          placeholder="Confirm Password"
+          class="modern-input"
+          required>
+        </ion-input>
+      </div>
 
-      <ion-item>
-        <ion-label position="floating">Confirm Password:</ion-label>
-        <ion-input type="password" [(ngModel)]="user.confirmPassword" name="confirmPassword" required></ion-input>
-      </ion-item>
-<br>  <br>
-      <ion-button expand="block" type="submit" class="register-btn">Register</ion-button>
+      <div class="terms-section">
+        <ion-checkbox [(ngModel)]="acceptTerms" name="acceptTerms" class="terms-checkbox" [disabled]="!hasReadTerms"></ion-checkbox>
+        <span class="terms-text">I accept the <a (click)="openTermsModal()" class="terms-link">Terms and Conditions</a></span>
+      </div>
+      <ion-button expand="block" type="submit" class="modern-btn" [disabled]="!acceptTerms">
+        Sign Up
+      </ion-button>
     </form>
 
     <!-- Debug: Show FCM Token -->
@@ -39,11 +59,73 @@
       </ion-button>
     </ion-item>
 
-    <div class="ion-text-center ion-margin-top">
-      <ion-text>Already have an account? </ion-text>
+    <div class="ion-text-left ion-margin-top">
+      <ion-text style="color: black;">Already have an account? </ion-text>
       <a (click)="goToLogin()"><strong><u>Log In</u></strong></a>
     </div>
 
 
   </div>
 </ion-content>
+
+<!-- Terms and Conditions Modal -->
+<ion-modal [isOpen]="isTermsModalOpen" (willDismiss)="closeTermsModal()" class="terms-modal">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title class="modal-title"><strong>Terms and Conditions</strong></ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="closeTermsModal()">
+            <ion-icon name="close"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <div class="terms-content">
+        <h1 class="modal-section-title"><strong>Terms and Conditions</strong></h1>
+        <p class="effective-date">Effective Date: April 26, 2025</p>
+        <p class="welcome">Welcome to Evacuation Mapping System ("we", "our", or "us"). These <strong>Terms and Conditions</strong> ("Terms") govern your access to and use of our online evacuation mapping system (the "Service"). By registering or using the Service, you agree to be bound by these Terms.</p>
+
+        <section>
+          <h2 class="modal-section-title">1. User Eligibility</h2>
+          <p>To use this service, you must be at least 13 years old. By registering, you confirm that the information provided is accurate and complete.</p>
+        </section>
+
+        <section>
+          <h2 class="modal-section-title">2. Account Registration</h2>
+          <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.</p>
+        </section>
+
+        <section>
+          <h2 class="modal-section-title">3. Use of Service</h2>
+          <p>You agree to use the system solely for lawful purposes and in a way that does not infringe the rights of others. Misuse of the system, including providing false information or tampering with the mapping process, may result in suspension or termination of your account.</p>
+        </section>
+
+        <section>
+          <h2 class="modal-section-title">4. Modifications</h2>
+          <p>We reserve the right to modify or discontinue the Service at any time without notice. Continued use of the Service following changes means you accept those changes.</p>
+        </section>
+
+        <section>
+          <h2 class="modal-section-title">5. Limitation of Liability</h2>
+          <p>We strive to provide accurate evacuation data but do not guarantee the completeness, accuracy, or timeliness of the information provided. We are not liable for any loss or damage arising from the use or inability to use the Service.</p>
+        </section>
+
+        <section>
+          <h2 class="modal-section-title">6. Termination</h2>
+          <p>We may suspend or terminate your access to the Service if you violate these Terms.</p>
+        </section>
+      </div>
+
+      <div class="modal-buttons">
+        <ion-button expand="block" fill="outline" (click)="closeTermsModal()">
+          Close
+        </ion-button>
+        <ion-button expand="block" (click)="acceptTermsFromModal()" class="accept-btn">
+          I Have Read and Accept the Terms and Conditions
+        </ion-button>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

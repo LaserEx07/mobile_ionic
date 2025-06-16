@@ -2,6 +2,15 @@
   margin-left: 8px;
 }
 
+.home-content {
+  padding: 16px;
+  height: calc(100vh - 120px);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 ion-header, ion-title {
   text-align: center;
   font-family: 'Poppins', Arial, sans-serif;
@@ -15,14 +24,18 @@ ion-header, ion-title {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  margin: 32px 0 0 0;
+  justify-content: center;
+  gap: 16px;
+  margin: 0;
+  height: 100%;
 }
 
 .disaster {
   margin: 0;
   cursor: pointer;
   transition: transform 0.2s;
+  width: 100%;
+  height: 120px;
 
   &:hover {
     transform: scale(1.05);
@@ -32,31 +45,49 @@ ion-header, ion-title {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
-    padding: 16px;
+    padding: 12px;
+    height: 100%;
   }
 
   img {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 8px;
+    width: 50px;
+    height: 50px;
+    margin-bottom: 6px;
+  }
+
+  ion-text {
+    font-size: 0.9rem;
+    font-weight: 600;
   }
 }
 
 .earthquake {
   --background: #ffcc80;
+
+  ion-text {
+    color: black !important;
+  }
 }
 
 .typhoon {
   --background: #c5e1a5;
-  size: 100px;
-  width: 105px;
-  height: 120px;
 }
 
 .flood {
   --background: #81d4fa;
 }
+
+.fire {
+  --background: #ffab91;
+}
+
+.landslide {
+  --background: #d7ccc8;
+}
+
+
 
 .view-map {
   margin-top: 24px;
@@ -71,30 +102,70 @@ ion-header, ion-title {
   }
 }
 
-.top-disaster {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-
-
+.disaster-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 12px;
+  padding: 0 16px;
+  max-width: 400px;
+  margin: 0 auto;
+  width: 100%;
 }
-  .home-logo {
-    width: 150px;
-    height: 150px;
 
+/* Style for the landslide card to span both columns in the last row */
+.disaster.landslide {
+  grid-column: 1 / 3;
+  max-width: 180px;
+  margin: 0 auto;
+}
 
+/* See whole map button container */
+.map-button-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 0 16px;
+}
+
+/* See whole map button styling */
+.see-map-btn {
+  --background: #007bff;
+  --background-hover: #0056b3;
+  --background-activated: #0056b3;
+  --color: white;
+  --border-radius: 25px;
+  font-weight: 600;
+  font-size: 1rem;
+  height: 50px;
+  max-width: 300px;
+  text-transform: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    --background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
   }
-    .home-title {
-      padding-top: 105px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 30px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-shadow: 1px 2px 4px #ccc;
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 123, 255, 0.2);
+  }
+
+  &[disabled] {
+    --background: #999;
+    --color: #ccc;
+    cursor: not-allowed;
+
+    &:hover {
+      transform: none;
+      box-shadow: none;
     }
+  }
+}
+
 
 .notifications-section {
   margin-top: 20px;

@@ -1,0 +1,92 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="arrow-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>🏔️ Landslide Evacuation Centers</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <!-- Map Container -->
+  <div id="landslide-map" class="map-container"></div>
+
+  <!-- Map Controls -->
+  <div class="map-controls">
+    <ion-button
+      fill="clear"
+      class="download-btn"
+      (click)="downloadMap()">
+      <img src="assets/icon/download-icon.svg" alt="Download" class="download-icon">
+    </ion-button>
+  </div>
+
+  <!-- Navigation Panel (slides in from right when center is selected) -->
+  <div class="navigation-panel" [class.show]="selectedCenter">
+    <div class="panel-header">
+      <h3>🏔️ {{ selectedCenter?.name }}</h3>
+      <ion-button fill="clear" (click)="closeNavigationPanel()">
+        <ion-icon name="close"></ion-icon>
+      </ion-button>
+    </div>
+    
+    <div class="panel-content" *ngIf="selectedCenter">
+      <p><strong>Address:</strong> {{ selectedCenter.address }}</p>
+      <p><strong>Capacity:</strong> {{ selectedCenter.capacity || 'N/A' }}</p>
+      
+      <div class="transport-options">
+        <h4>Choose Transport Mode:</h4>
+        
+        <!-- Walking Option -->
+        <div class="transport-option" 
+             [class.selected]="selectedTransportMode === 'walking'"
+             (click)="navigateWithMode('walking')">
+          <ion-icon name="walk-outline"></ion-icon>
+          <div class="transport-info">
+            <span class="mode">Walking</span>
+            <span class="details" *ngIf="routeInfo.walking">
+              {{ (routeInfo.walking.distance / 1000).toFixed(1) }}km • 
+              {{ (routeInfo.walking.duration / 60).toFixed(0) }}min
+            </span>
+          </div>
+        </div>
+        
+        <!-- Cycling Option -->
+        <div class="transport-option" 
+             [class.selected]="selectedTransportMode === 'cycling'"
+             (click)="navigateWithMode('cycling')">
+          <ion-icon name="bicycle-outline"></ion-icon>
+          <div class="transport-info">
+            <span class="mode">Cycling</span>
+            <span class="details" *ngIf="routeInfo.cycling">
+              {{ (routeInfo.cycling.distance / 1000).toFixed(1) }}km • 
+              {{ (routeInfo.cycling.duration / 60).toFixed(0) }}min
+            </span>
+          </div>
+        </div>
+        
+        <!-- Driving Option -->
+        <div class="transport-option" 
+             [class.selected]="selectedTransportMode === 'driving'"
+             (click)="navigateWithMode('driving')">
+          <ion-icon name="car-outline"></ion-icon>
+          <div class="transport-info">
+            <span class="mode">Driving</span>
+            <span class="details" *ngIf="routeInfo.driving">
+              {{ (routeInfo.driving.distance / 1000).toFixed(1) }}km • 
+              {{ (routeInfo.driving.duration / 60).toFixed(0) }}min
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay to close navigation panel -->
+  <div class="navigation-overlay" 
+       [class.show]="selectedCenter" 
+       (click)="closeNavigationPanel()">
+  </div>
+</ion-content>

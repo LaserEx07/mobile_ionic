@@ -26,15 +26,6 @@ import { Geolocation } from '@capacitor/geolocation';
             Continue Offline
           </ion-button>
           <ion-button
-            *ngIf="showSyncButton()"
-            fill="clear"
-            size="small"
-            color="light"
-            (click)="syncData()">
-            <ion-icon name="sync-outline"></ion-icon>
-            Sync
-          </ion-button>
-          <ion-button
             *ngIf="showOnlineButton()"
             fill="clear"
             size="small"
@@ -42,15 +33,6 @@ import { Geolocation } from '@capacitor/geolocation';
             (click)="disableOfflineMode()">
             <ion-icon name="wifi-outline"></ion-icon>
             Go Online
-          </ion-button>
-          <ion-button
-            *ngIf="showPrepareButton()"
-            fill="clear"
-            size="small"
-            color="light"
-            (click)="prepareOfflineData()">
-            <ion-icon name="download-outline"></ion-icon>
-            Prepare
           </ion-button>
         </div>
       </div>
@@ -169,6 +151,8 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
     this.onlineListener = () => {
       this.isOnline = true;
       this.checkDataStatus();
+      // Auto-sync when coming back online
+      this.autoSyncDataIfNeeded();
     };
 
     this.offlineListener = () => {
@@ -181,6 +165,9 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
 
     // Initial status check
     await this.checkDataStatus();
+
+    // Auto-sync data when component initializes and user is online
+    this.autoSyncDataIfNeeded();
   }
 
   ngOnDestroy() {
@@ -231,7 +218,7 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
   }
 
   getBannerTitle(): string {
-    if (this.isPreparingData) return 'Preparing Offline Data';
+    if (this.isPreparingData) return 'Updating Offline Data';
 
     // If we're actually offline (no network)
     if (!this.isOnline && this.hasOfflineData) return 'Offline Mode Available';
@@ -242,7 +229,7 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
     if (this.isOnline && this.isOfflineMode && !this.hasOfflineData) return 'Offline Mode (No Data)';
 
     // If we're online and not in offline mode
-    if (this.isOnline && !this.isOfflineMode && !this.hasOfflineData) return 'Online - Offline Data Not Ready';
+    if (this.isOnline && !this.isOfflineMode && !this.hasOfflineData) return 'Online - Preparing Data';
     if (this.isOnline && !this.isOfflineMode && this.hasOfflineData) return 'Online & Ready';
 
     return 'Connected & Ready';
@@ -252,11 +239,11 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
     if (this.isPreparingData) return this.preparationStatus;
     if (!this.isOnline && this.hasOfflineData) return 'Emergency data is available offline';
     if (!this.isOnline && !this.hasOfflineData) return 'Limited functionality available';
-    if (this.isOnline && !this.hasOfflineData) return 'Prepare offline data for emergencies';
+    if (this.isOnline && !this.hasOfflineData) return 'Downloading data automatically...';
 
     if (this.lastSyncTime) {
       const syncDate = new Date(this.lastSyncTime);
-      return `Last synced: ${syncDate.toLocaleDateString()}`;
+      return `Last updated: ${syncDate.toLocaleDateString()} ${syncDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
     }
     return 'All systems operational';
   }
@@ -265,17 +252,11 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
     return !this.isOnline && !this.isOfflineMode && this.hasOfflineData;
   }
 
-  showSyncButton(): boolean {
-    return this.isOnline && this.hasOfflineData && !this.isPreparingData;
-  }
-
-  showPrepareButton(): boolean {
-    return this.isOnline && !this.hasOfflineData && !this.isPreparingData;
-  }
-
   showOnlineButton(): boolean {
     return this.isOnline && this.isOfflineMode && !this.isPreparingData;
   }
+
+  // Removed manual sync and prepare buttons - everything is automatic now
 
   async enableOfflineMode() {
     const alert = await this.alertCtrl.create({
@@ -325,102 +306,116 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
     await alert.present();
   }
 
-  async syncData() {
-    const loading = await this.loadingCtrl.create({
-      message: 'Syncing evacuation data...'
-    });
-    await loading.present();
+  // Manual sync methods removed - everything is automatic now
+
+  /**
+   * Automatically sync data when online without user intervention
+   */
+  private async autoSyncDataIfNeeded() {
+    // Only auto-sync if online and not already preparing data
+    if (!this.isOnline || this.isPreparingData) {
+      return;
+    }
 
     try {
-      const success = await this.offlineStorage.syncEvacuationCenters();
-      await loading.dismiss();
+      // Check if we need to sync (no data or data is old)
+      const needsSync = await this.shouldAutoSync();
 
-      if (success) {
-        this.dataSynced.emit();
-        this.checkDataStatus();
-        this.showToast('Data synced successfully', 'success');
-      } else {
-        this.showToast('Sync failed. Please try again.', 'danger');
+      if (needsSync) {
+        console.log('🔄 Auto-syncing offline data in background...');
+        await this.performBackgroundSync();
       }
     } catch (error) {
-      await loading.dismiss();
-      this.showToast('Sync error. Check your connection.', 'danger');
+      console.error('❌ Auto-sync failed:', error);
+      // Fail silently - don't bother user with sync errors
     }
   }
 
-  async prepareOfflineData() {
-    const alert = await this.alertCtrl.create({
-      header: 'Prepare Offline Data',
-      message: 'Download evacuation centers and map data for offline use? This may take a few minutes and use mobile data.',
-      buttons: [
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        },
-        {
-          text: 'Download',
-          handler: () => this.startDataPreparation()
-        }
-      ]
-    });
+  /**
+   * Check if auto-sync is needed
+   */
+  private async shouldAutoSync(): Promise<boolean> {
+    const hasData = await this.offlineStorage.isDataAvailable();
+    const lastSync = this.offlineStorage.getLastSyncTime();
 
-    await alert.present();
+    // Always sync if no data
+    if (!hasData) {
+      return true;
+    }
+
+    // Sync if data is older than 6 hours
+    if (lastSync) {
+      const lastSyncDate = new Date(lastSync);
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+      return lastSyncDate < sixHoursAgo;
+    }
+
+    return true; // Sync if no last sync time
   }
 
-  private async startDataPreparation() {
+  /**
+   * Perform background sync without showing loading indicators
+   */
+  private async performBackgroundSync() {
     this.isPreparingData = true;
     this.preparationProgress = 0;
+    this.preparationStatus = 'Updating offline data...';
 
     try {
-      // Step 1: Sync evacuation centers
-      this.preparationStatus = 'Downloading evacuation centers...';
+      // Step 1: Sync evacuation centers (silent)
       const syncSuccess = await this.offlineStorage.syncEvacuationCenters();
-      this.preparationProgress = 0.3;
+      this.preparationProgress = 0.4;
 
       if (!syncSuccess) {
         throw new Error('Failed to sync evacuation centers');
       }
 
-      // Step 2: Get user location for map caching
-      this.preparationStatus = 'Getting your location...';
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10000
-      });
-      this.preparationProgress = 0.4;
+      // Step 2: Get user location (silent)
+      try {
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: false,
+          timeout: 5000
+        });
+        this.preparationProgress = 0.5;
 
-      const userLat = position.coords.latitude;
-      const userLng = position.coords.longitude;
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
 
-      // Step 3: Cache map tiles
-      this.preparationStatus = 'Downloading map tiles...';
-      await this.offlineMap.preloadMapTiles(
-        userLat, userLng, 25, // 25km radius
-        (current, total) => {
-          const mapProgress = 0.4 + (current / total) * 0.4; // 40% of total progress
-          this.preparationProgress = mapProgress;
-          this.preparationStatus = `Downloading map tiles... ${current}/${total}`;
-        }
-      );
+        // Step 3: Cache map tiles (silent, smaller radius for background)
+        this.preparationStatus = 'Updating maps...';
+        await this.offlineMap.preloadMapTiles(
+          userLat, userLng, 15, // Smaller 15km radius for background sync
+          (current, total) => {
+            const mapProgress = 0.5 + (current / total) * 0.4;
+            this.preparationProgress = mapProgress;
+          }
+        );
 
-      // Step 4: Pre-cache routes
-      this.preparationStatus = 'Pre-caching routes...';
-      const centers = await this.offlineStorage.getEvacuationCenters();
-      await this.offlineRouting.preCacheRoutes(userLat, userLng, centers.slice(0, 10)); // Cache routes to nearest 10 centers
-      this.preparationProgress = 1.0;
+        // Step 4: Pre-cache routes (silent)
+        this.preparationStatus = 'Updating routes...';
+        const centers = await this.offlineStorage.getEvacuationCenters();
+        await this.offlineRouting.preCacheRoutes(userLat, userLng, centers.slice(0, 5)); // Cache fewer routes for background
+        this.preparationProgress = 1.0;
 
-      this.preparationStatus = 'Preparation complete!';
+      } catch (locationError) {
+        console.log('📍 Location not available for background sync, skipping map/route cache');
+        this.preparationProgress = 1.0;
+      }
+
+      this.preparationStatus = 'Data updated!';
       await this.checkDataStatus();
 
+      // Hide preparation status after short delay
       setTimeout(() => {
         this.isPreparingData = false;
-        this.showToast('Offline data prepared successfully!', 'success');
-      }, 1000);
+      }, 1500);
+
+      console.log('✅ Background sync completed successfully');
 
     } catch (error) {
-      console.error('Data preparation failed:', error);
+      console.error('❌ Background sync failed:', error);
       this.isPreparingData = false;
-      this.showToast('Failed to prepare offline data. Please try again.', 'danger');
+      // Don't show error toast for background sync failures
     }
   }
 

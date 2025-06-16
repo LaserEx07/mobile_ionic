@@ -16,17 +16,7 @@ import { EvacuationCenterDetailsComponent } from './evacuation-center-details.co
 import { DirectionsPanelComponent } from './directions-panel.component';
 import html2canvas from 'html2canvas';
 
-interface EvacuationCenter {
-  id: number;
-  name: string;
-  latitude: number;
-  longitude: number;
-  disaster_type?: string;
-  address?: string;
-  capacity?: number;
-  status?: string;
-  contact?: string;
-}
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
 // Define GeolocationPosition interface to match Capacitor's Geolocation plugin
 interface GeolocationPosition {
@@ -81,8 +71,13 @@ export class MapPage implements OnInit, OnDestroy {
         // Skip centers without a disaster type
         if (!center.disaster_type) return false;
 
-        // Normalize the center's disaster type
-        const centerType = center.disaster_type.toLowerCase();
+        // Normalize the center's disaster type - handle both array and string formats
+        let centerType: string;
+        if (Array.isArray(center.disaster_type)) {
+          centerType = center.disaster_type.join(' ').toLowerCase();
+        } else {
+          centerType = center.disaster_type.toLowerCase();
+        }
 
         // Match based on the type of disaster
         if (normalizedDisasterType === 'earthquake' || normalizedDisasterType === 'earthquakes') {
@@ -449,6 +444,17 @@ export class MapPage implements OnInit, OnDestroy {
   constructor() {}
 
   /**
+   * Helper function to get the primary disaster type from string or array
+   */
+  private getPrimaryDisasterType(disasterType: string | string[] | undefined): string {
+    if (!disasterType) return '';
+    if (Array.isArray(disasterType)) {
+      return disasterType[0] || '';
+    }
+    return disasterType;
+  }
+
+  /**
    * Set up network monitoring for automatic offline mode
    */
   setupNetworkMonitoring() {
@@ -691,9 +697,15 @@ export class MapPage implements OnInit, OnDestroy {
         // Filter by disaster type if specified
         let filteredCenters = offlineCenters;
         if (disasterType && disasterType !== 'all') {
-          filteredCenters = offlineCenters.filter(center =>
-            center.disaster_type?.toLowerCase() === disasterType.toLowerCase()
-          );
+          filteredCenters = offlineCenters.filter(center => {
+            if (!center.disaster_type) return false;
+            if (Array.isArray(center.disaster_type)) {
+              return center.disaster_type.some(type =>
+                type.toLowerCase() === disasterType.toLowerCase()
+              );
+            }
+            return center.disaster_type.toLowerCase() === disasterType.toLowerCase();
+          });
           console.log(`🔍 DEBUG: Filtered to ${filteredCenters.length} centers for disaster type: ${disasterType}`);
         }
 
@@ -767,7 +779,7 @@ export class MapPage implements OnInit, OnDestroy {
 
       if (!isNaN(lat) && !isNaN(lng)) {
         // Get icon based on disaster type
-        const iconUrl = this.getDisasterIcon(center.disaster_type || '');
+        const iconUrl = this.getDisasterIcon(this.getPrimaryDisasterType(center.disaster_type));
         console.log(`🔍 DEBUG: Icon URL: ${iconUrl}`);
 
         const marker = L.marker([lat, lng], {
@@ -1266,7 +1278,7 @@ export class MapPage implements OnInit, OnDestroy {
       this.initializeMap(userLat, userLng);
 
       // Add center marker
-      const iconUrl = this.getDisasterIcon(center.disaster_type || '');
+      const iconUrl = this.getDisasterIcon(this.getPrimaryDisasterType(center.disaster_type));
       const marker = L.marker([centerLat, centerLng], {
         icon: L.icon({
           iconUrl: iconUrl,
@@ -2305,7 +2317,7 @@ export class MapPage implements OnInit, OnDestroy {
           }
 
           // Normalize both values for comparison (trim whitespace and handle case)
-          const centerType = center.disaster_type.trim();
+          const centerType = this.getPrimaryDisasterType(center.disaster_type).trim();
           const targetType = disasterType.trim();
 
           // Exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood'
@@ -2329,7 +2341,7 @@ export class MapPage implements OnInit, OnDestroy {
 
         // Log excluded centers for debugging
         const excludedCenters = allCenters.filter(center =>
-          center.disaster_type && center.disaster_type.trim() !== disasterType.trim()
+          center.disaster_type && this.getPrimaryDisasterType(center.disaster_type).trim() !== disasterType.trim()
         );
         console.log('❌ EXCLUDED CENTERS:');
         excludedCenters.forEach((center, index) => {
@@ -2407,7 +2419,7 @@ export class MapPage implements OnInit, OnDestroy {
 
         if (!isNaN(lat) && !isNaN(lng)) {
           // Get icon based on disaster type - exact match with backend enum values
-          let iconUrl = this.getDisasterIcon(center.disaster_type || '');
+          let iconUrl = this.getDisasterIcon(this.getPrimaryDisasterType(center.disaster_type));
           console.log(`   🎨 Icon URL: ${iconUrl}`);
 
           const marker = L.marker([lat, lng], {
@@ -2598,7 +2610,7 @@ export class MapPage implements OnInit, OnDestroy {
 
         if (!isNaN(lat) && !isNaN(lng)) {
           // Get icon based on disaster type - exact match with backend enum values
-          let iconUrl = this.getDisasterIcon(center.disaster_type || '');
+          let iconUrl = this.getDisasterIcon(this.getPrimaryDisasterType(center.disaster_type));
 
           const marker = L.marker([lat, lng], {
             icon: L.icon({
@@ -3064,7 +3076,7 @@ export class MapPage implements OnInit, OnDestroy {
           centerLat,
           centerLng,
           this.travelMode,
-          center.disaster_type
+          this.getPrimaryDisasterType(center.disaster_type)
         );
       }
     }

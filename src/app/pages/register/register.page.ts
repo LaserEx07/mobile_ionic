@@ -18,12 +18,14 @@ import { FCMService } from '../../services/fcm.service';
 export class RegisterPage implements OnInit {
   // ... rest of your class code ...
   user = {
-    full_name: '',
     email: '',
     password: '',
     confirmPassword: ''
   };
 
+  acceptTerms: boolean = false;
+  hasReadTerms: boolean = false;
+  isTermsModalOpen: boolean = false;
   fcmToken: string = '';
   private fcmTokenReady = false;
 
@@ -43,13 +45,36 @@ export class RegisterPage implements OnInit {
   }
 
   async onRegister() {
+    // Check if email is provided and valid
+    if (!this.user.email || !this.user.email.trim()) {
+      await this.presentAlert('Registration Failed', 'Email is required.');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.user.email)) {
+      await this.presentAlert('Registration Failed', 'Please enter a valid email address.');
+      return;
+    }
+
+    // Check password length
+    if (!this.user.password || this.user.password.length < 8) {
+      await this.presentAlert('Registration Failed', 'Password must be at least 8 characters long.');
+      return;
+    }
+
     if (this.user.password !== this.user.confirmPassword) {
       await this.presentAlert('Registration Failed', 'Passwords do not match!');
       return;
     }
 
+    if (!this.hasReadTerms || !this.acceptTerms) {
+      await this.presentAlert('Registration Failed', 'Please read and accept the Terms and Conditions to continue.');
+      return;
+    }
+
     this.authService.register({
-      full_name: this.user.full_name,
       email: this.user.email,
       password: this.user.password,
       password_confirmation: this.user.confirmPassword
@@ -71,7 +96,32 @@ export class RegisterPage implements OnInit {
       },
       error: async err => {
         console.error('Registration error:', err);
-        await this.presentAlert('Registration Failed', 'Registration failed: ' + (err.error?.message || 'Unknown error'));
+
+        let errorMessage = 'Unknown error occurred';
+
+        if (err.status === 0) {
+          errorMessage = 'Cannot connect to server. Please check your network connection and ensure the backend server is running.';
+        } else if (err.status === 422) {
+          // Handle validation errors more gracefully
+          if (err.error?.errors) {
+            const errors = err.error.errors;
+            if (errors.password && errors.password.length > 0) {
+              errorMessage = errors.password[0]; // Show first password error
+            } else if (errors.email && errors.email.length > 0) {
+              errorMessage = errors.email[0]; // Show first email error
+            } else {
+              errorMessage = 'Validation failed: ' + JSON.stringify(errors);
+            }
+          } else {
+            errorMessage = err.error?.message || 'Validation failed';
+          }
+        } else if (err.status === 500) {
+          errorMessage = 'Server error: ' + (err.error?.message || 'Internal server error');
+        } else if (err.error?.message) {
+          errorMessage = err.error.message;
+        }
+
+        await this.presentAlert('Registration Failed', errorMessage);
       }
     });
   }
@@ -156,5 +206,28 @@ export class RegisterPage implements OnInit {
     } catch (error) {
       console.error('Error copying token:', error);
     }
+  }
+
+  /**
+   * Open Terms and Conditions modal
+   */
+  openTermsModal() {
+    this.isTermsModalOpen = true;
+  }
+
+  /**
+   * Close Terms and Conditions modal
+   */
+  closeTermsModal() {
+    this.isTermsModalOpen = false;
+  }
+
+  /**
+   * Accept terms from modal and close it
+   */
+  acceptTermsFromModal() {
+    this.hasReadTerms = true;
+    this.acceptTerms = true;
+    this.closeTermsModal();
   }
 }

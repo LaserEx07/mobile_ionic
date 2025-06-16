@@ -7,6 +7,8 @@ import { environment } from '../../../environments/environment';
 import { Subscription, interval } from 'rxjs';
 import { OfflineBannerComponent } from '../../components/offline-banner.component';
 import { OfflineStorageService } from '../../services/offline-storage.service';
+import { NotificationService } from '../../services/notification.service';
+import { EmergencyOverlayService } from '../../services/emergency-overlay.service';
 
 @Component({
   selector: 'app-home',
@@ -25,19 +27,31 @@ export class HomePage implements OnInit, OnDestroy {
     private router: Router,
     private toastCtrl: ToastController,
     private http: HttpClient,
-    private offlineStorage: OfflineStorageService
-  ) {}
+    private offlineStorage: OfflineStorageService,
+    private notificationService: NotificationService,
+    private emergencyOverlay: EmergencyOverlayService
+  ) {
+    // Make emergency overlay service available for testing in browser console
+    (window as any).testEmergency = this.emergencyOverlay;
+  }
 
   ngOnInit() {
     const savedOfflineStatus = localStorage.getItem('isOffline');
     this.isOffline = savedOfflineStatus === 'true';
+
+    // Subscribe to notification count updates
+    this.notificationSubscription = this.notificationService.unreadCount$.subscribe(count => {
+      this.unreadNotificationCount = count;
+    });
 
     // Load initial unread count
     this.loadUnreadCount();
 
     // Poll for unread count every 30 seconds
     this.pollSubscription = interval(30000).subscribe(() => {
-      this.loadUnreadCount();
+      this.notificationService.refreshUnreadCount();
+      // Also trigger background sync if needed
+      this.triggerBackgroundSync();
     });
   }
 
@@ -71,6 +85,12 @@ export class HomePage implements OnInit, OnDestroy {
     } else if (disasterType === 'flashflood') {
       displayName = 'Flash Flood';
       route = '/flood-map';
+    } else if (disasterType === 'fire') {
+      displayName = 'Fire';
+      route = '/fire-map';
+    } else if (disasterType === 'landslide') {
+      displayName = 'Landslide';
+      route = '/landslide-map';
     }
 
     console.log(`🏠 HOME: Navigating to ${route} for ${displayName}`);
@@ -102,10 +122,13 @@ export class HomePage implements OnInit, OnDestroy {
 
   async loadUnreadCount() {
     try {
-      const response = await this.http.get<{ unread_count: number }>(`${environment.apiUrl}/notifications/unread-count`).toPromise();
-      if (response) {
-        this.unreadNotificationCount = response.unread_count;
-      }
+      // Use the notification service instead of direct HTTP call
+      await this.notificationService.refreshUnreadCount();
+
+      // Subscribe to unread count updates
+      this.notificationService.unreadCount$.subscribe(count => {
+        this.unreadNotificationCount = count;
+      });
     } catch (error) {
       console.error('Error loading unread notification count:', error);
     }
@@ -115,10 +138,7 @@ export class HomePage implements OnInit, OnDestroy {
     this.router.navigate(['/notifications']);
   }
 
-  openDataDebug() {
-    console.log('🐛 Opening data debug page');
-    this.router.navigate(['/data-debug']);
-  }
+
 
   // Offline banner event handlers
   onOfflineModeEnabled() {
@@ -140,5 +160,32 @@ export class HomePage implements OnInit, OnDestroy {
       position: 'bottom'
     });
     await toast.present();
+  }
+
+  /**
+   * Trigger background sync for offline data
+   */
+  private async triggerBackgroundSync() {
+    if (navigator.onLine && !this.offlineStorage.isOfflineMode()) {
+      try {
+        const hasData = await this.offlineStorage.isDataAvailable();
+        const lastSync = this.offlineStorage.getLastSyncTime();
+
+        // Sync if no data or data is older than 1 hour
+        let needsSync = !hasData;
+        if (lastSync) {
+          const lastSyncDate = new Date(lastSync);
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+          needsSync = lastSyncDate < oneHourAgo;
+        }
+
+        if (needsSync) {
+          console.log('🔄 Background sync triggered from home page');
+          await this.offlineStorage.syncEvacuationCenters();
+        }
+      } catch (error) {
+        console.log('Background sync failed silently:', error);
+      }
+    }
   }
 }

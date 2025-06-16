@@ -1,0 +1,46 @@
+<ion-content class="onboarding-bg">
+  <div class="onboarding-wrapper">
+    <!-- Skip button -->
+    <div class="skip-container">
+      <ion-button fill="clear" class="skip-btn" (click)="skipOnboarding()">
+        Skip
+      </ion-button>
+    </div>
+
+    <!-- Illustration -->
+    <div class="illustration-container">
+      <div class="delivery-illustration">
+        <img src="assets/icon/locationFinal.png" alt="Real-time Routes" class="delivery-icon" />
+        <ion-icon name="checkmark-circle" class="check-icon"></ion-icon>
+      </div>
+    </div>
+    
+    <!-- Content -->
+    <div class="content-container">
+      <h2 class="onboarding-title">Real-time Routes</h2>
+      <p class="onboarding-description">
+        In every emergency, seconds matter, knowing your safe zone can mean the difference between panic and protection.
+      </p>
+    </div>
+
+    <!-- Page indicators -->
+    <div class="indicators-container">
+      <div class="indicator"></div>
+      <div class="indicator active"></div>
+      <div class="indicator"></div>
+      <div class="indicator"></div>
+    </div>
+
+    <!-- Navigation buttons -->
+    <div class="button-container">
+      <div class="nav-buttons">
+        <ion-button fill="clear" class="back-btn" (click)="previousPage()">
+          Back
+        </ion-button>
+        <ion-button expand="block" class="next-btn" (click)="nextPage()">
+          Next
+        </ion-button>
+      </div>
+    </div>
+  </div>
+</ion-content>

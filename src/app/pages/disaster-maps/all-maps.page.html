@@ -12,6 +12,16 @@
 <ion-content [fullscreen]="true">
   <div id="all-maps" style="height: 100%; width: 100%;"></div>
 
+  <!-- Map Controls -->
+  <div class="map-controls">
+    <ion-button
+      fill="clear"
+      class="download-btn"
+      (click)="downloadMap()">
+      <ion-icon name="download-outline"></ion-icon>
+    </ion-button>
+  </div>
+
   <!-- Floating info card -->
   <div class="floating-info">
     <ion-card>
@@ -94,6 +104,73 @@
         </div>
       </ion-card-content>
     </ion-card>
+  </div>
+
+  <!-- Navigation Panel (slides from right) -->
+  <div class="navigation-panel" [class.show]="selectedCenter">
+    <div class="panel-content">
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <div class="center-info" *ngIf="selectedCenter">
+          <h3>{{ selectedCenter.name }}</h3>
+          <p>{{ selectedCenter.address }}</p>
+        </div>
+        <ion-button fill="clear" size="small" (click)="closeNavigationPanel()">
+          <ion-icon name="close-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <!-- Transportation Options -->
+      <div class="transport-options" *ngIf="selectedCenter">
+        <div class="option-header">
+          <ion-icon name="navigate-outline"></ion-icon>
+          <span>Choose Transportation</span>
+        </div>
+
+        <div class="transport-buttons">
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'walking'"
+                  (click)="selectTransportMode('walking')">
+            <ion-icon name="walk-outline"></ion-icon>
+            <span>Walk</span>
+            <div class="route-info" *ngIf="routeInfo && selectedTransportMode === 'walking'">
+              <span class="time">{{ formatTime(routeInfo.walking?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.walking?.distance) }}</span>
+            </div>
+          </button>
+
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'cycling'"
+                  (click)="selectTransportMode('cycling')">
+            <ion-icon name="bicycle-outline"></ion-icon>
+            <span>Cycle</span>
+            <div class="route-info" *ngIf="routeInfo && selectedTransportMode === 'cycling'">
+              <span class="time">{{ formatTime(routeInfo.cycling?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.cycling?.distance) }}</span>
+            </div>
+          </button>
+
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'driving'"
+                  (click)="selectTransportMode('driving')">
+            <ion-icon name="car-outline"></ion-icon>
+            <span>Drive</span>
+            <div class="route-info" *ngIf="routeInfo && selectedTransportMode === 'driving'">
+              <span class="time">{{ formatTime(routeInfo.driving?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.driving?.distance) }}</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Start Navigation Button -->
+        <button class="start-navigation-btn"
+                *ngIf="selectedTransportMode && routeInfo"
+                (click)="startNavigation()">
+          <ion-icon name="navigate"></ion-icon>
+          <span>Start Navigation</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Route Button -->

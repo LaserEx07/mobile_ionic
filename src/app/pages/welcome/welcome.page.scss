@@ -1,44 +1,114 @@
-.welcome-wrapper {
+.onboarding-bg {
+  --background: white;
+}
+
+.onboarding-wrapper {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 80vh;
-  width: 100%;
-  text-align: center;
-  align-items: center;
-  padding-top: 60px;
+  height: 100vh;
+  padding: 1.5rem 1.5rem;
+  position: relative;
+  justify-content: space-between;
 }
 
-.welcome-logo {
-  width: 400px;
-  height: 400px;
-  align-items: center;
-  margin: 20px auto;
+.skip-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
 }
 
-.welcome-title {
-  font-size: 25px;
-  font-weight: 700;
-
-}
-
-.welcome-desc {
-  color: #888;
-}
-
-.welcome-btn {
-  --border-radius: 25px;
-  font-size: 1.1rem;
-  width: 100%;
-  height: 48px;
-}
-
-.welcome-link {
-
+.skip-btn {
+  --color: #6c757d;
   font-size: 1rem;
 }
 
-.welcome-link a {
+.illustration-container {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.5rem 0 0.2rem 0;
+}
+
+.main-icon {
+  width: 260px;
+  height: 260px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 123, 255, 0.2));
+}
+
+.content-container {
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.spacer {
+  flex: 1;
+  min-height: 3rem;
+}
+
+.bottom-section {
+  flex: 0 0 auto;
+}
+
+.onboarding-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #212529;
+  margin-bottom: 1rem;
+}
+
+.onboarding-description {
+  font-size: 1.1rem;
+  color: #6c757d;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0 1rem;
+}
+
+.indicators-container {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.indicator.active {
+  background-color: #007bff;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.button-container {
+  margin-bottom: 1rem;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.back-btn {
+  --color: #6c757d;
+  font-size: 1rem;
+  flex: 0 0 auto;
+}
+
+.next-btn {
+  --background: #007bff;
+  --color: white;
+  --border-radius: 25px;
   font-weight: 600;
+  font-size: 1.1rem;
+  height: 50px;
+  flex: 1;
 }

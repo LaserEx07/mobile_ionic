@@ -149,7 +149,7 @@ export class LoginPage implements OnInit {
         console.log('✅ Login successful:', response);
 
         // Show success alert
-        await this.presentSuccessAlert('Login Successful', 'Welcome, ' + response.user.full_name);
+        await this.presentSuccessAlert('Login Successful', 'Welcome, ' + (response.user.first_name || response.user.email));
 
         // Store the authentication token using the auth service
         this.authService.setToken(response.token);
@@ -188,8 +188,8 @@ export class LoginPage implements OnInit {
           console.error('❌ Error registering FCM token after login:', error);
         }
 
-        // Navigate to welcome page
-        this.router.navigate(['/welcome']);
+        // Navigate to loading page to handle proper routing
+        this.router.navigate(['/loading']);
       },
       error: (error) => {
         console.error('❌ Login error:', error);
@@ -212,7 +212,8 @@ export class LoginPage implements OnInit {
             '• If the backend server is running\n\n' +
             `Server URL: ${environment.apiUrl}`);
         } else if (error.status === 401) {
-          this.presentAlert('Login Failed', 'Invalid email or password. Please try again.');
+          const errorMessage = error.error?.message || 'The email and password didn\'t match';
+          this.presentAlert('Login Failed', errorMessage);
         } else if (error.status === 404) {
           this.presentAlert('Server Error', 'Login endpoint not found. Please check server configuration.');
         } else if (error.status >= 500) {
@@ -270,12 +271,13 @@ export class LoginPage implements OnInit {
 
         await this.presentSuccessAlert('Offline Login', 'Logged in using cached credentials');
 
-        // Navigate to welcome page
-        this.router.navigate(['/welcome']);
+        // Navigate to loading page to handle proper routing
+        this.router.navigate(['/loading']);
         return true;
       }
 
       console.log('❌ Offline credentials do not match');
+      await this.presentAlert('Login Failed', 'The email and password didn\'t match');
       return false;
     } catch (error) {
       console.error('❌ Error during offline login:', error);

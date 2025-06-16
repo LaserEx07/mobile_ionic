@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { IonicModule } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-settings',
@@ -12,7 +13,10 @@ import { Router } from '@angular/router';
 })
 export class SettingsPage implements OnInit {
 
-  constructor(private router: Router) { }
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) { }
 
   ngOnInit() {
   }
@@ -22,10 +26,10 @@ export class SettingsPage implements OnInit {
   }
 
   logout() {
-    // Clear authentication token
-    localStorage.removeItem('token');
+    // Use auth service to properly logout
+    this.authService.logout();
 
-    // Navigate to login page
-    this.router.navigate(['/login']);
+    // Navigate to loading page which will handle proper routing
+    this.router.navigate(['/loading']);
   }
 }

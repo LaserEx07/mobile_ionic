@@ -1,51 +1,43 @@
 
 
-<ion-content class="ion-padding">
-  <div class="login-container">
+<ion-content class="login-bg">
+  <div class="login-wrapper">
+    <!-- Logo -->
+    <div class="logo-container">
+      <img src="assets/ALERTO.png" />
+    </div>
 
+    <form (ngSubmit)="onLogin()" class="login-form">
+      <div class="input-group">
+        <ion-input
+          type="email"
+          [(ngModel)]="credentials.email"
+          name="email"
+          placeholder="Username"
+          class="modern-input"
+          required>
+        </ion-input>
+      </div>
 
+      <div class="input-group">
+        <ion-input
+          type="password"
+          [(ngModel)]="credentials.password"
+          name="password"
+          placeholder="Password"
+          class="modern-input"
+          required>
+        </ion-input>
+      </div>
 
-      <ion-card-content>
-        <div class="login-wrapper">
-          <img src="assets/ALERTO.png" alt="App Logo" class="login-logo" />
-          <h1 class="login-title">Log In Here!</h1>
-          <p></p>
-          <form (ngSubmit)="onLogin()" class="login-form">
-            <ion-item>
-              <ion-label position="floating">Email:</ion-label>
-              <ion-input type="email" [(ngModel)]="credentials.email" name="email" required></ion-input>
-            </ion-item>
-            <ion-item>
-              <ion-label position="floating">Password:</ion-label>
-              <ion-input type="password" [(ngModel)]="credentials.password" name="password" required></ion-input>
-            </ion-item>
-            <br><br>
-            <ion-button expand="block" type="submit" class="login-btn">Log In</ion-button>
-          </form>
+      <ion-button expand="block" type="submit" class="modern-btn">
+        Sign In
+      </ion-button>
+    </form>
 
-          <!-- Connection Troubleshooting -->
-          <div class="troubleshooting-section">
-            <ion-button
-              expand="block"
-              fill="clear"
-              size="small"
-              (click)="openNetworkDiagnostics()">
-              <ion-icon name="bug-outline" slot="start"></ion-icon>
-              Network Diagnostics
-            </ion-button>
-          </div>
-
-          <!-- Debug button for troubleshooting -->
-          <ion-button expand="block" fill="outline" color="secondary" (click)="openNetworkDiagnostics()">
-            🔧 Network Diagnostics
-          </ion-button>
-
-          <div class="login-link">
-            Don't have an account?
-            <a (click)="goToRegister()"><strong><u>Sign Up</u></strong></a>
-          </div>
-        </div>
-      </ion-card-content>
-
+    <div class="register-link">
+      Don't have an account?
+      <a (click)="goToRegister()"><strong><u>Sign Up</u></strong></a>
+    </div>
   </div>
 </ion-content>

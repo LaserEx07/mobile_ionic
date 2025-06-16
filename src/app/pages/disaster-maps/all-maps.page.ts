@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
 import { MapboxRoutingService } from '../../services/mapbox-routing.service';
+import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import * as L from 'leaflet';
 
 interface EvacuationCenter {
@@ -48,12 +49,22 @@ export class AllMapsPage implements OnInit {
   public routeDistance: number = 0;
   public userLocation: { lat: number, lng: number } | null = null;
 
+  // Navigation panel properties
+  public selectedCenter: EvacuationCenter | null = null;
+  public selectedTransportMode: 'walking' | 'cycling' | 'driving' | null = null;
+  public routeInfo: {
+    walking?: { duration: number; distance: number };
+    cycling?: { duration: number; distance: number };
+    driving?: { duration: number; distance: number };
+  } = {};
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private http = inject(HttpClient);
   private router = inject(Router);
   private mapboxRouting = inject(MapboxRoutingService);
+  private enhancedDownload = inject(EnhancedDownloadService);
 
   async ngOnInit() {
     console.log('🗺️ ALL MAPS: Initializing...');
@@ -212,9 +223,9 @@ export class AllMapsPage implements OnInit {
 
           const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-          // Make marker clickable with transportation options
+          // Make marker clickable to show navigation panel
           marker.on('click', () => {
-            this.showTransportationOptions(center);
+            this.showNavigationPanel(center);
           });
 
           marker.bindPopup(`
@@ -504,38 +515,104 @@ export class AllMapsPage implements OnInit {
     }
   }
 
-  // Show transportation options when marker is clicked
-  async showTransportationOptions(center: EvacuationCenter) {
-    const alert = await this.alertCtrl.create({
-      header: `Route to ${center.name}`,
-      message: 'Choose your transportation mode:',
-      buttons: [
-        {
-          text: '🚶‍♂️ Walk',
-          handler: () => {
-            this.routeToCenter(center, 'walking');
-          }
-        },
-        {
-          text: '🚴‍♂️ Cycle',
-          handler: () => {
-            this.routeToCenter(center, 'cycling');
-          }
-        },
-        {
-          text: '🚗 Drive',
-          handler: () => {
-            this.routeToCenter(center, 'driving');
-          }
-        },
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        }
-      ]
-    });
+  // Show navigation panel when marker is clicked
+  async showNavigationPanel(center: EvacuationCenter) {
+    this.selectedCenter = center;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
 
-    await alert.present();
+    // Calculate routes for all transport modes
+    await this.calculateAllRoutes(center);
+  }
+
+  // Close navigation panel
+  closeNavigationPanel() {
+    this.selectedCenter = null;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
+  }
+
+  // Select transport mode and show route
+  async selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
+    this.selectedTransportMode = mode;
+
+    if (this.selectedCenter && this.routeInfo[mode]) {
+      // Show route on map
+      await this.routeToCenter(this.selectedCenter, mode);
+    }
+  }
+
+  // Calculate routes for all transport modes
+  async calculateAllRoutes(center: EvacuationCenter) {
+    if (!this.userLocation) return;
+
+    const lat = Number(center.latitude);
+    const lng = Number(center.longitude);
+
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const modes: ('walking' | 'cycling' | 'driving')[] = ['walking', 'cycling', 'driving'];
+
+    for (const mode of modes) {
+      try {
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+
+        const routeData = await this.mapboxRouting.getDirections(
+          this.userLocation.lng, this.userLocation.lat,
+          lng, lat,
+          mapboxProfile,
+          {
+            geometries: 'geojson',
+            overview: 'simplified',
+            steps: false
+          }
+        );
+
+        if (routeData && routeData.routes && routeData.routes.length > 0) {
+          const route = routeData.routes[0];
+          this.routeInfo[mode] = {
+            duration: route.duration,
+            distance: route.distance
+          };
+        }
+      } catch (error) {
+        console.error(`Error calculating ${mode} route:`, error);
+      }
+    }
+  }
+
+  // Format time for display
+  formatTime(seconds?: number): string {
+    if (!seconds) return '--';
+    const minutes = Math.round(seconds / 60);
+    return `${minutes} min`;
+  }
+
+  // Format distance for display
+  formatDistance(meters?: number): string {
+    if (!meters) return '--';
+    const km = meters / 1000;
+    return km < 1 ? `${Math.round(meters)} m` : `${km.toFixed(1)} km`;
+  }
+
+  // Start navigation
+  async startNavigation() {
+    if (!this.selectedCenter || !this.selectedTransportMode) return;
+
+    // Route to the selected center with selected mode
+    await this.routeToCenter(this.selectedCenter, this.selectedTransportMode);
+
+    // Close the navigation panel
+    this.closeNavigationPanel();
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🧭 Navigation started to ${this.selectedCenter.name}`,
+      duration: 3000,
+      color: 'success',
+      position: 'top'
+    });
+    await toast.present();
   }
 
   // Route to specific center with chosen transportation mode
@@ -622,6 +699,39 @@ export class AllMapsPage implements OnInit {
   goBack() {
     this.router.navigate(['/tabs/home']);
   }
+
+  // Enhanced download map functionality with routes
+  async downloadMap() {
+    if (!this.map) {
+      const toast = await this.toastCtrl.create({
+        message: 'Map not loaded yet. Please wait and try again.',
+        duration: 3000,
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+
+    try {
+      await this.enhancedDownload.downloadMapWithRoutes(
+        'all-maps',
+        this.map,
+        'All-Evacuation-Centers',
+        true // Include routes
+      );
+    } catch (error) {
+      console.error('Enhanced download error:', error);
+
+      const toast = await this.toastCtrl.create({
+        message: 'Failed to download map. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
+
 
   ionViewWillLeave() {
     this.clearRoutes();

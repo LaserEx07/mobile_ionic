@@ -147,10 +147,75 @@
 }
 
 :root {
-  --ion-tab-bar-background: #007bff;  /* This sets the background to blue */
-  --ion-tab-bar-border-color: #007bff; /* This sets the border color to blue (optional) */
+  --ion-tab-bar-background: #2196f3;  /* This sets the background to blue */
+  --ion-tab-bar-border-color: #2196f3; /* This sets the border color to blue (optional) */
   --ion-tab-bar-icon-color: #ffffff;  /* This sets the icon color to white */
   --ion-tab-bar-text-color: #ffffff;  /* This sets the text color to white */
+  --ion-tab-bar-color-selected: #2196f3; /* Selected tab text color */
+  --ion-tab-bar-background-selected: white; /* Selected tab background */
+  --ion-tab-bar-color-hover: #ffffff; /* Hover text color stays white */
+  --ion-tab-bar-color-focused: #ffffff; /* Focused text color stays white */
+}
+
+/* Global tab styling for active tabs - Multiple selectors for maximum compatibility */
+ion-tab-button.tab-selected,
+ion-tab-button[aria-selected="true"],
+ion-tab-button.ion-focused,
+ion-tab-button.ion-activated,
+ion-tab-button[tab="home"].tab-selected,
+ion-tab-button[tab="search"].tab-selected,
+ion-tab-button[tab="map"].tab-selected,
+ion-tab-button[tab="profile"].tab-selected {
+  background: white !important;
+  background-color: white !important;
+  color: #2196f3 !important;
+  --color: #2196f3 !important;
+  --background: white !important;
+  --background-focused: white !important;
+  --background-activated: white !important;
+  border-radius: 12px 12px 0 0 !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.1) !important;
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+/* Force label styling for selected tabs */
+ion-tab-button.tab-selected ion-label,
+ion-tab-button[aria-selected="true"] ion-label,
+ion-tab-button.ion-focused ion-label,
+ion-tab-button.ion-activated ion-label {
+  color: #2196f3 !important;
+  font-weight: bold !important;
+}
+
+/* Force white text for inactive tabs in all states */
+ion-tab-button:not(.tab-selected):not([aria-selected="true"]) ion-label,
+ion-tab-button:not(.tab-selected):not([aria-selected="true"]):hover ion-label,
+ion-tab-button:not(.tab-selected):not([aria-selected="true"]):active ion-label,
+ion-tab-button:not(.tab-selected):not([aria-selected="true"]):focus ion-label {
+  color: white !important;
+  font-weight: normal !important;
+}
+
+/* Additional fallback for white text on inactive tabs */
+ion-tab-button ion-label {
+  color: white !important;
+}
+
+/* Override only for selected tabs */
+ion-tab-button.tab-selected ion-label,
+ion-tab-button[aria-selected="true"] ion-label {
+  color: #2196f3 !important;
+}
+
+/* Force icon styling - blue color (#2196f3) for active tabs */
+ion-tab-button.tab-selected img,
+ion-tab-button[aria-selected="true"] img,
+ion-tab-button.ion-focused img,
+ion-tab-button.ion-activated img {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(207deg) brightness(97%) contrast(97%) !important;
+  -webkit-filter: brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(207deg) brightness(97%) contrast(97%) !important;
 }
 
 /* Emergency Alert Styles */

@@ -8,19 +8,10 @@ import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
 import { MapboxRoutingService } from '../../services/mapbox-routing.service';
 import { OfflineStorageService } from '../../services/offline-storage.service';
-import * as L from 'leaflet';
+import { EnhancedDownloadService } from '../../services/enhanced-download.service';
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
-interface EvacuationCenter {
-  id: number;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  capacity?: number;
-  status?: string;
-  disaster_type?: string;
-  contact?: string;
-}
+import * as L from 'leaflet';
 
 @Component({
   selector: 'app-earthquake-map',
@@ -44,6 +35,18 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   public centerLat: number | null = null;
   public centerLng: number | null = null;
 
+  // Navigation panel properties
+  public selectedCenter: EvacuationCenter | null = null;
+  public selectedTransportMode: 'walking' | 'cycling' | 'driving' | null = null;
+  public routeInfo: {
+    walking?: { duration: number; distance: number };
+    cycling?: { duration: number; distance: number };
+    driving?: { duration: number; distance: number };
+  } = {};
+
+  // Emergency navigation flag
+  private shouldAutoRouteEmergency = false;
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -52,25 +55,28 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   private route = inject(ActivatedRoute);
   private mapboxRouting = inject(MapboxRoutingService);
   private offlineStorage = inject(OfflineStorageService);
+  private enhancedDownload = inject(EnhancedDownloadService);
 
   ngOnInit() {
-    console.log('🟠 EARTHQUAKE MAP: Component initialized...');
-    // Don't initialize map here - wait for view to be ready
-
-    // Check for query parameters to highlight new center
+    // Check for query parameters to highlight new center or emergency navigation
     this.route.queryParams.subscribe((params: any) => {
       if (params['newCenterId']) {
         this.newCenterId = params['newCenterId'];
         this.highlightCenter = params['highlightCenter'] === 'true';
         this.centerLat = params['centerLat'] ? parseFloat(params['centerLat']) : null;
         this.centerLng = params['centerLng'] ? parseFloat(params['centerLng']) : null;
-        console.log('🟠 EARTHQUAKE MAP: New center to highlight:', this.newCenterId);
+      }
+
+      // Handle emergency navigation
+      if (params['emergency'] === 'true' && params['autoRoute'] === 'true') {
+        console.log('🚨 Emergency navigation triggered for earthquake map');
+        // Set flag to auto-route to nearest centers after map loads
+        this.shouldAutoRouteEmergency = true;
       }
     });
   }
 
   async ngAfterViewInit() {
-    console.log('🟠 EARTHQUAKE MAP: View initialized, loading map...');
     // Small delay to ensure DOM is fully rendered
     setTimeout(async () => {
       await this.loadEarthquakeMap();
@@ -95,8 +101,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       const userLng = position.coords.longitude;
 
       this.userLocation = { lat: userLat, lng: userLng };
-
-      console.log(`🟠 EARTHQUAKE MAP: User location [${userLat}, ${userLng}]`);
 
       // Initialize map
       this.initializeMap(userLat, userLng);
@@ -138,8 +142,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   }
 
   initializeMap(lat: number, lng: number) {
-    console.log(`🟠 EARTHQUAKE MAP: Initializing map at [${lat}, ${lng}]`);
-
     // Check if container exists
     const container = document.getElementById('earthquake-map');
     if (!container) {
@@ -153,6 +155,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
     this.map = L.map('earthquake-map').setView([lat, lng], 13);
 
+    // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OpenStreetMap contributors'
     }).addTo(this.map);
@@ -171,18 +174,13 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
   async loadEarthquakeCenters(userLat: number, userLng: number) {
     try {
-      console.log('🟠 EARTHQUAKE MAP: Fetching earthquake centers...');
-
       let allCenters: EvacuationCenter[] = [];
 
       // Check if offline mode is enabled or if we're offline
       if (this.offlineStorage.isOfflineMode() || !navigator.onLine) {
-        console.log('🔄 Loading earthquake centers from offline storage');
         allCenters = await this.offlineStorage.getEvacuationCenters();
-        console.log('📱 OFFLINE DATA:', allCenters);
 
         if (allCenters.length === 0) {
-          console.warn('⚠️ No cached evacuation centers found');
           const alert = await this.alertCtrl.create({
             header: 'No Offline Data',
             message: 'No offline evacuation data available. Please sync data when online.',
@@ -197,7 +195,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
           allCenters = await firstValueFrom(
             this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
           );
-          console.log('🟠 EARTHQUAKE MAP: Total centers received from API:', allCenters?.length || 0);
         } catch (apiError) {
           console.error('❌ API failed, falling back to offline data:', apiError);
           allCenters = await this.offlineStorage.getEvacuationCenters();
@@ -214,12 +211,13 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         }
       }
 
-      // Filter for EARTHQUAKE ONLY
-      this.evacuationCenters = allCenters.filter(center =>
-        center.disaster_type === 'Earthquake'
-      );
-
-      console.log(`🟠 EARTHQUAKE MAP: Filtered to ${this.evacuationCenters.length} earthquake centers`);
+      // Filter for EARTHQUAKE ONLY - handle both array and string formats
+      this.evacuationCenters = allCenters.filter(center => {
+        if (Array.isArray(center.disaster_type)) {
+          return center.disaster_type.includes('Earthquake');
+        }
+        return center.disaster_type === 'Earthquake';
+      });
 
       if (this.evacuationCenters.length === 0) {
         const alert = await this.alertCtrl.create({
@@ -239,14 +237,15 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
       // Try to load from offline storage as last resort
       try {
-        console.log('🔄 Last resort: trying offline storage...');
         const offlineCenters = await this.offlineStorage.getEvacuationCenters();
-        this.evacuationCenters = offlineCenters.filter(center =>
-          center.disaster_type === 'Earthquake'
-        );
+        this.evacuationCenters = offlineCenters.filter(center => {
+          if (Array.isArray(center.disaster_type)) {
+            return center.disaster_type.includes('Earthquake');
+          }
+          return center.disaster_type === 'Earthquake';
+        });
 
         if (this.evacuationCenters.length > 0) {
-          console.log(`🟠 Loaded ${this.evacuationCenters.length} earthquake centers from offline storage`);
           // Continue with adding markers...
           await this.addMarkersAndRoutes(userLat, userLng);
           return;
@@ -286,12 +285,12 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
         const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-        // Make marker clickable with transportation options (only if online)
+        // Make marker clickable with navigation panel (only if online)
         marker.on('click', () => {
           if (isOfflineMode) {
             this.showOfflineMarkerInfo(center, distance);
           } else {
-            this.showTransportationOptions(center);
+            this.showNavigationPanel(center);
           }
         });
 
@@ -327,16 +326,19 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         }
 
         marker.addTo(this.map);
-        console.log(`🟠 Added earthquake marker: ${center.name}`);
       }
     });
 
     // Only auto-route if online
     if (!isOfflineMode) {
-      console.log('🟠 Online mode: Auto-routing to 2 nearest earthquake centers...');
       await this.routeToTwoNearestCenters();
-    } else {
-      console.log('🟠 Offline mode: Showing markers only (no routing)');
+    }
+
+    // Handle emergency auto-routing
+    if (this.shouldAutoRouteEmergency && !isOfflineMode) {
+      console.log('🚨 Performing emergency auto-routing to nearest earthquake evacuation centers');
+      await this.performEmergencyRouting();
+      this.shouldAutoRouteEmergency = false; // Reset flag
     }
 
     // Fit map to show all earthquake centers
@@ -367,15 +369,58 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     return R * c;
   }
 
-  // Auto-route to 2 nearest earthquake centers
-  async routeToTwoNearestCenters() {
+  // Emergency auto-routing with enhanced notifications
+  async performEmergencyRouting() {
     if (!this.userLocation || this.evacuationCenters.length === 0) {
-      console.log('🟠 EARTHQUAKE MAP: No user location or evacuation centers available');
+      console.warn('Cannot perform emergency routing: missing user location or evacuation centers');
       return;
     }
 
     try {
-      console.log('🟠 EARTHQUAKE MAP: Finding 2 nearest earthquake centers...');
+      console.log('🚨 Starting emergency routing to nearest earthquake evacuation centers');
+
+      // Show emergency routing toast
+      const emergencyToast = await this.toastCtrl.create({
+        message: '🚨 EMERGENCY: Routing to nearest earthquake evacuation centers',
+        duration: 5000,
+        color: 'danger',
+        position: 'top',
+        cssClass: 'emergency-toast'
+      });
+      await emergencyToast.present();
+
+      // Perform the same routing as normal but with emergency styling
+      await this.routeToTwoNearestCenters();
+
+      // Show completion message
+      const completionToast = await this.toastCtrl.create({
+        message: '✅ Emergency routes calculated. Follow the highlighted paths to safety.',
+        duration: 7000,
+        color: 'success',
+        position: 'bottom'
+      });
+      await completionToast.present();
+
+    } catch (error) {
+      console.error('Error in emergency routing:', error);
+
+      const errorToast = await this.toastCtrl.create({
+        message: '⚠️ Emergency routing failed. Please manually navigate to nearest evacuation center.',
+        duration: 5000,
+        color: 'warning',
+        position: 'top'
+      });
+      await errorToast.present();
+    }
+  }
+
+  // Auto-route to 2 nearest earthquake centers
+  async routeToTwoNearestCenters() {
+    if (!this.userLocation || this.evacuationCenters.length === 0) {
+      return;
+    }
+
+    try {
 
       // Find 2 nearest centers
       const nearestCenters = this.getTwoNearestCenters(
@@ -458,8 +503,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
             );
 
             routeLine.addTo(this.routeLayer);
-
-            console.log(`🟠 Route ${i + 1}: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min`);
           }
         } catch (error) {
           console.error(`🟠 Error calculating route to center ${i + 1}:`, error);
@@ -534,9 +577,9 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     }
   }
 
-  // Show transportation options when marker is clicked (online mode)
-  async showTransportationOptions(center: EvacuationCenter) {
-    // Check if we're offline before showing transportation options
+  // Show navigation panel when marker is clicked (online mode)
+  async showNavigationPanel(center: EvacuationCenter) {
+    // Check if we're offline before showing navigation panel
     const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
 
     if (isOfflineMode) {
@@ -550,36 +593,102 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       return;
     }
 
-    const alert = await this.alertCtrl.create({
-      header: `Route to ${center.name}`,
-      message: 'Choose your transportation mode:',
-      buttons: [
-        {
-          text: '🚶‍♂️ Walk',
-          handler: () => {
-            this.routeToCenter(center, 'walking');
-          }
-        },
-        {
-          text: '🚴‍♂️ Cycle',
-          handler: () => {
-            this.routeToCenter(center, 'cycling');
-          }
-        },
-        {
-          text: '🚗 Drive',
-          handler: () => {
-            this.routeToCenter(center, 'driving');
-          }
-        },
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        }
-      ]
-    });
+    this.selectedCenter = center;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
 
-    await alert.present();
+    // Calculate routes for all transport modes
+    await this.calculateAllRoutes(center);
+  }
+
+  // Close navigation panel
+  closeNavigationPanel() {
+    this.selectedCenter = null;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
+  }
+
+  // Select transport mode and show route
+  async selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
+    this.selectedTransportMode = mode;
+
+    if (this.selectedCenter && this.routeInfo[mode]) {
+      // Show route on map
+      await this.routeToCenter(this.selectedCenter, mode);
+    }
+  }
+
+  // Calculate routes for all transport modes
+  async calculateAllRoutes(center: EvacuationCenter) {
+    if (!this.userLocation) return;
+
+    const lat = Number(center.latitude);
+    const lng = Number(center.longitude);
+
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const modes: ('walking' | 'cycling' | 'driving')[] = ['walking', 'cycling', 'driving'];
+
+    for (const mode of modes) {
+      try {
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+
+        const routeData = await this.mapboxRouting.getDirections(
+          this.userLocation.lng, this.userLocation.lat,
+          lng, lat,
+          mapboxProfile,
+          {
+            geometries: 'geojson',
+            overview: 'simplified',
+            steps: false
+          }
+        );
+
+        if (routeData && routeData.routes && routeData.routes.length > 0) {
+          const route = routeData.routes[0];
+          this.routeInfo[mode] = {
+            duration: route.duration,
+            distance: route.distance
+          };
+        }
+      } catch (error) {
+        console.error(`Error calculating ${mode} route:`, error);
+      }
+    }
+  }
+
+  // Format time for display
+  formatTime(seconds?: number): string {
+    if (!seconds) return '--';
+    const minutes = Math.round(seconds / 60);
+    return `${minutes} min`;
+  }
+
+  // Format distance for display
+  formatDistance(meters?: number): string {
+    if (!meters) return '--';
+    const km = meters / 1000;
+    return km < 1 ? `${Math.round(meters)} m` : `${km.toFixed(1)} km`;
+  }
+
+  // Start navigation
+  async startNavigation() {
+    if (!this.selectedCenter || !this.selectedTransportMode) return;
+
+    // Route to the selected center with selected mode
+    await this.routeToCenter(this.selectedCenter, this.selectedTransportMode);
+
+    // Close the navigation panel
+    this.closeNavigationPanel();
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🧭 Navigation started to ${this.selectedCenter.name}`,
+      duration: 3000,
+      color: 'warning',
+      position: 'top'
+    });
+    await toast.present();
   }
 
   // Route to specific center with chosen transportation mode
@@ -590,7 +699,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
 
     if (isOfflineMode) {
-      console.log('🟠 Offline mode: Cannot calculate routes');
       const toast = await this.toastCtrl.create({
         message: '📱 Offline mode: Routing not available. Use external navigation apps.',
         duration: 4000,
@@ -671,6 +779,39 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   goBack() {
     this.router.navigate(['/tabs/home']);
   }
+
+  // Enhanced download map functionality with routes
+  async downloadMap() {
+    if (!this.map) {
+      const toast = await this.toastCtrl.create({
+        message: 'Map not loaded yet. Please wait and try again.',
+        duration: 3000,
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+
+    try {
+      await this.enhancedDownload.downloadMapWithRoutes(
+        'earthquake-map',
+        this.map,
+        'Earthquake',
+        true // Include routes
+      );
+    } catch (error) {
+      console.error('Enhanced download error:', error);
+
+      const toast = await this.toastCtrl.create({
+        message: 'Failed to download map. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
+
 
   ionViewWillLeave() {
     this.clearRoutes();
