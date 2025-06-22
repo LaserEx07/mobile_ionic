@@ -6,8 +6,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
-import { MapboxRoutingService } from '../../services/mapbox-routing.service';
-import { OfflineStorageService } from '../../services/offline-storage.service';
+import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
@@ -53,8 +53,8 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private mapboxRouting = inject(MapboxRoutingService);
-  private offlineStorage = inject(OfflineStorageService);
+  private osmRouting = inject(OpenStreetMapRoutingService);
+
   private enhancedDownload = inject(EnhancedDownloadService);
 
   ngOnInit() {
@@ -91,23 +91,62 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     await loading.present();
 
     try {
-      // Get user location
-      const position = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 20000
-      });
+      console.log('🟠 EARTHQUAKE MAP: Starting to load map...');
+
+      // Add timeout for the entire loading process
+      const loadingTimeout = setTimeout(async () => {
+        await loading.dismiss();
+        console.error('🟠 EARTHQUAKE MAP: Loading timeout after 30 seconds');
+
+        const alert = await this.alertCtrl.create({
+          header: 'Loading Timeout',
+          message: 'The map is taking too long to load. This might be due to network issues or GPS problems.',
+          buttons: [
+            {
+              text: 'Try Offline Mode',
+              handler: () => this.loadOfflineMode()
+            },
+            {
+              text: 'Retry',
+              handler: () => this.loadEarthquakeMap()
+            },
+            {
+              text: 'Go Back',
+              handler: () => this.router.navigate(['/tabs/home'])
+            }
+          ]
+        });
+        await alert.present();
+      }, 30000); // 30 second timeout
+
+      // Get user location with shorter timeout
+      console.log('🟠 EARTHQUAKE MAP: Getting user location...');
+      const position = await Promise.race([
+        Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 15000
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('GPS timeout')), 15000)
+        )
+      ]);
 
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
+      console.log(`🟠 EARTHQUAKE MAP: Got location [${userLat}, ${userLng}]`);
 
       this.userLocation = { lat: userLat, lng: userLng };
 
       // Initialize map
+      console.log('🟠 EARTHQUAKE MAP: Initializing map...');
       this.initializeMap(userLat, userLng);
 
       // Load ONLY earthquake centers and auto-route
+      console.log('🟠 EARTHQUAKE MAP: Loading evacuation centers...');
       await this.loadEarthquakeCenters(userLat, userLng);
 
+      // Clear timeout if we got here successfully
+      clearTimeout(loadingTimeout);
       await loading.dismiss();
 
       // Show success message
@@ -123,10 +162,45 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       await loading.dismiss();
       console.error('🟠 EARTHQUAKE MAP: Error loading map', error);
 
-      const alert = await this.alertCtrl.create({
-        header: 'Location Error',
-        message: 'Unable to get your location. Please enable GPS and try again.',
-        buttons: [
+      let errorMessage = 'Unable to load earthquake map.';
+      let buttons: any[] = [];
+
+      if (error instanceof Error) {
+        if (error.message.includes('GPS') || error.message.includes('location') || error.message.includes('timeout')) {
+          errorMessage = 'Unable to get your location. Please enable GPS and try again.';
+          buttons = [
+            {
+              text: 'Use Default Location',
+              handler: () => this.loadWithDefaultLocation()
+            },
+            {
+              text: 'Retry',
+              handler: () => this.loadEarthquakeMap()
+            },
+            {
+              text: 'Go Back',
+              handler: () => this.router.navigate(['/tabs/home'])
+            }
+          ];
+        } else {
+          errorMessage = 'Network connection issue. Try offline mode or check your connection.';
+          buttons = [
+            {
+              text: 'Try Offline',
+              handler: () => this.loadOfflineMode()
+            },
+            {
+              text: 'Retry',
+              handler: () => this.loadEarthquakeMap()
+            },
+            {
+              text: 'Go Back',
+              handler: () => this.router.navigate(['/tabs/home'])
+            }
+          ];
+        }
+      } else {
+        buttons = [
           {
             text: 'Retry',
             handler: () => this.loadEarthquakeMap()
@@ -135,7 +209,13 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
             text: 'Go Back',
             handler: () => this.router.navigate(['/tabs/home'])
           }
-        ]
+        ];
+      }
+
+      const alert = await this.alertCtrl.create({
+        header: 'Loading Error',
+        message: errorMessage,
+        buttons: buttons
       });
       await alert.present();
     }
@@ -172,43 +252,95 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     this.userMarker.bindPopup('📍 You are here!').openPopup();
   }
 
+  /**
+   * Load with default Cebu City location when GPS fails
+   */
+  async loadWithDefaultLocation() {
+    console.log('🟠 EARTHQUAKE MAP: Using default Cebu City location');
+    const defaultLat = 10.3157;
+    const defaultLng = 123.8854;
+
+    this.userLocation = { lat: defaultLat, lng: defaultLng };
+    this.initializeMap(defaultLat, defaultLng);
+    await this.loadEarthquakeCenters(defaultLat, defaultLng);
+
+    const toast = await this.toastCtrl.create({
+      message: '📍 Using default location (Cebu City). Enable GPS for accurate location.',
+      duration: 4000,
+      color: 'warning'
+    });
+    await toast.present();
+  }
+
+  /**
+   * Load in offline mode using cached data
+   */
+  async loadOfflineMode() {
+    console.log('🟠 EARTHQUAKE MAP: Loading in offline mode');
+
+    const loading = await this.loadingCtrl.create({
+      message: 'Loading offline earthquake data...',
+      spinner: 'crescent'
+    });
+    await loading.present();
+
+    try {
+      // Use default location for offline mode
+      const defaultLat = 10.3157;
+      const defaultLng = 123.8854;
+
+      this.userLocation = { lat: defaultLat, lng: defaultLng };
+      this.initializeMap(defaultLat, defaultLng);
+
+      // Load earthquake centers from API
+      await this.loadEarthquakeCenters(defaultLat, defaultLng);
+      await loading.dismiss();
+    } catch (error) {
+      await loading.dismiss();
+      console.error('🟠 EARTHQUAKE MAP: Offline mode failed', error);
+
+      const toast = await this.toastCtrl.create({
+        message: 'Failed to load offline data. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
   async loadEarthquakeCenters(userLat: number, userLng: number) {
     try {
       let allCenters: EvacuationCenter[] = [];
 
-      // Check if offline mode is enabled or if we're offline
-      if (this.offlineStorage.isOfflineMode() || !navigator.onLine) {
-        allCenters = await this.offlineStorage.getEvacuationCenters();
+      // Fetch data from API
+      try {
+        console.log('🟠 EARTHQUAKE MAP: Fetching from API...');
 
-        if (allCenters.length === 0) {
-          const alert = await this.alertCtrl.create({
-            header: 'No Offline Data',
-            message: 'No offline evacuation data available. Please sync data when online.',
-            buttons: ['OK']
-          });
-          await alert.present();
-          return;
-        }
-      } else {
-        // Try to get data from API when online
-        try {
-          allCenters = await firstValueFrom(
+        // Add timeout to API call
+        allCenters = await Promise.race([
+          firstValueFrom(
             this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-          );
-        } catch (apiError) {
-          console.error('❌ API failed, falling back to offline data:', apiError);
-          allCenters = await this.offlineStorage.getEvacuationCenters();
+          ),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('API timeout')), 15000)
+          )
+        ]);
 
-          if (allCenters.length === 0) {
-            const alert = await this.alertCtrl.create({
-              header: 'Connection Error',
-              message: 'Cannot connect to server and no offline data available. Please check your connection or sync data when online.',
-              buttons: ['OK']
-            });
-            await alert.present();
-            return;
-          }
-        }
+        console.log(`🟠 EARTHQUAKE MAP: API returned ${allCenters?.length || 0} centers`);
+      } catch (apiError) {
+        console.error('❌ API failed:', apiError);
+        const alert = await this.alertCtrl.create({
+          header: 'Connection Error',
+          message: 'Cannot connect to server. Please check your internet connection.',
+          buttons: [
+            {
+              text: 'OK',
+              handler: () => this.router.navigate(['/tabs/home'])
+            }
+          ]
+        });
+        await alert.present();
+        return;
       }
 
       // Filter for EARTHQUAKE ONLY - handle both array and string formats
@@ -235,27 +367,8 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     } catch (error) {
       console.error('🟠 EARTHQUAKE MAP: Error loading centers', error);
 
-      // Try to load from offline storage as last resort
-      try {
-        const offlineCenters = await this.offlineStorage.getEvacuationCenters();
-        this.evacuationCenters = offlineCenters.filter(center => {
-          if (Array.isArray(center.disaster_type)) {
-            return center.disaster_type.includes('Earthquake');
-          }
-          return center.disaster_type === 'Earthquake';
-        });
-
-        if (this.evacuationCenters.length > 0) {
-          // Continue with adding markers...
-          await this.addMarkersAndRoutes(userLat, userLng);
-          return;
-        }
-      } catch (offlineError) {
-        console.error('❌ Offline storage also failed:', offlineError);
-      }
-
       const toast = await this.toastCtrl.create({
-        message: 'Error loading earthquake centers. Please check your connection or sync offline data.',
+        message: 'Error loading earthquake centers. Please check your internet connection.',
         duration: 4000,
         color: 'danger'
       });
@@ -265,9 +378,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
   // Add markers and routes to map
   async addMarkersAndRoutes(userLat: number, userLng: number) {
-    // Check if we're in offline mode
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
-
     // Add earthquake markers (orange)
     this.evacuationCenters.forEach(center => {
       const lat = Number(center.latitude);
@@ -285,20 +395,13 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
         const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-        // Make marker clickable with navigation panel (only if online)
+        // Make marker clickable with navigation panel
         marker.on('click', () => {
-          if (isOfflineMode) {
-            this.showOfflineMarkerInfo(center, distance);
-          } else {
-            this.showNavigationPanel(center);
-          }
+          this.showNavigationPanel(center);
         });
 
         // Check if this is the new center to highlight
         const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
-
-        // Create popup content based on online/offline status
-        const offlineIndicator = isOfflineMode ? '<p><em>📱 Offline Mode - Limited functionality</em></p>' : '<p><em>Click marker for route options</em></p>';
 
         marker.bindPopup(`
           <div class="evacuation-popup">
@@ -306,7 +409,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
             <p><strong>Type:</strong> Earthquake Center</p>
             <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            ${offlineIndicator}
+            <p><em>Click marker for route options</em></p>
             ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
           </div>
         `);
@@ -329,13 +432,11 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       }
     });
 
-    // Only auto-route if online
-    if (!isOfflineMode) {
-      await this.routeToTwoNearestCenters();
-    }
+    // Auto-route to nearest centers
+    await this.routeToTwoNearestCenters();
 
     // Handle emergency auto-routing
-    if (this.shouldAutoRouteEmergency && !isOfflineMode) {
+    if (this.shouldAutoRouteEmergency) {
       console.log('🚨 Performing emergency auto-routing to nearest earthquake evacuation centers');
       await this.performEmergencyRouting();
       this.shouldAutoRouteEmergency = false; // Reset flag
@@ -472,12 +573,12 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
       if (!isNaN(lat) && !isNaN(lng)) {
         try {
-          const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile('walking');
+          const osmProfile = this.osmRouting.convertTravelModeToProfile('walking');
 
-          const routeData = await this.mapboxRouting.getDirections(
+          const routeData = await this.osmRouting.getDirections(
             this.userLocation.lng, this.userLocation.lat,
             lng, lat,
-            mapboxProfile,
+            osmProfile,
             {
               geometries: 'geojson',
               overview: 'simplified',
@@ -524,37 +625,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     this.nearestMarkers = [];
   }
 
-  // Show offline marker information when clicked in offline mode
-  async showOfflineMarkerInfo(center: EvacuationCenter, distance: number) {
-    const alert = await this.alertCtrl.create({
-      header: `📱 ${center.name}`,
-      message: `
-        <div style="text-align: left;">
-          <p><strong>Type:</strong> Earthquake Center</p>
-          <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-          <p><strong>Address:</strong> ${center.address || 'N/A'}</p>
-          <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-          <p><strong>Status:</strong> ${center.status || 'N/A'}</p>
-          <br>
-          <p><em>📱 Offline Mode: Routing not available. Use external navigation apps for directions.</em></p>
-        </div>
-      `,
-      buttons: [
-        {
-          text: 'Open in Maps',
-          handler: () => {
-            this.openInExternalMaps(center);
-          }
-        },
-        {
-          text: 'Close',
-          role: 'cancel'
-        }
-      ]
-    });
 
-    await alert.present();
-  }
 
   // Open evacuation center in external maps app
   async openInExternalMaps(center: EvacuationCenter) {
@@ -577,22 +648,8 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     }
   }
 
-  // Show navigation panel when marker is clicked (online mode)
+  // Show navigation panel when marker is clicked
   async showNavigationPanel(center: EvacuationCenter) {
-    // Check if we're offline before showing navigation panel
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
-
-    if (isOfflineMode) {
-      const distance = this.calculateDistance(
-        this.userLocation?.lat || 0,
-        this.userLocation?.lng || 0,
-        Number(center.latitude),
-        Number(center.longitude)
-      );
-      await this.showOfflineMarkerInfo(center, distance);
-      return;
-    }
-
     this.selectedCenter = center;
     this.selectedTransportMode = null;
     this.routeInfo = {};
@@ -631,12 +688,12 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
     for (const mode of modes) {
       try {
-        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+        const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
 
-        const routeData = await this.mapboxRouting.getDirections(
+        const routeData = await this.osmRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           lng, lat,
-          mapboxProfile,
+          osmProfile,
           {
             geometries: 'geojson',
             overview: 'simplified',
@@ -695,22 +752,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   async routeToCenter(center: EvacuationCenter, travelMode: 'walking' | 'cycling' | 'driving') {
     if (!this.userLocation) return;
 
-    // Check if we're offline
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
-
-    if (isOfflineMode) {
-      const toast = await this.toastCtrl.create({
-        message: '📱 Offline mode: Routing not available. Use external navigation apps.',
-        duration: 4000,
-        color: 'warning'
-      });
-      await toast.present();
-
-      // Offer to open in external maps
-      await this.openInExternalMaps(center);
-      return;
-    }
-
     try {
       // Clear existing routes
       this.clearRoutes();
@@ -719,12 +760,12 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(travelMode);
+        const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
 
-        const routeData = await this.mapboxRouting.getDirections(
+        const routeData = await this.osmRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           lng, lat,
-          mapboxProfile,
+          osmProfile,
           {
             geometries: 'geojson',
             overview: 'full',

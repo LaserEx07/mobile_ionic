@@ -6,8 +6,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
-import { MapboxRoutingService } from '../../services/mapbox-routing.service';
-import { OfflineStorageService } from '../../services/offline-storage.service';
+import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import * as L from 'leaflet';
 
@@ -50,8 +50,8 @@ export class FireMapPage implements OnInit, AfterViewInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private mapboxRouting = inject(MapboxRoutingService);
-  private offlineStorage = inject(OfflineStorageService);
+  private osmRouting = inject(OpenStreetMapRoutingService);
+
   private enhancedDownload = inject(EnhancedDownloadService);
 
   ngOnInit() {
@@ -176,43 +176,21 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
       let allCenters: EvacuationCenter[] = [];
 
-      // Check if offline mode is enabled or if we're offline
-      if (this.offlineStorage.isOfflineMode() || !navigator.onLine) {
-        console.log('🔄 Loading fire centers from offline storage');
-        allCenters = await this.offlineStorage.getEvacuationCenters();
-        console.log('📱 OFFLINE DATA:', allCenters);
-
-        if (allCenters.length === 0) {
-          console.warn('⚠️ No cached evacuation centers found');
-          const alert = await this.alertCtrl.create({
-            header: 'No Offline Data',
-            message: 'No offline evacuation data available. Please sync data when online.',
-            buttons: ['OK']
-          });
-          await alert.present();
-          return;
-        }
-      } else {
-        // Try to get data from API when online
-        try {
-          allCenters = await firstValueFrom(
-            this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-          );
-          console.log('🔥 FIRE MAP: Total centers received from API:', allCenters?.length || 0);
-        } catch (apiError) {
-          console.error('❌ API failed, falling back to offline data:', apiError);
-          allCenters = await this.offlineStorage.getEvacuationCenters();
-
-          if (allCenters.length === 0) {
-            const alert = await this.alertCtrl.create({
-              header: 'Connection Error',
-              message: 'Cannot connect to server and no offline data available. Please check your connection or sync data when online.',
-              buttons: ['OK']
-            });
-            await alert.present();
-            return;
-          }
-        }
+      // Fetch data from API
+      try {
+        allCenters = await firstValueFrom(
+          this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+        );
+        console.log('🔥 FIRE MAP: Total centers received from API:', allCenters?.length || 0);
+      } catch (apiError) {
+        console.error('❌ API failed:', apiError);
+        const alert = await this.alertCtrl.create({
+          header: 'Connection Error',
+          message: 'Cannot connect to server. Please check your internet connection.',
+          buttons: ['OK']
+        });
+        await alert.present();
+        return;
       }
 
       // Filter for FIRE ONLY - handle both array and string formats
@@ -241,26 +219,8 @@ export class FireMapPage implements OnInit, AfterViewInit {
     } catch (error) {
       console.error('🔥 FIRE MAP: Error loading centers', error);
 
-      // Try to load from offline storage as last resort
-      try {
-        console.log('🔄 Last resort: trying offline storage...');
-        const offlineCenters = await this.offlineStorage.getEvacuationCenters();
-        this.evacuationCenters = offlineCenters.filter(center =>
-          center.disaster_type === 'Fire'
-        );
-
-        if (this.evacuationCenters.length > 0) {
-          console.log(`🔥 Loaded ${this.evacuationCenters.length} fire centers from offline storage`);
-          // Continue with adding markers...
-          await this.addMarkersAndRoutes(userLat, userLng);
-          return;
-        }
-      } catch (offlineError) {
-        console.error('❌ Offline storage also failed:', offlineError);
-      }
-
       const toast = await this.toastCtrl.create({
-        message: 'Error loading fire centers. Please check your connection or sync offline data.',
+        message: 'Error loading fire centers. Please check your internet connection.',
         duration: 4000,
         color: 'danger'
       });
@@ -270,9 +230,6 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
   // Add markers and routes to map
   async addMarkersAndRoutes(userLat: number, userLng: number) {
-    // Check if we're in offline mode
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
-
     // Add fire markers (red)
     this.evacuationCenters.forEach(center => {
       const lat = Number(center.latitude);
@@ -290,20 +247,13 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
         const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-        // Make marker clickable with navigation panel (only if online)
+        // Make marker clickable with navigation panel
         marker.on('click', () => {
-          if (isOfflineMode) {
-            this.showOfflineMarkerInfo(center, distance);
-          } else {
-            this.showNavigationPanel(center);
-          }
+          this.showNavigationPanel(center);
         });
 
         // Check if this is the new center to highlight
         const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
-
-        // Create popup content based on online/offline status
-        const offlineIndicator = isOfflineMode ? '<p><em>📱 Offline Mode - Limited functionality</em></p>' : '<p><em>Click marker for route options</em></p>';
 
         marker.bindPopup(`
           <div class="evacuation-popup">
@@ -311,7 +261,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
             <p><strong>Type:</strong> Fire Center</p>
             <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            ${offlineIndicator}
+            <p><em>Click marker for route options</em></p>
             ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
           </div>
         `);
@@ -335,13 +285,9 @@ export class FireMapPage implements OnInit, AfterViewInit {
       }
     });
 
-    // Only auto-route if online
-    if (!isOfflineMode) {
-      console.log('🔥 Online mode: Auto-routing to 2 nearest fire centers...');
-      await this.routeToTwoNearestCenters();
-    } else {
-      console.log('🔥 Offline mode: Showing markers only (no routing)');
-    }
+    // Auto-route to nearest centers
+    console.log('🔥 Auto-routing to 2 nearest fire centers...');
+    await this.routeToTwoNearestCenters();
 
     // Fit map to show all fire centers
     if (this.evacuationCenters.length > 0) {
@@ -431,12 +377,12 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
       if (!isNaN(lat) && !isNaN(lng)) {
         try {
-          const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile('walking');
+          const osmProfile = this.osmRouting.convertTravelModeToProfile('walking');
 
-          const routeData = await this.mapboxRouting.getDirections(
+          const routeData = await this.osmRouting.getDirections(
             this.userLocation.lng, this.userLocation.lat,
             lng, lat,
-            mapboxProfile,
+            osmProfile,
             {
               geometries: 'geojson',
               overview: 'simplified',
@@ -485,24 +431,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
     this.nearestMarkers = [];
   }
 
-  // Show offline marker information when clicked in offline mode
-  async showOfflineMarkerInfo(center: EvacuationCenter, distance: number) {
-    const alert = await this.alertCtrl.create({
-      header: `📱 ${center.name}`,
-      message: `
-        <div style="text-align: left;">
-          <p><strong>Type:</strong> Fire Center</p>
-          <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-          <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-          <p><strong>Address:</strong> ${center.address || 'N/A'}</p>
-          <br>
-          <p><em>📱 Offline Mode: Navigation features are limited</em></p>
-        </div>
-      `,
-      buttons: ['OK']
-    });
-    await alert.present();
-  }
+
 
   // Show navigation panel for online mode
   async showNavigationPanel(center: EvacuationCenter) {
@@ -522,11 +451,11 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
     for (const mode of modes) {
       try {
-        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
-        const routeData = await this.mapboxRouting.getDirections(
+        const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
+        const routeData = await this.osmRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           Number(center.longitude), Number(center.latitude),
-          mapboxProfile
+          osmProfile
         );
 
         if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -552,47 +481,44 @@ export class FireMapPage implements OnInit, AfterViewInit {
     this.clearRoutes();
 
     try {
-      const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
-      const travelMode = mode === 'walking' ? 'foot' : mode === 'cycling' ? 'bike' : 'car';
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
 
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${mapboxProfile}/${this.userLocation.lng},${this.userLocation.lat};${this.selectedCenter.longitude},${this.selectedCenter.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const routeData = await this.osmRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(this.selectedCenter.longitude), Number(this.selectedCenter.latitude),
+        osmProfile
       );
 
-      if (response.ok) {
-        const routeData = await response.json();
+      if (routeData && routeData.routes && routeData.routes.length > 0) {
+        const route = routeData.routes[0];
 
-        if (routeData && routeData.routes && routeData.routes.length > 0) {
-          const route = routeData.routes[0];
+        // Use fire color (red)
+        const routeColor = '#dc3545';
 
-          // Use fire color (red)
-          const routeColor = '#dc3545';
+        this.routeLayer = L.layerGroup().addTo(this.map);
 
-          this.routeLayer = L.layerGroup().addTo(this.map);
+        // Draw route
+        const routeLine = L.polyline(
+          route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
+          {
+            color: routeColor,
+            weight: 5,
+            opacity: 0.8
+          }
+        );
 
-          // Draw route
-          const routeLine = L.polyline(
-            route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
-            {
-              color: routeColor,
-              weight: 5,
-              opacity: 0.8
-            }
-          );
+        routeLine.addTo(this.routeLayer);
 
-          routeLine.addTo(this.routeLayer);
+        // Show route info
+        const toast = await this.toastCtrl.create({
+          message: `🔥 Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${mode}`,
+          duration: 4000,
+          color: 'danger'
+        });
+        await toast.present();
 
-          // Show route info
-          const toast = await this.toastCtrl.create({
-            message: `🔥 Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${travelMode}`,
-            duration: 4000,
-            color: 'danger'
-          });
-          await toast.present();
-
-          // Fit map to route
-          this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-        }
+        // Fit map to route
+        this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
       }
     } catch (error) {
       console.error('🔥 Error showing route:', error);

@@ -7,8 +7,8 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
 import * as L from 'leaflet';
-import { MapboxRoutingService } from '../../services/mapbox-routing.service';
-import { OfflineStorageService } from '../../services/offline-storage.service';
+import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 
 import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
@@ -47,8 +47,8 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private mapboxRouting = inject(MapboxRoutingService);
-  private offlineStorage = inject(OfflineStorageService);
+  private osmRouting = inject(OpenStreetMapRoutingService);
+
   private enhancedDownload = inject(EnhancedDownloadService);
 
   ngOnInit() {
@@ -173,43 +173,21 @@ export class FloodMapPage implements OnInit, AfterViewInit {
 
       let allCenters: EvacuationCenter[] = [];
 
-      // Check if offline mode is enabled or if we're offline
-      if (this.offlineStorage.isOfflineMode() || !navigator.onLine) {
-        console.log('🔄 Loading flood centers from offline storage');
-        allCenters = await this.offlineStorage.getEvacuationCenters();
-        console.log('📱 OFFLINE DATA:', allCenters);
-
-        if (allCenters.length === 0) {
-          console.warn('⚠️ No cached evacuation centers found');
-          const alert = await this.alertCtrl.create({
-            header: 'No Offline Data',
-            message: 'No offline evacuation data available. Please sync data when online.',
-            buttons: ['OK']
-          });
-          await alert.present();
-          return;
-        }
-      } else {
-        // Try to get data from API when online
-        try {
-          allCenters = await firstValueFrom(
-            this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-          );
-          console.log('🔵 FLOOD MAP: Total centers received from API:', allCenters?.length || 0);
-        } catch (apiError) {
-          console.error('❌ API failed, falling back to offline data:', apiError);
-          allCenters = await this.offlineStorage.getEvacuationCenters();
-
-          if (allCenters.length === 0) {
-            const alert = await this.alertCtrl.create({
-              header: 'Connection Error',
-              message: 'Cannot connect to server and no offline data available. Please check your connection or sync data when online.',
-              buttons: ['OK']
-            });
-            await alert.present();
-            return;
-          }
-        }
+      // Fetch data from API
+      try {
+        allCenters = await firstValueFrom(
+          this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+        );
+        console.log('🔵 FLOOD MAP: Total centers received from API:', allCenters?.length || 0);
+      } catch (apiError) {
+        console.error('❌ API failed:', apiError);
+        const alert = await this.alertCtrl.create({
+          header: 'Connection Error',
+          message: 'Cannot connect to server. Please check your internet connection.',
+          buttons: ['OK']
+        });
+        await alert.present();
+        return;
       }
 
       // Filter for FLOOD ONLY - handle both array and string formats
@@ -232,8 +210,7 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         return;
       }
 
-      // Check if we're in offline mode
-      const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
+      // Online-only mode
 
       // Add flood markers (blue)
       this.evacuationCenters.forEach(center => {
@@ -252,20 +229,13 @@ export class FloodMapPage implements OnInit, AfterViewInit {
 
           const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-          // Make marker clickable with navigation panel (only if online)
+          // Make marker clickable with navigation panel
           marker.on('click', () => {
-            if (isOfflineMode) {
-              this.showOfflineMarkerInfo(center, distance);
-            } else {
-              this.openNavigationPanel(center);
-            }
+            this.openNavigationPanel(center);
           });
 
           // Check if this is the new center to highlight
           const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
-
-          // Create popup content based on online/offline status
-          const offlineIndicator = isOfflineMode ? '<p><em>📱 Offline Mode - Limited functionality</em></p>' : '<p><em>Click marker for route options</em></p>';
 
           marker.bindPopup(`
             <div class="evacuation-popup">
@@ -273,7 +243,7 @@ export class FloodMapPage implements OnInit, AfterViewInit {
               <p><strong>Type:</strong> Flood Center</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              ${offlineIndicator}
+              <p><em>Click marker for route options</em></p>
               ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
             </div>
           `);
@@ -297,13 +267,9 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         }
       });
 
-      // Only auto-route if online
-      if (!isOfflineMode) {
-        console.log('🔵 Online mode: Auto-routing to 2 nearest flood centers...');
-        await this.routeToTwoNearestCenters();
-      } else {
-        console.log('🔵 Offline mode: Showing markers only (no routing)');
-      }
+      // Auto-route to nearest centers
+      console.log('🔵 Auto-routing to 2 nearest flood centers...');
+      await this.routeToTwoNearestCenters();
 
       // Fit map to show all flood centers
       if (this.evacuationCenters.length > 0) {
@@ -392,23 +358,16 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         return;
       }
 
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${travelMode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
+      const response = await this.osmRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(center.longitude), Number(center.latitude),
+        osmProfile
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const routeGeoJSON = {
-          type: 'Feature' as const,
-          geometry: route.geometry,
-          properties: {}
-        };
+      if (response.routes && response.routes.length > 0) {
+        const route = response.routes[0];
+        const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
 
         // Add route to map with flood color (blue)
         L.geoJSON(routeGeoJSON as any, {
@@ -517,19 +476,19 @@ export class FloodMapPage implements OnInit, AfterViewInit {
 
     for (const mode of modes) {
       try {
-        const response = await fetch(
-          `https://api.mapbox.com/directions/v5/mapbox/${mode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+        const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
+        const response = await this.osmRouting.getDirections(
+          this.userLocation.lng, this.userLocation.lat,
+          Number(center.longitude), Number(center.latitude),
+          osmProfile
         );
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.routes && data.routes.length > 0) {
-            const route = data.routes[0];
-            this.routeInfo[mode] = {
-              duration: route.duration,
-              distance: route.distance
-            };
-          }
+        if (response.routes && response.routes.length > 0) {
+          const route = response.routes[0];
+          this.routeInfo[mode] = {
+            duration: route.duration,
+            distance: route.distance
+          };
         }
       } catch (error) {
         console.error(`Error calculating ${mode} route:`, error);
@@ -545,29 +504,25 @@ export class FloodMapPage implements OnInit, AfterViewInit {
     this.clearRoutes();
 
     try {
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${mode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
+      const response = await this.osmRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(center.longitude), Number(center.latitude),
+        osmProfile
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const routeGeoJSON = {
-            type: 'Feature' as const,
-            geometry: route.geometry,
-            properties: {}
-          };
+      if (response.routes && response.routes.length > 0) {
+        const route = response.routes[0];
+        const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
 
-          // Add route to map with flood color (blue)
-          L.geoJSON(routeGeoJSON as any, {
-            style: {
-              color: '#0066CC', // Blue for flood
-              weight: 4,
-              opacity: 0.8
-            }
-          }).addTo(this.map);
-        }
+        // Add route to map with flood color (blue)
+        L.geoJSON(routeGeoJSON as any, {
+          style: {
+            color: '#0066CC', // Blue for flood
+            weight: 4,
+            opacity: 0.8
+          }
+        }).addTo(this.map);
       }
     } catch (error) {
       console.error('Error showing route on map:', error);
@@ -621,77 +576,47 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   async routeToCenter(center: EvacuationCenter, travelMode: 'walking' | 'cycling' | 'driving') {
     if (!this.userLocation) return;
 
-    // Check if we're offline
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
 
-    if (isOfflineMode) {
-      console.log('🔵 Offline mode: Cannot calculate routes');
-      const toast = await this.toastCtrl.create({
-        message: '📱 Offline mode: Routing not available. Use external navigation apps.',
-        duration: 4000,
-        color: 'warning'
-      });
-      await toast.present();
-
-      // Offer to open in external maps
-      await this.openInExternalMaps(center);
-      return;
-    }
 
     try {
       // Clear existing routes
       this.clearRoutes();
 
-      // Map travel modes to Mapbox API
-      let mapboxMode = 'walking';
-      switch (travelMode) {
-        case 'walking':
-          mapboxMode = 'walking';
-          break;
-        case 'cycling':
-          mapboxMode = 'cycling';
-          break;
-        case 'driving':
-          mapboxMode = 'driving';
-          break;
-      }
-
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${mapboxMode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
+      const routeData = await this.osmRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(center.longitude), Number(center.latitude),
+        osmProfile
       );
 
-      if (response.ok) {
-        const routeData = await response.json();
+      if (routeData && routeData.routes && routeData.routes.length > 0) {
+        const route = routeData.routes[0];
 
-        if (routeData && routeData.routes && routeData.routes.length > 0) {
-          const route = routeData.routes[0];
+        // Use flood color (blue)
+        const routeColor = '#0066CC';
 
-          // Use flood color (blue)
-          const routeColor = '#0066CC';
+        // Draw route
+        const routeLine = L.polyline(
+          route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
+          {
+            color: routeColor,
+            weight: 5,
+            opacity: 0.8
+          }
+        );
 
-          // Draw route
-          const routeLine = L.polyline(
-            route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
-            {
-              color: routeColor,
-              weight: 5,
-              opacity: 0.8
-            }
-          );
+        routeLine.addTo(this.map);
 
-          routeLine.addTo(this.map);
+        // Show route info
+        const toast = await this.toastCtrl.create({
+          message: `🔵 Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${travelMode}`,
+          duration: 4000,
+          color: 'primary'
+        });
+        await toast.present();
 
-          // Show route info
-          const toast = await this.toastCtrl.create({
-            message: `🔵 Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${travelMode}`,
-            duration: 4000,
-            color: 'primary'
-          });
-          await toast.present();
-
-          // Fit map to route
-          this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-        }
+        // Fit map to route
+        this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
       }
     } catch (error) {
       console.error('🔵 FLOOD MAP: Error calculating individual route:', error);

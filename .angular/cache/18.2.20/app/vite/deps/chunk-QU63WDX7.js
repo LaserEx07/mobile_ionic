@@ -532,12 +532,19 @@ var CapacitorHttp = registerPlugin("CapacitorHttp", {
 });
 
 export {
+  ExceptionCode,
+  CapacitorException,
+  Capacitor,
   registerPlugin,
-  WebPlugin
+  WebPlugin,
+  WebView,
+  CapacitorCookies,
+  buildRequestInit,
+  CapacitorHttp
 };
 /*! Bundled license information:
 
 @capacitor/core/dist/index.js:
   (*! Capacitor: https://capacitorjs.com/ - MIT License *)
 */
-//# sourceMappingURL=chunk-JF6L5S3V.js.map
+//# sourceMappingURL=chunk-QU63WDX7.js.map

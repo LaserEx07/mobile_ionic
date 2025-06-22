@@ -4,10 +4,10 @@ import {
 import {
   clamp
 } from "./chunk-L6BHBXTE.js";
-import "./chunk-ZWBDDU4U.js";
 import {
   createGesture
 } from "./chunk-4AF7KAXZ.js";
+import "./chunk-ZWBDDU4U.js";
 import "./chunk-SCNEKAWF.js";
 
 // node_modules/@ionic/core/components/swipe-back.js
@@ -80,4 +80,4 @@ export {
    * (C) Ionic http://ionicframework.com - MIT License
    *)
 */
-//# sourceMappingURL=swipe-back-LXTVXIAR.js.map
+//# sourceMappingURL=swipe-back-2YD5KJ7K.js.map

@@ -7,7 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
-import { MapboxRoutingService } from '../../services/mapbox-routing.service';
+import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import * as L from 'leaflet';
 
@@ -63,7 +63,7 @@ export class AllMapsPage implements OnInit {
   private alertCtrl = inject(AlertController);
   private http = inject(HttpClient);
   private router = inject(Router);
-  private mapboxRouting = inject(MapboxRoutingService);
+  private osmRouting = inject(OpenStreetMapRoutingService);
   private enhancedDownload = inject(EnhancedDownloadService);
 
   async ngOnInit() {
@@ -423,13 +423,13 @@ export class AllMapsPage implements OnInit {
 
       if (!isNaN(lat) && !isNaN(lng)) {
         try {
-          // Convert travel mode to Mapbox profile
-          const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(this.travelMode);
+          // Convert travel mode to OpenStreetMap profile
+          const osmProfile = this.osmRouting.convertTravelModeToProfile(this.travelMode);
 
-          const routeData = await this.mapboxRouting.getDirections(
+          const routeData = await this.osmRouting.getDirections(
             this.userLocation.lng, this.userLocation.lat,
             lng, lat,
-            mapboxProfile,
+            osmProfile,
             {
               geometries: 'geojson',
               overview: 'simplified',
@@ -555,12 +555,12 @@ export class AllMapsPage implements OnInit {
 
     for (const mode of modes) {
       try {
-        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+        const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
 
-        const routeData = await this.mapboxRouting.getDirections(
+        const routeData = await this.osmRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           lng, lat,
-          mapboxProfile,
+          osmProfile,
           {
             geometries: 'geojson',
             overview: 'simplified',
@@ -627,12 +627,12 @@ export class AllMapsPage implements OnInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(travelMode);
+        const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
 
-        const routeData = await this.mapboxRouting.getDirections(
+        const routeData = await this.osmRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           lng, lat,
-          mapboxProfile,
+          osmProfile,
           {
             geometries: 'geojson',
             overview: 'full',

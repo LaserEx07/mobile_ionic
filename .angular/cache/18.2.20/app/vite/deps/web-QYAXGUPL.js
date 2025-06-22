@@ -1,6 +1,6 @@
 import {
   WebPlugin
-} from "./chunk-JF6L5S3V.js";
+} from "./chunk-QU63WDX7.js";
 import {
   __async
 } from "./chunk-SCNEKAWF.js";
@@ -210,4 +210,4 @@ var LocalNotificationsWeb = class extends WebPlugin {
 export {
   LocalNotificationsWeb
 };
-//# sourceMappingURL=web-LW6CU4R4.js.map
+//# sourceMappingURL=web-QYAXGUPL.js.map

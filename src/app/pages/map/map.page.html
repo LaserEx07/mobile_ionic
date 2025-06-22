@@ -1,9 +1,5 @@
 <ion-content>
-  <!-- Offline Status Banner -->
-  <div *ngIf="offlineStorage.isOfflineMode() || !offlineStorage.isOnline()" class="offline-status-banner">
-    <ion-icon name="cloud-offline-outline"></ion-icon>
-    <span>Offline Mode - Using cached data</span>
-  </div>
+
 
   <!-- Travel Mode Selector - Only show when in filter mode or from search -->
 
@@ -56,12 +52,7 @@
     </ion-fab-button>
   </ion-fab>
 
-  <!-- Offline Mode Toggle Button (for testing) -->
-  <ion-fab vertical="top" horizontal="end" slot="fixed" style="top: 60px;">
-    <ion-fab-button size="small" [color]="offlineStorage.isOfflineMode() ? 'warning' : 'light'" (click)="toggleOfflineMode()">
-      <img src="assets/download.png" alt="Download" style="width: 24px; height: 24px;">
-    </ion-fab-button>
-  </ion-fab>
+
 
 
 

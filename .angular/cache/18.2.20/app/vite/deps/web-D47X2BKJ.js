@@ -1,6 +1,6 @@
 import {
   WebPlugin
-} from "./chunk-JF6L5S3V.js";
+} from "./chunk-QU63WDX7.js";
 import {
   __async
 } from "./chunk-SCNEKAWF.js";
@@ -67,4 +67,4 @@ export {
   Geolocation,
   GeolocationWeb
 };
-//# sourceMappingURL=web-IKTJPGFD.js.map
+//# sourceMappingURL=web-D47X2BKJ.js.map

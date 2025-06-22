@@ -19,55 +19,74 @@
  
   <div class="home-content">
     <div class="disaster-container">
+
+      <!-- Welcome Section -->
+      <div class="welcome-section">
+        <h2 class="welcome-title">Choose Emergency Type</h2>
+        <p class="welcome-subtitle">Select a disaster type to view evacuation centers</p>
+      </div>
+
       <div class="disaster-grid">
 
-      <ion-card class="disaster earthquake" (click)="openDisasterMap('earthquake')">
-        <ion-card-content>
-          <img src="assets/icon/linog icon.png" alt="Earthquake">
-          <ion-text><u>Earthquake</u></ion-text>
-        </ion-card-content>
-      </ion-card>
+        <ion-card class="disaster earthquake" (click)="openDisasterMap('earthquake')">
+          <ion-card-content>
+            <div class="card-icon-wrapper">
+              <img src="assets/icon/linog icon.png" alt="Earthquake">
+            </div>
+            <ion-text>Earthquake</ion-text>
+            <div class="card-indicator"></div>
+          </ion-card-content>
+        </ion-card>
 
-      <ion-card class="disaster typhoon" (click)="openDisasterMap('typhoon')">
-        <ion-card-content>
-          <img src="assets/icon/bagyo.png" alt="Typhoon">
-          <ion-text><u>Typhoon</u></ion-text>
-        </ion-card-content>
-      </ion-card>
+        <ion-card class="disaster typhoon" (click)="openDisasterMap('typhoon')">
+          <ion-card-content>
+            <div class="card-icon-wrapper">
+              <img src="assets/icon/bagyo.png" alt="Typhoon">
+            </div>
+            <ion-text>Typhoon</ion-text>
+            <div class="card-indicator"></div>
+          </ion-card-content>
+        </ion-card>
 
-      <ion-card class="disaster flood" (click)="openDisasterMap('flashflood')">
-        <ion-card-content>
-          <img src="assets/icon/baha.jpg" alt="Flood">
-          <ion-text><u>Flash Flood</u></ion-text>
-        </ion-card-content>
-      </ion-card>
+        <ion-card class="disaster flood" (click)="openDisasterMap('flashflood')">
+          <ion-card-content>
+            <div class="card-icon-wrapper">
+              <img src="assets/icon/baha.jpg" alt="Flood">
+            </div>
+            <ion-text>Flash Flood</ion-text>
+            <div class="card-indicator"></div>
+          </ion-card-content>
+        </ion-card>
 
-      <ion-card class="disaster fire" (click)="openDisasterMap('fire')">
-        <ion-card-content>
-          <img src="assets/icon/fire.jpg" alt="Fire">
-          <ion-text><u>Fire</u></ion-text>
-        </ion-card-content>
-      </ion-card>
+        <ion-card class="disaster fire" (click)="openDisasterMap('fire')">
+          <ion-card-content>
+            <div class="card-icon-wrapper">
+              <img src="assets/icon/fire.jpg" alt="Fire">
+            </div>
+            <ion-text>Fire</ion-text>
+            <div class="card-indicator"></div>
+          </ion-card-content>
+        </ion-card>
 
-      <ion-card class="disaster landslide" (click)="openDisasterMap('landslide')">
-        <ion-card-content>
-          <img src="assets/icon/lanslide.jpg" alt="Landslide">
-          <ion-text><u>Landslide</u></ion-text>
-        </ion-card-content>
-      </ion-card>
+        <ion-card class="disaster landslide" (click)="openDisasterMap('landslide')">
+          <ion-card-content>
+            <div class="card-icon-wrapper">
+              <img src="assets/icon/lanslide.jpg" alt="Landslide">
+            </div>
+            <ion-text>Landslide</ion-text>
+            <div class="card-indicator"></div>
+          </ion-card-content>
+        </ion-card>
+
+      </div>
+
+      <!-- See Whole Map Button -->
+      <div class="map-button-container">
+        <ion-button expand="block" class="see-map-btn" (click)="viewMap()">
+          See the whole map
+        </ion-button>
+      </div>
 
     </div>
-
-    <!-- See Whole Map Button -->
-    <div class="map-button-container">
-      <ion-button expand="block" class="see-map-btn" (click)="viewMap()" [disabled]="isOffline">
-        See the whole map
-      </ion-button>
-    </div>
-
-  
-
   </div>
-</div>
-
-
+</ion-content>

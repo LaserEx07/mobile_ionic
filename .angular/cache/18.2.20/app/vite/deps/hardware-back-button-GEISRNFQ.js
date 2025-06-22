@@ -4,9 +4,9 @@ import {
   blockHardwareBackButton,
   shouldUseCloseWatcher,
   startHardwareBackButton
-} from "./chunk-PAH2KNAH.js";
-import "./chunk-ZWBDDU4U.js";
+} from "./chunk-QFDFLZ7G.js";
 import "./chunk-CJ5MJUPJ.js";
+import "./chunk-ZWBDDU4U.js";
 import "./chunk-SCNEKAWF.js";
 export {
   MENU_BACK_BUTTON_PRIORITY,
@@ -15,4 +15,4 @@ export {
   shouldUseCloseWatcher,
   startHardwareBackButton
 };
-//# sourceMappingURL=hardware-back-button-Z4JBZUTY.js.map
+//# sourceMappingURL=hardware-back-button-GEISRNFQ.js.map
