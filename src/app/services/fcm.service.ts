@@ -207,8 +207,7 @@ export class FCMService {
       'typhoon': 'Typhoon',
       'fire': 'Fire',
       'landslide': 'Landslide',
-      'general': 'General',
-      'emergency': 'General'
+      'general': 'General'
     };
 
     return categoryMap[category.toLowerCase()] || 'General';
@@ -259,7 +258,6 @@ export class FCMService {
       const data = notification.data || {};
       const category = data.category || 'general';
       const severity = data.severity || 'medium';
-      const affectedAreas = data.affected_areas ? this.parseAffectedAreas(data.affected_areas) : null;
       const barangay = data.barangay || '';
 
       // Use the title and body from notification (already rich from backend)
@@ -301,7 +299,6 @@ export class FCMService {
           notification_id: data.notification_id,
           category: category,
           severity: severity,
-          affected_areas: affectedAreas,
           barangay: barangay,
           timestamp: new Date().toISOString()
         }
@@ -454,72 +451,7 @@ export class FCMService {
     }
   }
 
-  /**
-   * Parse affected areas from JSON string
-   */
-  private parseAffectedAreas(affectedAreasString: string): any {
-    try {
-      return JSON.parse(affectedAreasString);
-    } catch (error) {
-      console.error('Error parsing affected areas:', error);
-      return null;
-    }
-  }
 
-  /**
-   * Format affected areas for display in notifications
-   */
-  private formatAffectedAreas(affectedAreas: any): string | null {
-    if (!affectedAreas) {
-      return null;
-    }
-
-    try {
-      let areas: any[] = [];
-
-      // Handle different data formats
-      if (typeof affectedAreas === 'string') {
-        areas = JSON.parse(affectedAreas);
-      } else if (Array.isArray(affectedAreas)) {
-        areas = affectedAreas;
-      } else {
-        return null;
-      }
-
-      if (!Array.isArray(areas) || areas.length === 0) {
-        return null;
-      }
-
-      // Extract area names
-      const areaNames: string[] = [];
-      for (const area of areas) {
-        if (typeof area === 'object' && area.name) {
-          areaNames.push(area.name);
-        } else if (typeof area === 'string') {
-          areaNames.push(area);
-        }
-      }
-
-      if (areaNames.length === 0) {
-        return null;
-      }
-
-      // Format the area names
-      if (areaNames.length === 1) {
-        return areaNames[0];
-      } else if (areaNames.length === 2) {
-        return areaNames.join(' and ');
-      } else {
-        // For 3 or more areas: "Area1, Area2, and Area3"
-        const lastArea = areaNames.pop();
-        return areaNames.join(', ') + ', and ' + lastArea;
-      }
-
-    } catch (error) {
-      console.error('Error formatting affected areas:', error);
-      return null;
-    }
-  }
 
   /**
    * Check if title is already rich (contains emoji)
@@ -568,7 +500,6 @@ export class FCMService {
             category: data.category || 'general',
             severity: data.severity || 'medium',
             barangay: data.barangay || '',
-            affected_areas: data.affected_areas || null,
             timestamp: data.timestamp || new Date().toISOString(),
             notification_id: data.notification_id || ''
           }

@@ -49,24 +49,7 @@
         <p class="location-info">{{ notification.barangay }}</p>
       </div>
 
-      <!-- Affected Areas -->
-      <div class="content-section" *ngIf="hasMapData()">
-        <h3 class="section-title">
-          <ion-icon name="map-outline" class="section-icon"></ion-icon>
-          Affected Areas
-        </h3>
-        <div class="affected-areas-info">
-          <p class="areas-summary">{{ getAffectedAreasSummary() }}</p>
-          <ion-button 
-            fill="outline" 
-            size="small" 
-            (click)="viewOnMap()"
-            class="view-map-button">
-            <ion-icon name="map" slot="start"></ion-icon>
-            View on Map
-          </ion-button>
-        </div>
-      </div>
+
 
       <!-- Timestamp -->
       <div class="content-section">

@@ -11,12 +11,12 @@ export const environment = {
   // - Local development: 'http://localhost:8000/api'
   // - Home network: 'http://192.168.1.100:8000/api'
   // - School network: 'http://172.30.11.217:8000/api'
-  // - Current network: 'http://192.168.112.27:8000/api' (UPDATED)
+  // - Current network: 'http://192.168.112.8:8000/api' (UPDATED)
   // - ngrok tunnel: 'https://your-ngrok-url.ngrok-free.app/api'
-  apiUrl: 'http://localhost:8000/api', // For local testing
+  apiUrl: 'http://192.168.112.8:8000/api', // Back to network IP
 
   // Health check endpoint (automatically derived if not specified)
-  healthCheckUrl: 'http://localhost:8000/up', // For local testing
+  healthCheckUrl: 'http://192.168.112.8:8000/up', // Back to network IP
 
   // External APIs
   orsApiKey: '5b3ce3597851110001cf6248d05f92e32cab4d1da9db6036a3a53fe7', // Keep for fallback

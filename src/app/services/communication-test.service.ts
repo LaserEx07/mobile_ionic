@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, BehaviorSubject, of } from 'rxjs';
+import { Observable, BehaviorSubject, of, firstValueFrom } from 'rxjs';
 import { catchError, timeout, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
@@ -83,16 +83,18 @@ export class CommunicationTestService {
    */
   private async testApiConnectivity(): Promise<CommunicationTestResult> {
     const startTime = Date.now();
-    
+
     try {
-      const response = await this.http.get(`${environment.apiUrl}/test`)
-        .pipe(
-          timeout(environment.communication.timeoutMs),
-          catchError(this.handleError)
-        ).toPromise();
-      
+      const response = await firstValueFrom(
+        this.http.get(`${environment.apiUrl}/test`)
+          .pipe(
+            timeout(environment.communication.timeoutMs),
+            catchError(this.handleError)
+          )
+      );
+
       const responseTime = Date.now() - startTime;
-      
+
       return {
         endpoint: 'API Test',
         success: true,
@@ -116,16 +118,18 @@ export class CommunicationTestService {
    */
   private async testHealthCheck(): Promise<CommunicationTestResult> {
     const startTime = Date.now();
-    
+
     try {
-      const response = await this.http.get(environment.healthCheckUrl)
-        .pipe(
-          timeout(environment.communication.timeoutMs),
-          catchError(this.handleError)
-        ).toPromise();
-      
+      const response = await firstValueFrom(
+        this.http.get(environment.healthCheckUrl)
+          .pipe(
+            timeout(environment.communication.timeoutMs),
+            catchError(this.handleError)
+          )
+      );
+
       const responseTime = Date.now() - startTime;
-      
+
       return {
         endpoint: 'Health Check',
         success: true,
@@ -149,16 +153,18 @@ export class CommunicationTestService {
    */
   private async testEvacuationCenters(): Promise<CommunicationTestResult> {
     const startTime = Date.now();
-    
+
     try {
-      const response = await this.http.get(`${environment.apiUrl}/evacuation-centers`)
-        .pipe(
-          timeout(environment.communication.timeoutMs),
-          catchError(this.handleError)
-        ).toPromise();
-      
+      const response = await firstValueFrom(
+        this.http.get(`${environment.apiUrl}/evacuation-centers`)
+          .pipe(
+            timeout(environment.communication.timeoutMs),
+            catchError(this.handleError)
+          )
+      );
+
       const responseTime = Date.now() - startTime;
-      
+
       return {
         endpoint: 'Evacuation Centers',
         success: true,
@@ -182,14 +188,14 @@ export class CommunicationTestService {
    */
   private async testFirebaseConfig(): Promise<CommunicationTestResult> {
     const startTime = Date.now();
-    
+
     try {
       // Check if Firebase config is properly set
       const config = environment.firebase;
-      const isConfigured = config.projectId && config.messagingSenderId && config.appId;
-      
+      const isConfigured = !!(config.projectId && config.messagingSenderId && config.appId);
+
       const responseTime = Date.now() - startTime;
-      
+
       return {
         endpoint: 'Firebase Config',
         success: isConfigured,
@@ -213,7 +219,7 @@ export class CommunicationTestService {
    */
   private async testFCMTokenRegistration(): Promise<CommunicationTestResult> {
     const startTime = Date.now();
-    
+
     try {
       // Test with a mock token
       const mockToken = 'test-token-' + Date.now();
@@ -222,15 +228,17 @@ export class CommunicationTestService {
         platform: 'android',
         project_id: environment.firebase.projectId
       };
-      
-      const response = await this.http.post(`${environment.apiUrl}/device-token`, payload)
-        .pipe(
-          timeout(environment.communication.timeoutMs),
-          catchError(this.handleError)
-        ).toPromise();
-      
+
+      const response = await firstValueFrom(
+        this.http.post(`${environment.apiUrl}/device-token`, payload)
+          .pipe(
+            timeout(environment.communication.timeoutMs),
+            catchError(this.handleError)
+          )
+      );
+
       const responseTime = Date.now() - startTime;
-      
+
       return {
         endpoint: 'FCM Token Registration',
         success: true,
@@ -297,9 +305,10 @@ export class CommunicationTestService {
    */
   async quickConnectivityTest(): Promise<boolean> {
     try {
-      await this.http.get(`${environment.apiUrl}/test`)
-        .pipe(timeout(5000))
-        .toPromise();
+      await firstValueFrom(
+        this.http.get(`${environment.apiUrl}/test`)
+          .pipe(timeout(5000))
+      );
       return true;
     } catch {
       return false;

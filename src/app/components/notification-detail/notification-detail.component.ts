@@ -9,7 +9,6 @@ export interface NotificationDetail {
   category: string;
   severity: string;
   barangay?: string;
-  affected_areas?: any[];
   timestamp: string;
   notification_id?: string;
 }
@@ -46,8 +45,7 @@ export class NotificationDetailComponent implements OnInit {
       case 'typhoon': return 'Typhoon Warning';
       case 'flood': return 'Flood Alert';
       case 'fire': return 'Fire Emergency';
-      case 'emergency': return 'Emergency Alert';
-      case 'evacuation': return 'Evacuation Notice';
+      case 'landslide': return 'Landslide Alert';
       case 'general': return 'General Announcement';
       case 'announcement': return 'Public Announcement';
       default: return 'Alert';
@@ -124,38 +122,5 @@ export class NotificationDetailComponent implements OnInit {
     }
   }
 
-  /**
-   * Get affected areas summary
-   */
-  getAffectedAreasSummary(): string {
-    if (!this.notification.affected_areas || !Array.isArray(this.notification.affected_areas)) {
-      return 'No specific areas defined';
-    }
 
-    const count = this.notification.affected_areas.length;
-    if (count === 1) {
-      return '1 area affected';
-    } else {
-      return `${count} areas affected`;
-    }
-  }
-
-  /**
-   * Check if notification has map data
-   */
-  hasMapData(): boolean {
-    return !!(this.notification.affected_areas &&
-           Array.isArray(this.notification.affected_areas) &&
-           this.notification.affected_areas.length > 0);
-  }
-
-  /**
-   * View affected areas on map
-   */
-  viewOnMap() {
-    // TODO: Implement navigation to map with affected areas highlighted
-    console.log('View on map clicked for areas:', this.notification.affected_areas);
-    // You can implement navigation to your map page here
-    // Example: this.router.navigate(['/map'], { queryParams: { areas: JSON.stringify(this.notification.affected_areas) } });
-  }
 }
