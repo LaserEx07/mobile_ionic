@@ -7,7 +7,9 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
-import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap-routing.service';
+import { MapboxRoutingService } from '../../services/mapbox-routing.service';
+import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import * as L from 'leaflet';
 
@@ -28,7 +30,7 @@ interface EvacuationCenter {
   templateUrl: './all-maps.page.html',
   styleUrls: ['./all-maps.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule]
+  imports: [IonicModule, CommonModule, FormsModule, RealTimeNavigationComponent]
 })
 export class AllMapsPage implements OnInit {
   private map!: L.Map;
@@ -41,6 +43,10 @@ export class AllMapsPage implements OnInit {
     earthquake: 0,
     typhoon: 0,
     flood: 0,
+    fire: 0,
+    landslide: 0,
+    others: 0,
+    multiple: 0,
     total: 0
   };
 
@@ -58,12 +64,18 @@ export class AllMapsPage implements OnInit {
     driving?: { duration: number; distance: number };
   } = {};
 
+  // Real-time navigation properties
+  public isRealTimeNavigationActive = false;
+  public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
+  public currentNavigationRoute: Route | null = null;
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private http = inject(HttpClient);
   private router = inject(Router);
   private osmRouting = inject(OpenStreetMapRoutingService);
+  private mapboxRouting = inject(MapboxRoutingService);
   private enhancedDownload = inject(EnhancedDownloadService);
 
   async ngOnInit() {
@@ -161,18 +173,66 @@ export class AllMapsPage implements OnInit {
       console.log('🗺️ ALL MAPS: Fetching all evacuation centers...');
 
       // Get all centers from API
-      const allCenters = await firstValueFrom(
-        this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+      const apiResponse = await firstValueFrom(
+        this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
       );
 
-      console.log('🗺️ ALL MAPS: Total centers received:', allCenters?.length || 0);
+      console.log('🗺️ ALL MAPS: Total centers received:', apiResponse.data?.length || 0);
 
-      this.evacuationCenters = allCenters || [];
+      this.evacuationCenters = apiResponse.data || [];
 
-      // Count centers by disaster type
-      this.centerCounts.earthquake = this.evacuationCenters.filter(c => c.disaster_type === 'Earthquake').length;
-      this.centerCounts.typhoon = this.evacuationCenters.filter(c => c.disaster_type === 'Typhoon').length;
-      this.centerCounts.flood = this.evacuationCenters.filter(c => c.disaster_type === 'Flash Flood').length;
+      // Count centers by disaster type (handle arrays)
+      this.centerCounts.earthquake = this.evacuationCenters.filter(c => {
+        if (Array.isArray(c.disaster_type)) {
+          return c.disaster_type.includes('Earthquake');
+        }
+        return c.disaster_type === 'Earthquake';
+      }).length;
+
+      this.centerCounts.typhoon = this.evacuationCenters.filter(c => {
+        if (Array.isArray(c.disaster_type)) {
+          return c.disaster_type.includes('Typhoon');
+        }
+        return c.disaster_type === 'Typhoon';
+      }).length;
+
+      this.centerCounts.flood = this.evacuationCenters.filter(c => {
+        if (Array.isArray(c.disaster_type)) {
+          return c.disaster_type.includes('Flood');
+        }
+        return c.disaster_type === 'Flood' || c.disaster_type === 'Flash Flood';
+      }).length;
+
+      this.centerCounts.fire = this.evacuationCenters.filter(c => {
+        if (Array.isArray(c.disaster_type)) {
+          return c.disaster_type.includes('Fire');
+        }
+        return c.disaster_type === 'Fire';
+      }).length;
+
+      this.centerCounts.landslide = this.evacuationCenters.filter(c => {
+        if (Array.isArray(c.disaster_type)) {
+          return c.disaster_type.includes('Landslide');
+        }
+        return c.disaster_type === 'Landslide';
+      }).length;
+
+      this.centerCounts.others = this.evacuationCenters.filter(c => {
+        if (Array.isArray(c.disaster_type)) {
+          return c.disaster_type.some(type =>
+            type === 'Others' || (typeof type === 'string' && type.startsWith('Others:'))
+          );
+        }
+        return c.disaster_type === 'Others' || (typeof c.disaster_type === 'string' && c.disaster_type.startsWith('Others:'));
+      }).length;
+
+      this.centerCounts.multiple = this.evacuationCenters.filter(c => {
+        if (Array.isArray(c.disaster_type)) {
+          return c.disaster_type.length > 1;
+        }
+        return false;
+      }).length;
+
       this.centerCounts.total = this.evacuationCenters.length;
 
       console.log('🗺️ ALL MAPS: Center counts:', this.centerCounts);
@@ -197,19 +257,55 @@ export class AllMapsPage implements OnInit {
           let iconUrl = 'assets/Location.png';
           let colorEmoji = '⚪';
 
-          switch(center.disaster_type) {
-            case 'Earthquake':
-              iconUrl = 'assets/forEarthquake.png';
-              colorEmoji = '🟠';
-              break;
-            case 'Typhoon':
-              iconUrl = 'assets/forTyphoon.png';
-              colorEmoji = '🟢';
-              break;
-            case 'Flood':
-              iconUrl = 'assets/forFlood.png';
-              colorEmoji = '🔵';
-              break;
+          // Check if center supports multiple disaster types
+          const disasterTypes = Array.isArray(center.disaster_type) ? center.disaster_type : [center.disaster_type];
+          const isMultipleTypes = disasterTypes.length > 1;
+
+          if (isMultipleTypes) {
+            // Use multiple marker for centers that support multiple disaster types
+            iconUrl = 'assets/forMultiple.png'; // Multiple disaster marker
+            colorEmoji = '🔘';
+            console.log(`🗺️ Multi-type center: ${center.name} supports ${disasterTypes.join(', ')}`);
+          } else {
+            // Single disaster type - use specific icon
+            const primaryType = Array.isArray(center.disaster_type) ? center.disaster_type[0] : center.disaster_type;
+
+            // Check if it's an "Others:" type
+            if (typeof primaryType === 'string' && primaryType.startsWith('Others:')) {
+              iconUrl = 'assets/forOthers.png';
+              colorEmoji = '🟣';
+            } else {
+              switch(primaryType) {
+                case 'Earthquake':
+                  iconUrl = 'assets/forEarthquake.png';
+                  colorEmoji = '🟠';
+                  break;
+                case 'Typhoon':
+                  iconUrl = 'assets/forTyphoon.png';
+                  colorEmoji = '🟢';
+                  break;
+                case 'Flood':
+                  iconUrl = 'assets/forFlood.png';
+                  colorEmoji = '🔵';
+                  break;
+                case 'Fire':
+                  iconUrl = 'assets/forFire.png';
+                  colorEmoji = '🔴';
+                  break;
+                case 'Landslide':
+                  iconUrl = 'assets/forLandslide.png';
+                  colorEmoji = '🟤';
+                  break;
+                case 'Others':
+                  iconUrl = 'assets/forOthers.png';
+                  colorEmoji = '🟣';
+                  break;
+                default:
+                  iconUrl = 'assets/forOthers.png';
+                  colorEmoji = '🟣';
+                  break;
+              }
+            }
           }
 
           const marker = L.marker([lat, lng], {
@@ -228,10 +324,15 @@ export class AllMapsPage implements OnInit {
             this.showNavigationPanel(center);
           });
 
+          // Format disaster types for display
+          const disasterTypeDisplay = Array.isArray(center.disaster_type)
+            ? center.disaster_type.join(', ')
+            : center.disaster_type || 'General';
+
           marker.bindPopup(`
             <div class="evacuation-popup">
               <h3>${colorEmoji} ${center.name}</h3>
-              <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
+              <p><strong>Type:</strong> ${disasterTypeDisplay}</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
               <p><em>Click marker for route options</em></p>
@@ -367,7 +468,11 @@ export class AllMapsPage implements OnInit {
         let iconUrl = 'assets/Location.png';
         let pulseColor = '#3880ff';
 
-        if (center.disaster_type === 'Earthquake') {
+        // Check if it's an "Others:" type
+        if (typeof center.disaster_type === 'string' && center.disaster_type.startsWith('Others:')) {
+          iconUrl = 'assets/forOthers.png';
+          pulseColor = '#9333ea';
+        } else if (center.disaster_type === 'Earthquake') {
           iconUrl = 'assets/forEarthquake.png';
           pulseColor = '#ff9500';
         } else if (center.disaster_type === 'Typhoon') {
@@ -376,6 +481,15 @@ export class AllMapsPage implements OnInit {
         } else if (center.disaster_type === 'Flood') {
           iconUrl = 'assets/forFlood.png';
           pulseColor = '#3dc2ff';
+        } else if (center.disaster_type === 'Fire') {
+          iconUrl = 'assets/forFire.png';
+          pulseColor = '#ef4444';
+        } else if (center.disaster_type === 'Landslide') {
+          iconUrl = 'assets/forLandslide.png';
+          pulseColor = '#8b5a2b';
+        } else if (center.disaster_type === 'Others') {
+          iconUrl = 'assets/forOthers.png';
+          pulseColor = '#9333ea';
         }
 
         // Create pulsing marker
@@ -423,18 +537,13 @@ export class AllMapsPage implements OnInit {
 
       if (!isNaN(lat) && !isNaN(lng)) {
         try {
-          // Convert travel mode to OpenStreetMap profile
-          const osmProfile = this.osmRouting.convertTravelModeToProfile(this.travelMode);
+          // Convert travel mode to Mapbox profile
+          const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(this.travelMode);
 
-          const routeData = await this.osmRouting.getDirections(
+          const routeData = await this.mapboxRouting.getDirections(
             this.userLocation.lng, this.userLocation.lat,
             lng, lat,
-            osmProfile,
-            {
-              geometries: 'geojson',
-              overview: 'simplified',
-              steps: false
-            }
+            mapboxProfile
           );
 
           if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -490,13 +599,7 @@ export class AllMapsPage implements OnInit {
     this.routeDistance = 0;
   }
 
-  // Handle travel mode change from ion-segment
-  onTravelModeChange(event: any) {
-    const value = event.detail.value;
-    if (value === 'walking' || value === 'cycling' || value === 'driving') {
-      this.changeTravelMode(value);
-    }
-  }
+
 
   // Change travel mode
   async changeTravelMode(mode: 'walking' | 'cycling' | 'driving') {
@@ -555,17 +658,12 @@ export class AllMapsPage implements OnInit {
 
     for (const mode of modes) {
       try {
-        const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
 
-        const routeData = await this.osmRouting.getDirections(
+        const routeData = await this.mapboxRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           lng, lat,
-          osmProfile,
-          {
-            geometries: 'geojson',
-            overview: 'simplified',
-            steps: false
-          }
+          mapboxProfile
         );
 
         if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -627,17 +725,12 @@ export class AllMapsPage implements OnInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(travelMode);
 
-        const routeData = await this.osmRouting.getDirections(
+        const routeData = await this.mapboxRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           lng, lat,
-          osmProfile,
-          {
-            geometries: 'geojson',
-            overview: 'full',
-            steps: false
-          }
+          mapboxProfile
         );
 
         if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -735,8 +828,79 @@ export class AllMapsPage implements OnInit {
 
   ionViewWillLeave() {
     this.clearRoutes();
+    // Stop real-time navigation if active
+    if (this.isRealTimeNavigationActive) {
+      this.osmRouting.stopRealTimeRouting();
+    }
     if (this.map) {
       this.map.remove();
     }
+  }
+
+  // Real-time navigation methods
+  startRealTimeNavigation(center: EvacuationCenter) {
+    console.log('🧭 Starting real-time navigation to center:', center.name);
+
+    this.navigationDestination = {
+      lat: Number(center.latitude),
+      lng: Number(center.longitude),
+      name: center.name
+    };
+
+    this.isRealTimeNavigationActive = true;
+
+    // Show success toast
+    this.toastCtrl.create({
+      message: `🧭 Real-time navigation started to ${center.name}`,
+      duration: 3000,
+      color: 'primary'
+    }).then(toast => toast.present());
+  }
+
+  onNavigationRouteUpdated(route: Route) {
+    console.log('🔄 All maps navigation route updated');
+    this.currentNavigationRoute = route;
+    this.updateMapWithNavigationRoute(route);
+  }
+
+  onNavigationStopped() {
+    console.log('⏹️ All maps real-time navigation stopped');
+    this.isRealTimeNavigationActive = false;
+    this.navigationDestination = null;
+    this.currentNavigationRoute = null;
+    this.clearNavigationRoute();
+
+    this.toastCtrl.create({
+      message: '⏹️ Navigation stopped',
+      duration: 2000,
+      color: 'medium'
+    }).then(toast => toast.present());
+  }
+
+  private updateMapWithNavigationRoute(route: Route) {
+    this.clearNavigationRoute();
+
+    if (route.geometry && route.geometry.coordinates) {
+      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
+
+      const navigationRoute = L.geoJSON(routeGeoJSON, {
+        style: {
+          color: '#007bff', // Primary blue color for all maps
+          weight: 6,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }
+      }).addTo(this.map);
+
+      (navigationRoute as any).isNavigationRoute = true;
+    }
+  }
+
+  private clearNavigationRoute() {
+    this.map.eachLayer((layer: any) => {
+      if (layer.isNavigationRoute) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 }

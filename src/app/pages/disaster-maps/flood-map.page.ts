@@ -7,7 +7,8 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
 import * as L from 'leaflet';
-import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap-routing.service';
+import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
 
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 
@@ -18,7 +19,7 @@ import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
   templateUrl: './flood-map.page.html',
   styleUrls: ['./flood-map.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule]
+  imports: [IonicModule, CommonModule, RealTimeNavigationComponent]
 })
 export class FloodMapPage implements OnInit, AfterViewInit {
   private map!: L.Map;
@@ -40,6 +41,11 @@ export class FloodMapPage implements OnInit, AfterViewInit {
     cycling?: { duration: number; distance: number };
     driving?: { duration: number; distance: number };
   } = {};
+
+  // Real-time navigation properties
+  public isRealTimeNavigationActive = false;
+  public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
+  public currentNavigationRoute: Route | null = null;
 
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
@@ -175,9 +181,10 @@ export class FloodMapPage implements OnInit, AfterViewInit {
 
       // Fetch data from API
       try {
-        allCenters = await firstValueFrom(
-          this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
         );
+        allCenters = apiResponse.data || [];
         console.log('🔵 FLOOD MAP: Total centers received from API:', allCenters?.length || 0);
       } catch (apiError) {
         console.error('❌ API failed:', apiError);
@@ -193,10 +200,14 @@ export class FloodMapPage implements OnInit, AfterViewInit {
       // Filter for FLOOD ONLY - handle both array and string formats
       this.evacuationCenters = allCenters.filter(center => {
         if (Array.isArray(center.disaster_type)) {
-          return center.disaster_type.includes('Flood');
+          // Check if the array contains exactly 'Flood' (case-sensitive)
+          return center.disaster_type.some(type => type === 'Flood');
         }
         return center.disaster_type === 'Flood';
       });
+
+      console.log(`🔵 FLOOD MAP: Filtered to ${this.evacuationCenters.length} flood centers`);
+      console.log('🔵 FLOOD MAP: Filtered centers:', this.evacuationCenters.map(c => `${c.name} (${JSON.stringify(c.disaster_type)})`));
 
       console.log(`🔵 FLOOD MAP: Filtered to ${this.evacuationCenters.length} flood centers`);
 
@@ -346,9 +357,51 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   }
 
   async calculateRoutes(centers: EvacuationCenter[]) {
-    for (const center of centers) {
-      await this.calculateRoute(center, 'walking'); // Default to walking
+    if (!this.userLocation) return;
+
+    // Clear previous routes
+    this.clearRoutes();
+
+    for (let i = 0; i < centers.length; i++) {
+      const center = centers[i];
+      const lat = Number(center.latitude);
+      const lng = Number(center.longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        console.log(`🔵 FLOOD MAP: Creating route to center ${i + 1}: ${center.name}`);
+
+        // Create a simple straight-line route (always works)
+        const routeColor = '#0066CC'; // Blue for flood
+
+        const routeLine = L.polyline(
+          [
+            [this.userLocation.lat, this.userLocation.lng], // Start point
+            [lat, lng] // End point
+          ],
+          {
+            color: routeColor,
+            weight: 4,
+            opacity: 0.8,
+            dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
+          }
+        );
+
+        routeLine.addTo(this.map);
+
+        // Calculate distance for display
+        const distance = this.calculateDistance(this.userLocation.lat, this.userLocation.lng, lat, lng);
+        console.log(`✅ FLOOD MAP: Added route to ${center.name} (${(distance/1000).toFixed(2)}km)`);
+      }
     }
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🔵 Routes calculated to ${centers.length} nearest flood centers`,
+      duration: 3000,
+      color: 'primary',
+      position: 'top'
+    });
+    await toast.present();
   }
 
   async calculateRoute(center: EvacuationCenter, travelMode: string) {
@@ -766,8 +819,79 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   }
 
   ionViewWillLeave() {
+    // Stop real-time navigation if active
+    if (this.isRealTimeNavigationActive) {
+      this.osmRouting.stopRealTimeRouting();
+    }
     if (this.map) {
       this.map.remove();
     }
+  }
+
+  // Real-time navigation methods
+  startRealTimeNavigation(center: EvacuationCenter) {
+    console.log('🧭 Starting real-time navigation to flood center:', center.name);
+
+    this.navigationDestination = {
+      lat: Number(center.latitude),
+      lng: Number(center.longitude),
+      name: center.name
+    };
+
+    this.isRealTimeNavigationActive = true;
+
+    // Show success toast
+    this.toastCtrl.create({
+      message: `🧭 Real-time navigation started to ${center.name}`,
+      duration: 3000,
+      color: 'primary'
+    }).then(toast => toast.present());
+  }
+
+  onNavigationRouteUpdated(route: Route) {
+    console.log('🔄 Flood map navigation route updated');
+    this.currentNavigationRoute = route;
+    this.updateMapWithNavigationRoute(route);
+  }
+
+  onNavigationStopped() {
+    console.log('⏹️ Flood map real-time navigation stopped');
+    this.isRealTimeNavigationActive = false;
+    this.navigationDestination = null;
+    this.currentNavigationRoute = null;
+    this.clearNavigationRoute();
+
+    this.toastCtrl.create({
+      message: '⏹️ Navigation stopped',
+      duration: 2000,
+      color: 'medium'
+    }).then(toast => toast.present());
+  }
+
+  private updateMapWithNavigationRoute(route: Route) {
+    this.clearNavigationRoute();
+
+    if (route.geometry && route.geometry.coordinates) {
+      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
+
+      const navigationRoute = L.geoJSON(routeGeoJSON, {
+        style: {
+          color: '#17a2b8', // Flood cyan color
+          weight: 6,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }
+      }).addTo(this.map);
+
+      (navigationRoute as any).isNavigationRoute = true;
+    }
+  }
+
+  private clearNavigationRoute() {
+    this.map.eachLayer((layer: any) => {
+      if (layer.isNavigationRoute) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 }

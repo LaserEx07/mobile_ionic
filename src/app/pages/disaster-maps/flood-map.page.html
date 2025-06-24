@@ -13,7 +13,18 @@
     </ion-button>
   </div>
 
-  
+  <!-- Real-time Navigation Component -->
+  <app-real-time-navigation
+    *ngIf="navigationDestination"
+    [destination]="navigationDestination"
+    [travelMode]="selectedTransportMode === 'walking' ? 'foot-walking' :
+                  selectedTransportMode === 'cycling' ? 'cycling-regular' : 'driving-car'"
+    [autoStart]="isRealTimeNavigationActive"
+    (routeUpdated)="onNavigationRouteUpdated($event)"
+    (navigationStopped)="onNavigationStopped()">
+  </app-real-time-navigation>
+
+
 
   <!-- Navigation Panel (slides from right) -->
   <div class="navigation-panel" [class.show]="selectedCenter">
@@ -71,12 +82,12 @@
           </button>
         </div>
 
-        <!-- Start Navigation Button -->
+        <!-- Start Real-time Navigation Button -->
         <button class="start-navigation-btn"
-                *ngIf="selectedTransportMode && routeInfo"
-                (click)="startNavigation()">
+                *ngIf="selectedTransportMode && routeInfo && selectedCenter"
+                (click)="startRealTimeNavigation(selectedCenter)">
           <ion-icon name="navigate"></ion-icon>
-          <span>Start Navigation</span>
+          <span>Start Real-time Navigation</span>
         </button>
       </div>
     </div>

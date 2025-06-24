@@ -1,0 +1,90 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>OpenRouteService Test</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="container">
+    <div class="header-section">
+      <h1>🗺️ OpenRouteService API Test</h1>
+      <p>Test the OpenRouteService integration and routing functionality</p>
+    </div>
+
+    <div class="controls-section">
+      <ion-button 
+        expand="block" 
+        color="primary" 
+        (click)="runTests()" 
+        [disabled]="isLoading">
+        <ion-icon name="play" slot="start"></ion-icon>
+        {{ isLoading ? 'Running Tests...' : 'Run All Tests' }}
+      </ion-button>
+
+      <ion-button 
+        expand="block" 
+        fill="outline" 
+        color="medium" 
+        (click)="clearLogs()"
+        [disabled]="isLoading">
+        <ion-icon name="trash" slot="start"></ion-icon>
+        Clear Logs
+      </ion-button>
+    </div>
+
+    <div class="results-section" *ngIf="hasTestResults()">
+      <h2>📊 Test Results</h2>
+      <div class="result-grid">
+        <div class="result-item" 
+             [class.success]="testResults.connectionWorks" 
+             [class.error]="testResults.connectionWorks === false">
+          <ion-icon [name]="testResults.connectionWorks ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+          <span>API Connection</span>
+        </div>
+
+        <div class="result-item" 
+             [class.success]="testResults.routingWorks" 
+             [class.error]="testResults.routingWorks === false">
+          <ion-icon [name]="testResults.routingWorks ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+          <span>Route Calculation</span>
+        </div>
+
+        <div class="result-item" 
+             [class.success]="testResults['foot-walkingWorks']" 
+             [class.error]="testResults['foot-walkingWorks'] === false">
+          <ion-icon [name]="testResults['foot-walkingWorks'] ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+          <span>Walking Mode</span>
+        </div>
+
+        <div class="result-item" 
+             [class.success]="testResults['cycling-regularWorks']" 
+             [class.error]="testResults['cycling-regularWorks'] === false">
+          <ion-icon [name]="testResults['cycling-regularWorks'] ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+          <span>Cycling Mode</span>
+        </div>
+
+        <div class="result-item" 
+             [class.success]="testResults['driving-carWorks']" 
+             [class.error]="testResults['driving-carWorks'] === false">
+          <ion-icon [name]="testResults['driving-carWorks'] ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+          <span>Driving Mode</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="logs-section" *ngIf="logs.length > 0">
+      <h2>📝 Test Logs</h2>
+      <div class="logs-container">
+        <div class="log-entry" *ngFor="let log of logs" [innerHTML]="log"></div>
+      </div>
+    </div>
+
+    <div class="loading-section" *ngIf="isLoading">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Running tests...</p>
+    </div>
+  </div>
+</ion-content>

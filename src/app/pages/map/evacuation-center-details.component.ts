@@ -331,7 +331,10 @@ export class EvacuationCenterDetailsComponent implements OnInit {
 
     const normalizedType = type.toLowerCase();
 
-    if (normalizedType.includes('earthquake') || normalizedType.includes('quake')) {
+    // Check if it's an "Others:" type
+    if (type.startsWith('Others:')) {
+      return 'help-circle-outline';
+    } else if (normalizedType.includes('earthquake') || normalizedType.includes('quake')) {
       return 'earth-outline';
     } else if (normalizedType.includes('flood') || normalizedType.includes('flash')) {
       return 'water-outline';
@@ -339,6 +342,10 @@ export class EvacuationCenterDetailsComponent implements OnInit {
       return 'thunderstorm-outline';
     } else if (normalizedType.includes('fire')) {
       return 'flame-outline';
+    } else if (normalizedType.includes('landslide') || normalizedType.includes('slide')) {
+      return 'triangle-outline';
+    } else if (normalizedType.includes('others')) {
+      return 'help-circle-outline';
     }
 
     return 'alert-circle-outline';

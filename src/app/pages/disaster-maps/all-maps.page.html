@@ -13,6 +13,17 @@
     </ion-button>
   </div>
 
+  <!-- Real-time Navigation Component -->
+  <app-real-time-navigation
+    *ngIf="navigationDestination"
+    [destination]="navigationDestination"
+    [travelMode]="selectedTransportMode === 'walking' ? 'foot-walking' :
+                  selectedTransportMode === 'cycling' ? 'cycling-regular' : 'driving-car'"
+    [autoStart]="isRealTimeNavigationActive"
+    (routeUpdated)="onNavigationRouteUpdated($event)"
+    (navigationStopped)="onNavigationStopped()">
+  </app-real-time-navigation>
+
   <!-- Floating info card -->
   <div class="floating-info">
     <ion-card>
@@ -40,6 +51,30 @@
             <span class="disaster-label">Flood:</span>
             <span class="disaster-count">{{ centerCounts.flood }}</span>
           </div>
+
+          <div class="count-row">
+            <span class="disaster-icon">🔴</span>
+            <span class="disaster-label">Fire:</span>
+            <span class="disaster-count">{{ centerCounts.fire }}</span>
+          </div>
+
+          <div class="count-row">
+            <span class="disaster-icon">🟤</span>
+            <span class="disaster-label">Landslide:</span>
+            <span class="disaster-count">{{ centerCounts.landslide }}</span>
+          </div>
+
+          <div class="count-row">
+            <span class="disaster-icon">🟣</span>
+            <span class="disaster-label">Others:</span>
+            <span class="disaster-count">{{ centerCounts.others }}</span>
+          </div>
+
+          <div class="count-row">
+            <span class="disaster-icon">🔘</span>
+            <span class="disaster-label">Multiple:</span>
+            <span class="disaster-count">{{ centerCounts.multiple }}</span>
+          </div>
         </div>
 
         <div class="info-text">
@@ -49,31 +84,7 @@
     </ion-card>
   </div>
 
-  <!-- Transportation Mode Controls -->
-  <div class="transport-controls">
-    <ion-card>
-      <ion-card-content>
-        <div class="transport-header">
-          <ion-icon name="navigate-outline" color="primary"></ion-icon>
-          <span>Travel Mode</span>
-        </div>
-        <ion-segment [(ngModel)]="travelMode" (ionChange)="onTravelModeChange($event)">
-          <ion-segment-button value="walking">
-            <ion-icon name="walk-outline"></ion-icon>
-            <ion-label>Walk</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="cycling">
-            <ion-icon name="bicycle-outline"></ion-icon>
-            <ion-label>Bike</ion-label>
-          </ion-segment-button>
-          <ion-segment-button value="driving">
-            <ion-icon name="car-outline"></ion-icon>
-            <ion-label>Drive</ion-label>
-          </ion-segment-button>
-        </ion-segment>
-      </ion-card-content>
-    </ion-card>
-  </div>
+
 
   <!-- Route Information -->
   <div *ngIf="routeTime && routeDistance" class="route-info">

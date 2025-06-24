@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { IonicModule, AlertController, ToastController, ModalController } from '@ionic/angular';
 import { LoadingService } from '../../services/loading.service';
 import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+import { MapboxRoutingService } from '../../services/mapbox-routing.service';
 import * as L from 'leaflet';
 import { Geolocation } from '@capacitor/geolocation';
 import { HttpClient } from '@angular/common/http';
@@ -411,6 +412,7 @@ export class MapPage implements OnInit, OnDestroy {
   public gpsEnabled = true;
   private loadingService = inject(LoadingService);
   private osmRouting = inject(OpenStreetMapRoutingService);
+  private mapboxRouting = inject(MapboxRoutingService);
   private toastController = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
@@ -465,11 +467,16 @@ export class MapPage implements OnInit, OnDestroy {
 
   /**
    * Get the appropriate icon for a disaster type
-   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood'
+   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood', 'Fire', 'Landslide', 'Others'
    */
   getDisasterIcon(disasterType: string): string {
     if (!disasterType) {
-      return 'assets/forTyphoon.png'; // Default icon
+      return 'assets/forOthers.png'; // Default icon
+    }
+
+    // Check if it's an "Others:" type
+    if (typeof disasterType === 'string' && disasterType.startsWith('Others:')) {
+      return 'assets/forOthers.png';
     }
 
     // Exact match with backend enum values
@@ -480,19 +487,30 @@ export class MapPage implements OnInit, OnDestroy {
         return 'assets/forFlood.png';
       case 'Typhoon':
         return 'assets/forTyphoon.png';
+      case 'Fire':
+        return 'assets/forFire.png';
+      case 'Landslide':
+        return 'assets/forLandslide.png';
+      case 'Others':
+        return 'assets/forOthers.png';
       default:
-        console.warn(`Unknown disaster type: ${disasterType}, using default icon`);
-        return 'assets/forTyphoon.png';
+        console.warn(`Unknown disaster type: ${disasterType}, using Others icon`);
+        return 'assets/forOthers.png';
     }
   }
 
   /**
    * Get the appropriate color for a disaster type
-   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood'
+   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood', 'Fire', 'Landslide', 'Others'
    */
   getDisasterColor(disasterType: string): string {
     if (!disasterType) {
-      return '#3388ff'; // Default blue
+      return '#9333ea'; // Default purple for Others
+    }
+
+    // Check if it's an "Others:" type
+    if (typeof disasterType === 'string' && disasterType.startsWith('Others:')) {
+      return '#9333ea'; // Purple
     }
 
     // Exact match with backend enum values
@@ -503,9 +521,15 @@ export class MapPage implements OnInit, OnDestroy {
         return '#0000ff'; // Blue
       case 'Typhoon':
         return '#008000'; // Green
+      case 'Fire':
+        return '#ef4444'; // Red
+      case 'Landslide':
+        return '#8b5a2b'; // Brown
+      case 'Others':
+        return '#9333ea'; // Purple
       default:
-        console.warn(`Unknown disaster type: ${disasterType}, using default color`);
-        return '#3388ff'; // Default blue
+        console.warn(`Unknown disaster type: ${disasterType}, using Others color`);
+        return '#9333ea'; // Default purple
     }
   }
 
@@ -1131,17 +1155,12 @@ export class MapPage implements OnInit, OnDestroy {
       const userLat = this.userMarker.getLatLng().lat;
       const userLng = this.userMarker.getLatLng().lng;
 
-      const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
+      const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(travelMode);
 
-      const routeData = await this.osmRouting.getDirections(
+      const routeData = await this.mapboxRouting.getDirections(
         userLng, userLat,
         lng, lat,
-        osmProfile,
-        {
-          geometries: 'geojson',
-          overview: 'full',
-          steps: false
-        }
+        mapboxProfile
       );
 
       if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -1739,10 +1758,11 @@ export class MapPage implements OnInit, OnDestroy {
 
       console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
       try {
-        allCenters = await firstValueFrom(
-          this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
         );
-        console.log('📡 RAW API RESPONSE:', allCenters);
+        console.log('📡 RAW API RESPONSE:', apiResponse);
+        allCenters = apiResponse.data || [];
         console.log('📊 TOTAL CENTERS RECEIVED:', allCenters?.length || 0);
       } catch (error) {
         console.error('❌ Failed to fetch evacuation centers:', error);
@@ -2042,9 +2062,10 @@ export class MapPage implements OnInit, OnDestroy {
 
       console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
       try {
-        centers = await firstValueFrom(
-          this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
         );
+        centers = apiResponse.data || [];
         console.log('📡 Received centers from API:', centers);
       } catch (error) {
         console.error('❌ Failed to fetch evacuation centers:', error);
@@ -2203,18 +2224,13 @@ export class MapPage implements OnInit, OnDestroy {
     try {
       console.log('Sending route request to OpenStreetMap');
 
-      // Convert travel mode to OpenStreetMap profile
-      const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
+      // Convert travel mode to Mapbox profile
+      const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(travelMode);
 
-      // Get directions from OpenStreetMap
-      const response = await this.osmRouting.getDirections(
+      // Get directions from Mapbox
+      const response = await this.mapboxRouting.getDirections(
         startLng, startLat, endLng, endLat,
-        osmProfile,
-        {
-          geometries: 'geojson',
-          overview: 'full',
-          steps: true
-        }
+        mapboxProfile
       );
 
       if (!response.routes || response.routes.length === 0) {

@@ -6,10 +6,11 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
-import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap-routing.service';
 
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
+import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
 
 import * as L from 'leaflet';
 
@@ -18,7 +19,7 @@ import * as L from 'leaflet';
   templateUrl: './earthquake-map.page.html',
   styleUrls: ['./earthquake-map.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule]
+  imports: [IonicModule, CommonModule, RealTimeNavigationComponent]
 })
 export class EarthquakeMapPage implements OnInit, AfterViewInit {
   private map!: L.Map;
@@ -44,8 +45,16 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     driving?: { duration: number; distance: number };
   } = {};
 
+  // All centers panel properties
+  public showAllCentersPanel: boolean = false;
+
   // Emergency navigation flag
   private shouldAutoRouteEmergency = false;
+
+  // Real-time navigation properties
+  public isRealTimeNavigationActive = false;
+  public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
+  public currentNavigationRoute: Route | null = null;
 
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
@@ -317,14 +326,15 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         console.log('🟠 EARTHQUAKE MAP: Fetching from API...');
 
         // Add timeout to API call
-        allCenters = await Promise.race([
+        const apiResponse = await Promise.race([
           firstValueFrom(
-            this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+            this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
           ),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('API timeout')), 15000)
           )
         ]);
+        allCenters = apiResponse.data || [];
 
         console.log(`🟠 EARTHQUAKE MAP: API returned ${allCenters?.length || 0} centers`);
       } catch (apiError) {
@@ -346,10 +356,14 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       // Filter for EARTHQUAKE ONLY - handle both array and string formats
       this.evacuationCenters = allCenters.filter(center => {
         if (Array.isArray(center.disaster_type)) {
-          return center.disaster_type.includes('Earthquake');
+          // Check if the array contains exactly 'Earthquake' (case-sensitive)
+          return center.disaster_type.some(type => type === 'Earthquake');
         }
         return center.disaster_type === 'Earthquake';
       });
+
+      console.log(`🟠 EARTHQUAKE MAP: Filtered to ${this.evacuationCenters.length} earthquake centers`);
+      console.log('🟠 EARTHQUAKE MAP: Filtered centers:', this.evacuationCenters.map(c => `${c.name} (${JSON.stringify(c.disaster_type)})`));
 
       if (this.evacuationCenters.length === 0) {
         const alert = await this.alertCtrl.create({
@@ -572,44 +586,40 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        try {
-          const osmProfile = this.osmRouting.convertTravelModeToProfile('walking');
+        console.log(`🟠 EARTHQUAKE MAP: Creating route to center ${i + 1}: ${center.name}`);
 
-          const routeData = await this.osmRouting.getDirections(
-            this.userLocation.lng, this.userLocation.lat,
-            lng, lat,
-            osmProfile,
-            {
-              geometries: 'geojson',
-              overview: 'simplified',
-              steps: false
-            }
-          );
+        // Create a simple straight-line route (always works)
+        const routeColor = '#ff9500'; // Orange for earthquake
 
-          if (routeData && routeData.routes && routeData.routes.length > 0) {
-            const route = routeData.routes[0];
-
-            // Use earthquake color (orange)
-            const routeColor = '#ff9500';
-
-            // Draw route
-            const routeLine = L.polyline(
-              route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
-              {
-                color: routeColor,
-                weight: 4,
-                opacity: 0.8,
-                dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
-              }
-            );
-
-            routeLine.addTo(this.routeLayer);
+        const routeLine = L.polyline(
+          [
+            [this.userLocation.lat, this.userLocation.lng], // Start point
+            [lat, lng] // End point
+          ],
+          {
+            color: routeColor,
+            weight: 4,
+            opacity: 0.8,
+            dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
           }
-        } catch (error) {
-          console.error(`🟠 Error calculating route to center ${i + 1}:`, error);
-        }
+        );
+
+        routeLine.addTo(this.routeLayer);
+
+        // Calculate distance for display
+        const distance = this.calculateDistance(this.userLocation.lat, this.userLocation.lng, lat, lng);
+        console.log(`✅ EARTHQUAKE MAP: Added route to ${center.name} (${(distance/1000).toFixed(2)}km)`);
       }
     }
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🟠 Routes calculated to ${centers.length} nearest earthquake centers`,
+      duration: 3000,
+      color: 'warning',
+      position: 'top'
+    });
+    await toast.present();
   }
 
   // Clear previous routes
@@ -663,6 +673,8 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     this.selectedCenter = null;
     this.selectedTransportMode = null;
     this.routeInfo = {};
+    // Also close all centers panel if open
+    this.showAllCentersPanel = false;
   }
 
   // Select transport mode and show route
@@ -821,6 +833,99 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     this.router.navigate(['/tabs/home']);
   }
 
+  // Show all centers panel
+  showAllCenters() {
+    this.showAllCentersPanel = true;
+    // Close navigation panel if open
+    this.selectedCenter = null;
+  }
+
+  // Close all centers panel
+  closeAllCentersPanel() {
+    this.showAllCentersPanel = false;
+  }
+
+  // Select center from list
+  async selectCenterFromList(center: EvacuationCenter) {
+    // Close all centers panel
+    this.showAllCentersPanel = false;
+
+    // Show navigation panel for selected center
+    await this.showNavigationPanel(center);
+
+    // Center map on selected center
+    const lat = Number(center.latitude);
+    const lng = Number(center.longitude);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      this.map.setView([lat, lng], 16);
+    }
+  }
+
+  // Calculate distance in kilometers for display
+  calculateDistanceInKm(center: EvacuationCenter): string {
+    if (!this.userLocation) return 'N/A';
+
+    const lat = Number(center.latitude);
+    const lng = Number(center.longitude);
+
+    if (isNaN(lat) || isNaN(lng)) return 'N/A';
+
+    const distance = this.calculateDistance(
+      this.userLocation.lat,
+      this.userLocation.lng,
+      lat,
+      lng
+    );
+
+    return (distance / 1000).toFixed(1);
+  }
+
+  // Route to nearest centers (compass button functionality)
+  async routeToNearestCenters() {
+    if (!this.userLocation || this.evacuationCenters.length === 0) {
+      const toast = await this.toastCtrl.create({
+        message: 'Unable to calculate routes. Please ensure location is available.',
+        duration: 3000,
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+
+    try {
+      // Show loading
+      const loading = await this.loadingCtrl.create({
+        message: 'Calculating routes to nearest centers...',
+        spinner: 'crescent'
+      });
+      await loading.present();
+
+      // Route to 2 nearest centers
+      await this.routeToTwoNearestCenters();
+
+      await loading.dismiss();
+
+      // Show success message
+      const toast = await this.toastCtrl.create({
+        message: '🧭 Routes calculated to 2 nearest earthquake evacuation centers',
+        duration: 4000,
+        color: 'warning',
+        position: 'top'
+      });
+      await toast.present();
+
+    } catch (error) {
+      console.error('Error routing to nearest centers:', error);
+
+      const toast = await this.toastCtrl.create({
+        message: 'Error calculating routes. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
   // Enhanced download map functionality with routes
   async downloadMap() {
     if (!this.map) {
@@ -856,8 +961,88 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
   ionViewWillLeave() {
     this.clearRoutes();
+    // Stop real-time navigation if active
+    if (this.isRealTimeNavigationActive) {
+      this.osmRouting.stopRealTimeRouting();
+    }
     if (this.map) {
       this.map.remove();
     }
+  }
+
+  // Real-time navigation methods
+  startRealTimeNavigation(center: EvacuationCenter) {
+    console.log('🧭 Starting real-time navigation to:', center.name);
+
+    this.navigationDestination = {
+      lat: Number(center.latitude),
+      lng: Number(center.longitude),
+      name: center.name
+    };
+
+    this.isRealTimeNavigationActive = true;
+
+    // Show success toast
+    this.toastCtrl.create({
+      message: `🧭 Real-time navigation started to ${center.name}`,
+      duration: 3000,
+      color: 'primary'
+    }).then(toast => toast.present());
+  }
+
+  onNavigationRouteUpdated(route: Route) {
+    console.log('🔄 Navigation route updated');
+    this.currentNavigationRoute = route;
+
+    // Update the map with the new route
+    this.updateMapWithNavigationRoute(route);
+  }
+
+  onNavigationStopped() {
+    console.log('⏹️ Real-time navigation stopped');
+    this.isRealTimeNavigationActive = false;
+    this.navigationDestination = null;
+    this.currentNavigationRoute = null;
+
+    // Clear navigation route from map
+    this.clearNavigationRoute();
+
+    // Show toast
+    this.toastCtrl.create({
+      message: '⏹️ Navigation stopped',
+      duration: 2000,
+      color: 'medium'
+    }).then(toast => toast.present());
+  }
+
+  private updateMapWithNavigationRoute(route: Route) {
+    // Clear existing navigation route
+    this.clearNavigationRoute();
+
+    // Add new navigation route to map
+    if (route.geometry && route.geometry.coordinates) {
+      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
+
+      const navigationRoute = L.geoJSON(routeGeoJSON, {
+        style: {
+          color: '#007bff',
+          weight: 6,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }
+      }).addTo(this.map);
+
+      // Store reference for cleanup
+      (navigationRoute as any).isNavigationRoute = true;
+    }
+  }
+
+  private clearNavigationRoute() {
+    // Remove existing navigation routes
+    this.map.eachLayer((layer: any) => {
+      if (layer.isNavigationRoute) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 }

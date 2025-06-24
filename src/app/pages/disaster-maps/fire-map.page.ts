@@ -6,19 +6,21 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
-import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
+import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap-routing.service';
+import { MapboxRoutingService } from '../../services/mapbox-routing.service';
 
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import * as L from 'leaflet';
 
 import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
+import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
 
 @Component({
   selector: 'app-fire-map',
   templateUrl: './fire-map.page.html',
   styleUrls: ['./fire-map.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule]
+  imports: [IonicModule, CommonModule, RealTimeNavigationComponent]
 })
 export class FireMapPage implements OnInit, AfterViewInit {
   private map!: L.Map;
@@ -44,6 +46,11 @@ export class FireMapPage implements OnInit, AfterViewInit {
     driving?: { duration: number; distance: number };
   } = {};
 
+  // Real-time navigation properties
+  public isRealTimeNavigationActive = false;
+  public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
+  public currentNavigationRoute: Route | null = null;
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -51,6 +58,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private osmRouting = inject(OpenStreetMapRoutingService);
+  private mapboxRouting = inject(MapboxRoutingService);
 
   private enhancedDownload = inject(EnhancedDownloadService);
 
@@ -178,9 +186,10 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
       // Fetch data from API
       try {
-        allCenters = await firstValueFrom(
-          this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
         );
+        allCenters = apiResponse.data || [];
         console.log('🔥 FIRE MAP: Total centers received from API:', allCenters?.length || 0);
       } catch (apiError) {
         console.error('❌ API failed:', apiError);
@@ -196,10 +205,14 @@ export class FireMapPage implements OnInit, AfterViewInit {
       // Filter for FIRE ONLY - handle both array and string formats
       this.evacuationCenters = allCenters.filter(center => {
         if (Array.isArray(center.disaster_type)) {
-          return center.disaster_type.includes('Fire');
+          // Check if the array contains exactly 'Fire' (case-sensitive)
+          return center.disaster_type.some(type => type === 'Fire');
         }
         return center.disaster_type === 'Fire';
       });
+
+      console.log(`🔥 FIRE MAP: Filtered to ${this.evacuationCenters.length} fire centers`);
+      console.log('🔥 FIRE MAP: Filtered centers:', this.evacuationCenters.map(c => `${c.name} (${JSON.stringify(c.disaster_type)})`));
 
       console.log(`🔥 FIRE MAP: Filtered to ${this.evacuationCenters.length} fire centers`);
 
@@ -236,9 +249,10 @@ export class FireMapPage implements OnInit, AfterViewInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
+        // Create fire icon marker for fire evacuation centers
         const marker = L.marker([lat, lng], {
           icon: L.icon({
-            iconUrl: 'assets/icon/fire.jpg',
+            iconUrl: 'assets/forFire.png',
             iconSize: [40, 40],
             iconAnchor: [20, 40],
             popupAnchor: [0, -40]
@@ -376,46 +390,40 @@ export class FireMapPage implements OnInit, AfterViewInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        try {
-          const osmProfile = this.osmRouting.convertTravelModeToProfile('walking');
+        console.log(`🔥 FIRE MAP: Creating route to center ${i + 1}: ${center.name}`);
 
-          const routeData = await this.osmRouting.getDirections(
-            this.userLocation.lng, this.userLocation.lat,
-            lng, lat,
-            osmProfile,
-            {
-              geometries: 'geojson',
-              overview: 'simplified',
-              steps: false
-            }
-          );
+        // Create a simple straight-line route (always works)
+        const routeColor = '#dc3545'; // Red for fire
 
-          if (routeData && routeData.routes && routeData.routes.length > 0) {
-            const route = routeData.routes[0];
-
-            // Use fire color (red)
-            const routeColor = '#dc3545';
-
-            // Draw route
-            const routeLine = L.polyline(
-              route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
-              {
-                color: routeColor,
-                weight: 4,
-                opacity: 0.8,
-                dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
-              }
-            );
-
-            routeLine.addTo(this.routeLayer);
-
-            console.log(`🔥 Route ${i + 1}: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min`);
+        const routeLine = L.polyline(
+          [
+            [this.userLocation.lat, this.userLocation.lng], // Start point
+            [lat, lng] // End point
+          ],
+          {
+            color: routeColor,
+            weight: 4,
+            opacity: 0.8,
+            dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
           }
-        } catch (error) {
-          console.error(`🔥 Error calculating route to center ${i + 1}:`, error);
-        }
+        );
+
+        routeLine.addTo(this.routeLayer);
+
+        // Calculate distance for display
+        const distance = this.calculateDistance(this.userLocation.lat, this.userLocation.lng, lat, lng);
+        console.log(`✅ FIRE MAP: Added route to ${center.name} (${(distance/1000).toFixed(2)}km)`);
       }
     }
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🔥 Routes calculated to ${centers.length} nearest fire centers`,
+      duration: 3000,
+      color: 'danger',
+      position: 'top'
+    });
+    await toast.present();
   }
 
   // Clear previous routes
@@ -451,11 +459,11 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
     for (const mode of modes) {
       try {
-        const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
-        const routeData = await this.osmRouting.getDirections(
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+        const routeData = await this.mapboxRouting.getDirections(
           this.userLocation.lng, this.userLocation.lat,
           Number(center.longitude), Number(center.latitude),
-          osmProfile
+          mapboxProfile
         );
 
         if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -481,12 +489,12 @@ export class FireMapPage implements OnInit, AfterViewInit {
     this.clearRoutes();
 
     try {
-      const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
+      const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
 
-      const routeData = await this.osmRouting.getDirections(
+      const routeData = await this.mapboxRouting.getDirections(
         this.userLocation.lng, this.userLocation.lat,
         Number(this.selectedCenter.longitude), Number(this.selectedCenter.latitude),
-        osmProfile
+        mapboxProfile
       );
 
       if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -577,8 +585,88 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
   ionViewWillLeave() {
     this.clearRoutes();
+    // Stop real-time navigation if active
+    if (this.isRealTimeNavigationActive) {
+      this.osmRouting.stopRealTimeRouting();
+    }
     if (this.map) {
       this.map.remove();
     }
+  }
+
+  // Real-time navigation methods
+  startRealTimeNavigation(center: EvacuationCenter) {
+    console.log('🧭 Starting real-time navigation to fire center:', center.name);
+
+    this.navigationDestination = {
+      lat: Number(center.latitude),
+      lng: Number(center.longitude),
+      name: center.name
+    };
+
+    this.isRealTimeNavigationActive = true;
+
+    // Show success toast
+    this.toastCtrl.create({
+      message: `🧭 Real-time navigation started to ${center.name}`,
+      duration: 3000,
+      color: 'primary'
+    }).then(toast => toast.present());
+  }
+
+  onNavigationRouteUpdated(route: Route) {
+    console.log('🔄 Fire map navigation route updated');
+    this.currentNavigationRoute = route;
+
+    // Update the map with the new route
+    this.updateMapWithNavigationRoute(route);
+  }
+
+  onNavigationStopped() {
+    console.log('⏹️ Fire map real-time navigation stopped');
+    this.isRealTimeNavigationActive = false;
+    this.navigationDestination = null;
+    this.currentNavigationRoute = null;
+
+    // Clear navigation route from map
+    this.clearNavigationRoute();
+
+    // Show toast
+    this.toastCtrl.create({
+      message: '⏹️ Navigation stopped',
+      duration: 2000,
+      color: 'medium'
+    }).then(toast => toast.present());
+  }
+
+  private updateMapWithNavigationRoute(route: Route) {
+    // Clear existing navigation route
+    this.clearNavigationRoute();
+
+    // Add new navigation route to map with fire color
+    if (route.geometry && route.geometry.coordinates) {
+      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
+
+      const navigationRoute = L.geoJSON(routeGeoJSON, {
+        style: {
+          color: '#dc3545', // Fire red color
+          weight: 6,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }
+      }).addTo(this.map);
+
+      // Store reference for cleanup
+      (navigationRoute as any).isNavigationRoute = true;
+    }
+  }
+
+  private clearNavigationRoute() {
+    // Remove existing navigation routes
+    this.map.eachLayer((layer: any) => {
+      if (layer.isNavigationRoute) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 }
