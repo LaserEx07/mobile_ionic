@@ -4,7 +4,7 @@ import { IonicModule, ModalController, ToastController } from '@ionic/angular';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { MapboxRoutingService } from '../../services/mapbox-routing.service';
+import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
 
 interface EvacuationCenter {
   name: string;
@@ -45,7 +45,7 @@ export class EvacuationCenterDetailsComponent implements OnInit {
     private modalCtrl: ModalController,
     private http: HttpClient,
     private toastCtrl: ToastController,
-    private mapboxRouting: MapboxRoutingService
+    private osmRouting: OpenStreetMapRoutingService
   ) {}
 
   async ngOnInit() {
@@ -227,16 +227,16 @@ export class EvacuationCenterDetailsComponent implements OnInit {
       throw new Error('Coordinates out of range');
     }
 
-    console.log(`Calculating Mapbox route from [${startLat}, ${startLng}] to [${endLat}, ${endLng}] using mode: ${mode}`);
+    console.log(`Calculating OpenStreetMap route from [${startLat}, ${startLng}] to [${endLat}, ${endLng}] using mode: ${mode}`);
 
     try {
-      // Convert travel mode to Mapbox profile
-      const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+      // Convert travel mode to OpenStreetMap profile
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
 
-      // Get directions from Mapbox
-      const response = await this.mapboxRouting.getDirections(
+      // Get directions from OpenStreetMap
+      const response = await this.osmRouting.getDirections(
         startLng, startLat, endLng, endLat,
-        mapboxProfile,
+        osmProfile,
         {
           geometries: 'geojson',
           overview: 'simplified', // Use simplified for faster response
@@ -249,30 +249,30 @@ export class EvacuationCenterDetailsComponent implements OnInit {
       }
 
       const route = response.routes[0];
-      console.log(`Received Mapbox response for ${mode} route:`, {
+      console.log(`Received OpenStreetMap response for ${mode} route:`, {
         duration: route.duration,
         distance: route.distance
       });
 
       return {
-        time: route.duration, // Mapbox returns duration in seconds
-        distance: route.distance // Mapbox returns distance in meters
+        time: route.duration, // OpenStreetMap returns duration in seconds
+        distance: route.distance // OpenStreetMap returns distance in meters
       };
     } catch (error: any) {
-      console.error(`Failed to fetch ${mode} route from Mapbox:`, error);
+      console.error(`Failed to fetch ${mode} route from OpenStreetMap:`, error);
 
-      // Provide more specific error messages for Mapbox
+      // Provide more specific error messages for OpenStreetMap
       if (error.message) {
-        if (error.message.includes('Invalid Mapbox access token')) {
-          throw new Error('Invalid Mapbox access token. Please check your token configuration.');
+        if (error.message.includes('Invalid API key')) {
+          throw new Error('Invalid OpenRouteService API key. Please check your token configuration.');
         } else if (error.message.includes('Rate limit exceeded')) {
-          throw new Error('Too many requests to Mapbox. Please wait a moment and try again.');
+          throw new Error('Too many requests to OpenRouteService. Please wait a moment and try again.');
         } else if (error.message.includes('Network error')) {
           throw new Error('Network error. Please check your internet connection.');
         } else if (error.message.includes('No routes found')) {
           throw new Error('No route could be calculated between these points.');
         } else {
-          throw new Error(`Mapbox routing error: ${error.message}`);
+          throw new Error(`OpenStreetMap routing error: ${error.message}`);
         }
       }
 
@@ -331,7 +331,10 @@ export class EvacuationCenterDetailsComponent implements OnInit {
 
     const normalizedType = type.toLowerCase();
 
-    if (normalizedType.includes('earthquake') || normalizedType.includes('quake')) {
+    // Check if it's an "Others:" type
+    if (type.startsWith('Others:')) {
+      return 'help-circle-outline';
+    } else if (normalizedType.includes('earthquake') || normalizedType.includes('quake')) {
       return 'earth-outline';
     } else if (normalizedType.includes('flood') || normalizedType.includes('flash')) {
       return 'water-outline';
@@ -339,6 +342,10 @@ export class EvacuationCenterDetailsComponent implements OnInit {
       return 'thunderstorm-outline';
     } else if (normalizedType.includes('fire')) {
       return 'flame-outline';
+    } else if (normalizedType.includes('landslide') || normalizedType.includes('slide')) {
+      return 'triangle-outline';
+    } else if (normalizedType.includes('others')) {
+      return 'help-circle-outline';
     }
 
     return 'alert-circle-outline';

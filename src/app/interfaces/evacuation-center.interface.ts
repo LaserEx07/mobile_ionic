@@ -14,16 +14,4 @@ export interface EvacuationCenter {
   distance?: number; // For nearest center calculations
 }
 
-export interface OfflineRoute {
-  id?: string;
-  start_lat: number;
-  start_lng: number;
-  end_lat: number;
-  end_lng: number;
-  disaster_type: string;
-  route_data: string; // JSON string of route coordinates
-  distance: number;
-  duration: number;
-  travel_mode: string;
-  created_at?: string;
-}
+

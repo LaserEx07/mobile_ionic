@@ -1,0 +1,76 @@
+.map-container {
+  height: 60vh;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.test-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 1000;
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.feature-list {
+  margin: 0;
+  padding-left: 16px;
+  
+  li {
+    margin-bottom: 4px;
+    font-size: 14px;
+    color: var(--ion-color-medium);
+  }
+}
+
+ion-card {
+  margin-bottom: 12px;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+ion-button {
+  margin-bottom: 8px;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Leaflet popup styling
+:global(.leaflet-popup-content) {
+  .evacuation-popup {
+    h3 {
+      margin: 0 0 8px 0;
+      color: var(--ion-color-primary);
+      font-size: 16px;
+    }
+    
+    p {
+      margin: 4px 0;
+      font-size: 14px;
+      
+      strong {
+        color: var(--ion-color-dark);
+      }
+      
+      em {
+        color: var(--ion-color-medium);
+        font-style: italic;
+      }
+    }
+  }
+}

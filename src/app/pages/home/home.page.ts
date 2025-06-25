@@ -5,8 +5,6 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Subscription, interval } from 'rxjs';
-import { OfflineBannerComponent } from '../../components/offline-banner.component';
-import { OfflineStorageService } from '../../services/offline-storage.service';
 import { NotificationService } from '../../services/notification.service';
 import { EmergencyOverlayService } from '../../services/emergency-overlay.service';
 
@@ -15,10 +13,9 @@ import { EmergencyOverlayService } from '../../services/emergency-overlay.servic
   templateUrl: './home.page.html',
   styleUrls: ['./home.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, OfflineBannerComponent]
+  imports: [IonicModule, CommonModule]
 })
 export class HomePage implements OnInit, OnDestroy {
-  isOffline = false;
   unreadNotificationCount = 0;
   private notificationSubscription: Subscription | null = null;
   private pollSubscription: Subscription | null = null;
@@ -27,7 +24,6 @@ export class HomePage implements OnInit, OnDestroy {
     private router: Router,
     private toastCtrl: ToastController,
     private http: HttpClient,
-    private offlineStorage: OfflineStorageService,
     private notificationService: NotificationService,
     private emergencyOverlay: EmergencyOverlayService
   ) {
@@ -36,9 +32,6 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    const savedOfflineStatus = localStorage.getItem('isOffline');
-    this.isOffline = savedOfflineStatus === 'true';
-
     // Subscribe to notification count updates
     this.notificationSubscription = this.notificationService.unreadCount$.subscribe(count => {
       this.unreadNotificationCount = count;
@@ -50,8 +43,6 @@ export class HomePage implements OnInit, OnDestroy {
     // Poll for unread count every 30 seconds
     this.pollSubscription = interval(30000).subscribe(() => {
       this.notificationService.refreshUnreadCount();
-      // Also trigger background sync if needed
-      this.triggerBackgroundSync();
     });
   }
 
@@ -64,10 +55,7 @@ export class HomePage implements OnInit, OnDestroy {
     }
   }
 
-  toggleStatus() {
-    this.isOffline = !this.isOffline;
-    localStorage.setItem('isOffline', String(this.isOffline));
-  }
+
 
   openDisasterMap(disasterType: string) {
     console.log(`🏠 HOME: Opening disaster-specific map for: ${disasterType}`);
@@ -140,52 +128,5 @@ export class HomePage implements OnInit, OnDestroy {
 
 
 
-  // Offline banner event handlers
-  onOfflineModeEnabled() {
-    console.log('🔄 Offline mode enabled from banner');
-    this.isOffline = true;
-    this.showToast('Offline mode enabled. Using cached data.', 'success');
-  }
 
-  onDataSynced() {
-    console.log('🔄 Data synced from banner');
-    this.showToast('Evacuation data updated successfully', 'success');
-  }
-
-  private async showToast(message: string, color: string) {
-    const toast = await this.toastCtrl.create({
-      message,
-      duration: 3000,
-      color,
-      position: 'bottom'
-    });
-    await toast.present();
-  }
-
-  /**
-   * Trigger background sync for offline data
-   */
-  private async triggerBackgroundSync() {
-    if (navigator.onLine && !this.offlineStorage.isOfflineMode()) {
-      try {
-        const hasData = await this.offlineStorage.isDataAvailable();
-        const lastSync = this.offlineStorage.getLastSyncTime();
-
-        // Sync if no data or data is older than 1 hour
-        let needsSync = !hasData;
-        if (lastSync) {
-          const lastSyncDate = new Date(lastSync);
-          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-          needsSync = lastSyncDate < oneHourAgo;
-        }
-
-        if (needsSync) {
-          console.log('🔄 Background sync triggered from home page');
-          await this.offlineStorage.syncEvacuationCenters();
-        }
-      } catch (error) {
-        console.log('Background sync failed silently:', error);
-      }
-    }
-  }
 }

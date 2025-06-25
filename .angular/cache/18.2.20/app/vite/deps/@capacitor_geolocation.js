@@ -1,54 +1,14 @@
 import {
-  registerPlugin
-} from "./chunk-JF6L5S3V.js";
+  y
+} from "./chunk-QEO6P72C.js";
 import {
-  __async
-} from "./chunk-SCNEKAWF.js";
-
-// node_modules/@capacitor/synapse/dist/synapse.mjs
-function s(t) {
-  t.CapacitorUtils.Synapse = new Proxy({}, {
-    get(e, o) {
-      return new Proxy({}, {
-        get(w, r) {
-          return (c, p, n) => {
-            const i = t.Capacitor.Plugins[o];
-            if (i === void 0) {
-              n(new Error(`Capacitor plugin ${o} not found`));
-              return;
-            }
-            if (typeof i[r] != "function") {
-              n(new Error(`Method ${r} not found in Capacitor plugin ${o}`));
-              return;
-            }
-            (() => __async(this, null, function* () {
-              try {
-                const a = yield i[r](c);
-                p(a);
-              } catch (a) {
-                n(a);
-              }
-            }))();
-          };
-        }
-      });
-    }
-  });
-}
-function u(t) {
-  t.CapacitorUtils.Synapse = new Proxy({}, {
-    get(e, o) {
-      return t.cordova.plugins[o];
-    }
-  });
-}
-function y(t = false) {
-  window.CapacitorUtils = window.CapacitorUtils || {}, window.Capacitor !== void 0 && !t ? s(window) : window.cordova !== void 0 && u(window);
-}
+  registerPlugin
+} from "./chunk-QU63WDX7.js";
+import "./chunk-SCNEKAWF.js";
 
 // node_modules/@capacitor/geolocation/dist/esm/index.js
 var Geolocation = registerPlugin("Geolocation", {
-  web: () => import("./web-IKTJPGFD.js").then((m) => new m.GeolocationWeb())
+  web: () => import("./web-D47X2BKJ.js").then((m) => new m.GeolocationWeb())
 });
 y();
 export {

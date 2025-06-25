@@ -1,0 +1,62 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()">
+        <ion-icon name="arrow-back"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>🧪 Download Test</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <!-- Map Container -->
+  <div id="test-map" class="map-container"></div>
+
+  <!-- Test Controls -->
+  <div class="test-controls">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>Download Tests</ion-card-title>
+        <ion-card-subtitle>Test the enhanced map download functionality</ion-card-subtitle>
+      </ion-card-header>
+      
+      <ion-card-content>
+        <ion-button 
+          expand="block" 
+          fill="solid" 
+          color="primary"
+          (click)="testBasicDownload()">
+          <ion-icon name="download" slot="start"></ion-icon>
+          Test Basic Download
+        </ion-button>
+        
+        <ion-button 
+          expand="block" 
+          fill="outline" 
+          color="secondary"
+          (click)="testOfflineDownload()">
+          <ion-icon name="cloud-offline" slot="start"></ion-icon>
+          Test Offline Download
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Info Card -->
+    <ion-card>
+      <ion-card-content>
+        <div class="info-row">
+          <ion-icon name="information-circle" color="primary"></ion-icon>
+          <span>Test Features</span>
+        </div>
+        <ul class="feature-list">
+          <li>✅ Multiple evacuation center markers</li>
+          <li>✅ User location marker</li>
+          <li>✅ Route overlay (orange line)</li>
+          <li>✅ Popup content preservation</li>
+          <li>✅ High-resolution output</li>
+        </ul>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

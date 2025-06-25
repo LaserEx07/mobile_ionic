@@ -3,9 +3,8 @@ import { environment } from 'src/environments/environment';
 import { CommonModule } from '@angular/common';
 import { IonicModule, AlertController, ToastController, ModalController } from '@ionic/angular';
 import { LoadingService } from '../../services/loading.service';
+import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
 import { MapboxRoutingService } from '../../services/mapbox-routing.service';
-import { OfflineStorageService } from '../../services/offline-storage.service';
-import { OfflineMapService } from '../../services/offline-map.service';
 import * as L from 'leaflet';
 import { Geolocation } from '@capacitor/geolocation';
 import { HttpClient } from '@angular/common/http';
@@ -411,11 +410,9 @@ export class MapPage implements OnInit, OnDestroy {
   private userMarker: L.Marker<any> | null = null;
   public evacuationCenters: EvacuationCenter[] = []; // Changed to public for template access
   public gpsEnabled = true;
-  private isOnline = true; // Track online/offline status
   private loadingService = inject(LoadingService);
+  private osmRouting = inject(OpenStreetMapRoutingService);
   private mapboxRouting = inject(MapboxRoutingService);
-  public offlineStorage = inject(OfflineStorageService);
-  private offlineMapService = inject(OfflineMapService);
   private toastController = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private toastCtrl = inject(ToastController);
@@ -454,501 +451,32 @@ export class MapPage implements OnInit, OnDestroy {
     return disasterType;
   }
 
-  /**
-   * Set up network monitoring for automatic offline mode
-   */
-  setupNetworkMonitoring() {
-    // Listen for online/offline events
-    window.addEventListener('online', () => {
-      console.log('🌐 Network connection restored');
-      this.handleNetworkOnline();
-    });
 
-    window.addEventListener('offline', () => {
-      console.log('📡 Network connection lost - switching to offline mode');
-      this.handleNetworkOffline();
-    });
 
-    // Initial network status check
-    if (!navigator.onLine) {
-      console.log('📡 Starting in offline mode');
-      this.handleNetworkOffline();
-    }
-  }
 
-  /**
-   * Handle network going online
-   */
-  async handleNetworkOnline() {
-    // Don't override manual offline mode
-    if (this.offlineStorage.isOfflineMode()) {
-      console.log('🔄 Manual offline mode is enabled, staying offline');
-      return;
-    }
 
-    // Switch back to online mode
-    console.log('🌐 Switching back to online mode');
 
-    // Reload map with online tiles
-    if (this.map) {
-      this.map.eachLayer((layer) => {
-        if (layer instanceof L.TileLayer) {
-          this.map!.removeLayer(layer);
-        }
-      });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'OpenStreetMap contributors',
-        maxZoom: 19,
-        minZoom: 8
-      }).addTo(this.map);
-    }
 
-    // Sync fresh data
-    await this.syncOfflineData();
 
-    // Show success message
-    this.showNetworkStatusToast('🌐 Connection restored - Online mode active', 'success');
-  }
 
-  /**
-   * Handle network going offline
-   */
-  async handleNetworkOffline() {
-    console.log('📡 Automatically switching to offline mode due to network loss');
-    console.log('🔍 DEBUG: handleNetworkOffline called');
 
-    // Switch to offline tiles
-    if (this.map) {
-      console.log('🔍 DEBUG: Switching map tiles to offline');
-      this.map.eachLayer((layer) => {
-        if (layer instanceof L.TileLayer) {
-          this.map!.removeLayer(layer);
-        }
-      });
 
-      const offlineLayer = this.offlineMapService.createOfflineTileLayer();
-      offlineLayer.addTo(this.map);
-      console.log('🔍 DEBUG: Offline tiles added');
-    }
 
-    // Load offline evacuation centers (all types for "see whole map" view)
-    console.log('🔍 DEBUG: About to load offline evacuation centers (all types)');
-    await this.loadOfflineEvacuationCenters('all');
 
-    // Show offline mode message with continue button
-    this.showOfflineTransitionAlert();
-  }
-
-  /**
-   * Show alert when transitioning to offline mode
-   */
-  async showOfflineTransitionAlert() {
-    const alert = await this.alertCtrl.create({
-      header: '📡 Connection Lost',
-      message: `Your internet connection has been lost. The app has automatically switched to offline mode using cached data.
-
-      <strong>Available offline:</strong>
-      • Cached evacuation centers
-      • Basic map tiles
-      • Your current location
-
-      <strong>Limited offline:</strong>
-      • No routing/directions
-      • No real-time updates`,
-      buttons: [
-        {
-          text: 'Continue Offline',
-          role: 'confirm',
-          cssClass: 'alert-button-confirm'
-        }
-      ],
-      cssClass: 'offline-transition-alert'
-    });
-
-    await alert.present();
-  }
-
-  /**
-   * Show network status toast
-   */
-  async showNetworkStatusToast(message: string, color: string) {
-    const toast = await this.toastController.create({
-      message: message,
-      duration: 3000,
-      position: 'top',
-      color: color,
-      buttons: [
-        {
-          text: 'OK',
-          role: 'cancel'
-        }
-      ]
-    });
-    await toast.present();
-  }
-
-  /**
-   * Sync evacuation centers for offline use
-   */
-  async syncOfflineData() {
-    try {
-      console.log('🔄 Syncing evacuation centers for offline use...');
-
-      // Fetch evacuation centers from API
-      const centers = await firstValueFrom(
-        this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-      );
-
-      if (centers && centers.length > 0) {
-        console.log('🔍 DEBUG: Raw centers from API:', centers);
-
-        // Convert to offline storage format
-        const offlineCenters = centers.map(center => ({
-          id: center.id,
-          name: center.name,
-          address: center.address || '',
-          latitude: center.latitude,
-          longitude: center.longitude,
-          capacity: center.capacity,
-          status: center.status,
-          disaster_type: center.disaster_type,
-          contact: center.contact
-        }));
-
-        console.log('🔍 DEBUG: Converted offline centers:', offlineCenters);
-
-        // Save to offline storage
-        await this.offlineStorage.saveEvacuationCenters(offlineCenters);
-        console.log(`✅ Synced ${centers.length} evacuation centers for offline use`);
-
-        // Verify what was actually saved
-        const savedCenters = await this.offlineStorage.getEvacuationCenters();
-        console.log('🔍 DEBUG: Verified saved centers:', savedCenters);
-      }
-    } catch (error) {
-      console.warn('⚠️ Failed to sync offline data:', error);
-      // Don't show error to user as this is background sync
-    }
-  }
-
-  /**
-   * Toggle offline mode for testing
-   */
-  async toggleOfflineMode() {
-    const isCurrentlyOffline = this.offlineStorage.isOfflineMode();
-
-    if (isCurrentlyOffline) {
-      // Switch to online mode
-      this.offlineStorage.setOfflineMode(false);
-      console.log('🌐 Switched to online mode');
-
-      // Reload map with online tiles
-      if (this.map) {
-        this.map.eachLayer((layer) => {
-          if (layer instanceof L.TileLayer) {
-            this.map!.removeLayer(layer);
-          }
-        });
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: 'OpenStreetMap contributors',
-          maxZoom: 19,
-          minZoom: 8
-        }).addTo(this.map);
-      }
-    } else {
-      // Switch to offline mode
-      this.offlineStorage.setOfflineMode(true);
-      console.log('🔄 Switched to offline mode');
-
-      // Reload map with offline tiles
-      if (this.map) {
-        this.map.eachLayer((layer) => {
-          if (layer instanceof L.TileLayer) {
-            this.map!.removeLayer(layer);
-          }
-        });
-
-        const offlineLayer = this.offlineMapService.createOfflineTileLayer();
-        offlineLayer.addTo(this.map);
-      }
-
-      // Load offline evacuation centers (all types)
-      await this.loadOfflineEvacuationCenters('all');
-    }
-  }
-
-  /**
-   * Load evacuation centers from offline storage
-   */
-  async loadOfflineEvacuationCenters(disasterType?: string) {
-    try {
-      console.log('🔍 DEBUG: Loading offline evacuation centers...');
-      console.log('🔍 DEBUG: Disaster type filter:', disasterType);
-
-      // Get all offline centers (no filter initially)
-      const offlineCenters = await this.offlineStorage.getEvacuationCenters();
-      console.log('🔍 DEBUG: Raw offline centers loaded:', offlineCenters);
-
-      if (offlineCenters && offlineCenters.length > 0) {
-        console.log(`📍 Loaded ${offlineCenters.length} evacuation centers from offline storage`);
-
-        // Filter by disaster type if specified
-        let filteredCenters = offlineCenters;
-        if (disasterType && disasterType !== 'all') {
-          filteredCenters = offlineCenters.filter(center => {
-            if (!center.disaster_type) return false;
-            if (Array.isArray(center.disaster_type)) {
-              return center.disaster_type.some(type =>
-                type.toLowerCase() === disasterType.toLowerCase()
-              );
-            }
-            return center.disaster_type.toLowerCase() === disasterType.toLowerCase();
-          });
-          console.log(`🔍 DEBUG: Filtered to ${filteredCenters.length} centers for disaster type: ${disasterType}`);
-        }
-
-        // Convert offline centers to map format
-        this.evacuationCenters = filteredCenters.map(center => ({
-          id: center.id,
-          name: center.name,
-          address: center.address,
-          latitude: center.latitude,
-          longitude: center.longitude,
-          capacity: center.capacity,
-          status: center.status,
-          disaster_type: center.disaster_type,
-          contact: center.contact
-        }));
-
-        console.log('🔍 DEBUG: Final evacuation centers for map:', this.evacuationCenters);
-        console.log('🔍 DEBUG: Disaster types in centers:', this.evacuationCenters.map(c => c.disaster_type));
-
-        // Display markers on map
-        console.log('🔍 DEBUG: About to add offline markers...');
-        this.addOfflineMarkers();
-      } else {
-        console.warn('⚠️ No offline evacuation centers available');
-        console.log('🔍 DEBUG: offlineCenters is:', offlineCenters);
-        this.evacuationCenters = [];
-      }
-    } catch (error) {
-      console.error('❌ Error loading offline evacuation centers:', error);
-      this.evacuationCenters = [];
-    }
-  }
-
-  /**
-   * Add markers for offline evacuation centers
-   */
-  addOfflineMarkers() {
-    console.log('🔍 DEBUG: addOfflineMarkers called');
-    console.log('🔍 DEBUG: Map exists?', !!this.map);
-    console.log('🔍 DEBUG: Evacuation centers count:', this.evacuationCenters.length);
-    console.log('🔍 DEBUG: Evacuation centers:', this.evacuationCenters);
-
-    if (!this.map) {
-      console.error('❌ Map not initialized');
-      return;
-    }
-
-    if (!this.evacuationCenters.length) {
-      console.warn('⚠️ No evacuation centers to display');
-      return;
-    }
-
-    // Clear existing evacuation center markers (keep user marker)
-    let removedCount = 0;
-    this.map.eachLayer(layer => {
-      if (layer instanceof L.Marker && layer !== this.userMarker) {
-        this.map!.removeLayer(layer);
-        removedCount++;
-      }
-    });
-    console.log(`🧹 Removed ${removedCount} existing markers`);
-
-    // Add markers for each evacuation center
-    let addedCount = 0;
-    this.evacuationCenters.forEach((center, index) => {
-      console.log(`🔍 DEBUG: Processing center ${index + 1}:`, center);
-
-      const lat = Number(center.latitude);
-      const lng = Number(center.longitude);
-      console.log(`🔍 DEBUG: Coordinates: lat=${lat}, lng=${lng}`);
-
-      if (!isNaN(lat) && !isNaN(lng)) {
-        // Get icon based on disaster type
-        const iconUrl = this.getDisasterIcon(this.getPrimaryDisasterType(center.disaster_type));
-        console.log(`🔍 DEBUG: Icon URL: ${iconUrl}`);
-
-        const marker = L.marker([lat, lng], {
-          icon: L.icon({
-            iconUrl: iconUrl,
-            iconSize: [40, 40],
-            iconAnchor: [20, 40],
-            popupAnchor: [0, -40]
-          })
-        });
-
-        const popupContent = `
-          <div class="evacuation-popup">
-            <h3>${center.name || 'Evacuation Center'}</h3>
-            <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
-            <p><strong>Address:</strong> ${center.address || 'N/A'}</p>
-            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            <p><strong>Status:</strong> ${center.status || 'N/A'}</p>
-            <p><em>Offline Mode - Limited functionality</em></p>
-          </div>
-        `;
-
-        marker.bindPopup(popupContent);
-        marker.addTo(this.map);
-        addedCount++;
-        console.log(`✅ Added marker ${addedCount} for: ${center.name}`);
-      } else {
-        console.error(`❌ Invalid coordinates for center: ${center.name} (lat=${lat}, lng=${lng})`);
-      }
-    });
-
-    console.log(`✅ Added ${addedCount} offline markers to map`);
-  }
-
-  /**
-   * Debug method to force load offline data
-   */
-  async debugLoadOfflineData() {
-    console.log('🐛 DEBUG: Force loading offline data (all disaster types)...');
-    await this.loadOfflineEvacuationCenters('all');
-  }
-
-  /**
-   * Export offline data for sharing or backup
-   */
-  async exportOfflineData() {
-    try {
-      console.log('📦 Exporting offline data...');
-
-      const evacuationCenters = await this.offlineStorage.getEvacuationCenters();
-      const lastSyncTime = this.offlineStorage.getLastSyncTime();
-      const storageInfo = this.offlineStorage.getStorageInfo();
-
-      const exportData = {
-        evacuation_centers: evacuationCenters,
-        export_timestamp: new Date().toISOString(),
-        last_sync_time: lastSyncTime,
-        total_centers: evacuationCenters.length,
-        storage_info: {
-          used_mb: (storageInfo.used / (1024 * 1024)).toFixed(2),
-          percentage: storageInfo.percentage.toFixed(1)
-        },
-        disaster_types: [...new Set(evacuationCenters.map(c => c.disaster_type))],
-        app_version: 'Alerto v1.0'
-      };
-
-      // Create downloadable file
-      const dataStr = JSON.stringify(exportData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-
-      // Create download link
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `alerto-offline-data-${new Date().toISOString().split('T')[0]}.json`;
-
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      // Show success message
-      const alert = await this.alertCtrl.create({
-        header: 'Export Successful',
-        message: `Exported ${evacuationCenters.length} evacuation centers to your downloads folder.`,
-        buttons: ['OK']
-      });
-      await alert.present();
-
-      console.log('✅ Offline data exported successfully');
-    } catch (error) {
-      console.error('❌ Failed to export offline data:', error);
-
-      const alert = await this.alertCtrl.create({
-        header: 'Export Failed',
-        message: 'Failed to export offline data. Please try again.',
-        buttons: ['OK']
-      });
-      await alert.present();
-    }
-  }
-
-  /**
-   * Share offline data via native sharing
-   */
-  async shareOfflineData() {
-    try {
-      console.log('📤 Sharing offline data...');
-
-      const evacuationCenters = await this.offlineStorage.getEvacuationCenters();
-
-      if (evacuationCenters.length === 0) {
-        const alert = await this.alertCtrl.create({
-          header: 'No Data to Share',
-          message: 'No offline evacuation data available to share. Please sync data first.',
-          buttons: ['OK']
-        });
-        await alert.present();
-        return;
-      }
-
-      const shareText = `Alerto Evacuation Centers Data\n\n` +
-        `Total Centers: ${evacuationCenters.length}\n` +
-        `Disaster Types: ${[...new Set(evacuationCenters.map(c => c.disaster_type))].join(', ')}\n\n` +
-        `Centers:\n` +
-        evacuationCenters.map(center =>
-          `• ${center.name} (${center.disaster_type})\n  ${center.address}\n  Coordinates: ${center.latitude}, ${center.longitude}`
-        ).join('\n\n') +
-        `\n\nExported from Alerto App on ${new Date().toLocaleDateString()}`;
-
-      // Try to use native sharing if available
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Alerto Evacuation Centers',
-          text: shareText
-        });
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(shareText);
-
-        const toast = await this.toastCtrl.create({
-          message: 'Evacuation data copied to clipboard!',
-          duration: 3000,
-          color: 'success'
-        });
-        await toast.present();
-      }
-
-      console.log('✅ Offline data shared successfully');
-    } catch (error) {
-      console.error('❌ Failed to share offline data:', error);
-
-      const toast = await this.toastCtrl.create({
-        message: 'Failed to share data. Please try again.',
-        duration: 3000,
-        color: 'danger'
-      });
-      await toast.present();
-    }
-  }
 
   /**
    * Get the appropriate icon for a disaster type
-   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood'
+   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood', 'Fire', 'Landslide', 'Others'
    */
   getDisasterIcon(disasterType: string): string {
     if (!disasterType) {
-      return 'assets/forTyphoon.png'; // Default icon
+      return 'assets/forOthers.png'; // Default icon
+    }
+
+    // Check if it's an "Others:" type
+    if (typeof disasterType === 'string' && disasterType.startsWith('Others:')) {
+      return 'assets/forOthers.png';
     }
 
     // Exact match with backend enum values
@@ -959,19 +487,30 @@ export class MapPage implements OnInit, OnDestroy {
         return 'assets/forFlood.png';
       case 'Typhoon':
         return 'assets/forTyphoon.png';
+      case 'Fire':
+        return 'assets/forFire.png';
+      case 'Landslide':
+        return 'assets/forLandslide.png';
+      case 'Others':
+        return 'assets/forOthers.png';
       default:
-        console.warn(`Unknown disaster type: ${disasterType}, using default icon`);
-        return 'assets/forTyphoon.png';
+        console.warn(`Unknown disaster type: ${disasterType}, using Others icon`);
+        return 'assets/forOthers.png';
     }
   }
 
   /**
    * Get the appropriate color for a disaster type
-   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood'
+   * Uses exact match with backend enum values: 'Earthquake', 'Typhoon', 'Flood', 'Fire', 'Landslide', 'Others'
    */
   getDisasterColor(disasterType: string): string {
     if (!disasterType) {
-      return '#3388ff'; // Default blue
+      return '#9333ea'; // Default purple for Others
+    }
+
+    // Check if it's an "Others:" type
+    if (typeof disasterType === 'string' && disasterType.startsWith('Others:')) {
+      return '#9333ea'; // Purple
     }
 
     // Exact match with backend enum values
@@ -982,9 +521,15 @@ export class MapPage implements OnInit, OnDestroy {
         return '#0000ff'; // Blue
       case 'Typhoon':
         return '#008000'; // Green
+      case 'Fire':
+        return '#ef4444'; // Red
+      case 'Landslide':
+        return '#8b5a2b'; // Brown
+      case 'Others':
+        return '#9333ea'; // Purple
       default:
-        console.warn(`Unknown disaster type: ${disasterType}, using default color`);
-        return '#3388ff'; // Default blue
+        console.warn(`Unknown disaster type: ${disasterType}, using Others color`);
+        return '#9333ea'; // Default purple
     }
   }
 
@@ -1116,14 +661,6 @@ export class MapPage implements OnInit, OnDestroy {
 
   async ngOnInit() {
     console.log('🗺️ MAIN MAP: Initializing clean map (tabs/map)...');
-
-    // Set up network monitoring
-    this.setupNetworkMonitoring();
-
-    // Sync data when online for offline use
-    if (navigator.onLine && !this.offlineStorage.isOfflineMode()) {
-      await this.syncOfflineData();
-    }
 
     // Check if we have query parameters from search page
     this.route.queryParams.subscribe((params: any) => {
@@ -1623,12 +1160,7 @@ export class MapPage implements OnInit, OnDestroy {
       const routeData = await this.mapboxRouting.getDirections(
         userLng, userLat,
         lng, lat,
-        mapboxProfile,
-        {
-          geometries: 'geojson',
-          overview: 'full',
-          steps: false
-        }
+        mapboxProfile
       );
 
       if (routeData && routeData.routes && routeData.routes.length > 0) {
@@ -2085,23 +1617,13 @@ export class MapPage implements OnInit, OnDestroy {
     this.map = L.map('map').setView([lat, lng], 15);
     console.log('Map initialized');
 
-    // Check if offline mode is enabled or if we're offline
-    if (this.offlineStorage.isOfflineMode() || !navigator.onLine) {
-      console.log('🔄 Loading offline map tiles...');
-      // Use offline map service for cached tiles
-      const offlineLayer = this.offlineMapService.createOfflineTileLayer();
-      offlineLayer.addTo(this.map);
-    } else {
-      // Load online map tiles
-      console.log('🌐 Loading online map tiles...');
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'OpenStreetMap contributors',
-        maxZoom: 19,
-        minZoom: 8
-      }).addTo(this.map);
-    }
-
-    this.isOnline = true;
+    // Load online map tiles
+    console.log('🌐 Loading online map tiles...');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'OpenStreetMap contributors',
+      maxZoom: 19,
+      minZoom: 8
+    }).addTo(this.map);
 
     if (this.gpsEnabled) {
       console.log('GPS is enabled, adding user marker');
@@ -2234,42 +1756,22 @@ export class MapPage implements OnInit, OnDestroy {
 
       let allCenters: EvacuationCenter[] = [];
 
-      // Check if offline mode is enabled or if we're offline
-      if (this.offlineStorage.isOfflineMode() || !this.offlineStorage.isOnline()) {
-        console.log('🔄 Loading evacuation centers from offline storage');
-        allCenters = await this.offlineStorage.getEvacuationCenters();
-        console.log('📱 OFFLINE DATA:', allCenters);
-        console.log('📊 TOTAL CACHED CENTERS:', allCenters?.length || 0);
-
-        if (allCenters.length === 0) {
-          console.warn('⚠️ No cached evacuation centers found');
-          this.toastCtrl.create({
-            message: 'No offline evacuation data available. Please sync data when online.',
-            duration: 4000,
-            color: 'warning'
-          }).then(toast => toast.present());
-        }
-      } else {
-        console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
-        try {
-          allCenters = await firstValueFrom(
-            this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-          );
-          console.log('📡 RAW API RESPONSE:', allCenters);
-          console.log('📊 TOTAL CENTERS RECEIVED:', allCenters?.length || 0);
-        } catch (error) {
-          console.error('❌ Failed to fetch online data, trying offline cache:', error);
-          allCenters = await this.offlineStorage.getEvacuationCenters();
-          console.log('📱 FALLBACK TO OFFLINE DATA:', allCenters);
-
-          if (allCenters.length > 0) {
-            this.toastCtrl.create({
-              message: 'Using cached evacuation data due to network error.',
-              duration: 3000,
-              color: 'warning'
-            }).then(toast => toast.present());
-          }
-        }
+      console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
+      try {
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
+        );
+        console.log('📡 RAW API RESPONSE:', apiResponse);
+        allCenters = apiResponse.data || [];
+        console.log('📊 TOTAL CENTERS RECEIVED:', allCenters?.length || 0);
+      } catch (error) {
+        console.error('❌ Failed to fetch evacuation centers:', error);
+        this.toastCtrl.create({
+          message: 'Failed to load evacuation centers. Please check your internet connection.',
+          duration: 3000,
+          color: 'danger'
+        }).then(toast => toast.present());
+        return;
       }
 
       // Debug: Show all disaster types in the database
@@ -2558,40 +2060,21 @@ export class MapPage implements OnInit, OnDestroy {
 
       let centers: EvacuationCenter[] = [];
 
-      // Check if offline mode is enabled or if we're offline
-      if (this.offlineStorage.isOfflineMode() || !this.offlineStorage.isOnline()) {
-        console.log('🔄 Loading evacuation centers from offline storage');
-        centers = await this.offlineStorage.getEvacuationCenters();
-        console.log('📱 OFFLINE DATA:', centers);
-
-        if (centers.length === 0) {
-          console.warn('⚠️ No cached evacuation centers found');
-          this.toastCtrl.create({
-            message: 'No offline evacuation data available. Please sync data when online.',
-            duration: 4000,
-            color: 'warning'
-          }).then(toast => toast.present());
-        }
-      } else {
-        console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
-        try {
-          centers = await firstValueFrom(
-            this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-          );
-          console.log('📡 Received centers from API:', centers);
-        } catch (error) {
-          console.error('❌ Failed to fetch online data, trying offline cache:', error);
-          centers = await this.offlineStorage.getEvacuationCenters();
-          console.log('📱 FALLBACK TO OFFLINE DATA:', centers);
-
-          if (centers.length > 0) {
-            this.toastCtrl.create({
-              message: 'Using cached evacuation data due to network error.',
-              duration: 3000,
-              color: 'warning'
-            }).then(toast => toast.present());
-          }
-        }
+      console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
+      try {
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
+        );
+        centers = apiResponse.data || [];
+        console.log('📡 Received centers from API:', centers);
+      } catch (error) {
+        console.error('❌ Failed to fetch evacuation centers:', error);
+        this.toastCtrl.create({
+          message: 'Failed to load evacuation centers. Please check your internet connection.',
+          duration: 3000,
+          color: 'danger'
+        }).then(toast => toast.present());
+        return;
       }
 
       this.evacuationCenters = centers || [];
@@ -2739,7 +2222,7 @@ export class MapPage implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('Sending route request to Mapbox');
+      console.log('Sending route request to OpenStreetMap');
 
       // Convert travel mode to Mapbox profile
       const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(travelMode);
@@ -2747,12 +2230,7 @@ export class MapPage implements OnInit, OnDestroy {
       // Get directions from Mapbox
       const response = await this.mapboxRouting.getDirections(
         startLng, startLat, endLng, endLat,
-        mapboxProfile,
-        {
-          geometries: 'geojson',
-          overview: 'full',
-          steps: true
-        }
+        mapboxProfile
       );
 
       if (!response.routes || response.routes.length === 0) {
@@ -2760,7 +2238,7 @@ export class MapPage implements OnInit, OnDestroy {
       }
 
       const route = response.routes[0];
-      const routeGeoJSON = this.mapboxRouting.convertToGeoJSON(route);
+      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
       let routeColor = '#3388ff'; // Default blue color
 
       if (disasterType) {
@@ -2806,10 +2284,10 @@ export class MapPage implements OnInit, OnDestroy {
 
       // Update route info from Mapbox response
       this.routeTime = route.duration; // Mapbox returns duration in seconds
-      this.routeDistance = route.distance; // Mapbox returns distance in meters
+      this.routeDistance = route.distance; // OpenStreetMap returns distance in meters
 
-      const summary = this.mapboxRouting.getRouteSummary(route);
-      console.log(`Mapbox route summary: ${summary.durationText}, ${summary.distanceText}`);
+      const summary = this.osmRouting.getRouteSummary(route);
+      console.log(`OpenStreetMap route summary: ${summary.duration}, ${summary.distance}`);
 
       this.map.fitBounds(leafletRoute.getBounds(), { padding: [50, 50] });
 

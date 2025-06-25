@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Mapbox Routing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗺️ Mapbox Routing API Test</h1>
+    <p>This page tests the Mapbox Directions API with your access token.</p>
+
+    <div class="test-section">
+        <h2>API Configuration</h2>
+        <div class="info result">
+            <strong>Access Token:</strong> pk.eyJ1IjoibGFzZXJleDA3IiwiYSI6ImNtYzVuY21pejBia3IyanFzN29hbHFvamYifQ.GNxvfI8uqs7G398AtzuMtw
+        </div>
+        <div class="info result">
+            <strong>Base URL:</strong> https://api.mapbox.com/directions/v5/mapbox
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Routes</h2>
+        <button onclick="testWalkingRoute()">Test Walking Route</button>
+        <button onclick="testDrivingRoute()">Test Driving Route</button>
+        <button onclick="testCyclingRoute()">Test Cycling Route</button>
+        <div id="routeResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoibGFzZXJleDA3IiwiYSI6ImNtYzVuY21pejBia3IyanFzN29hbHFvamYifQ.GNxvfI8uqs7G398AtzuMtw';
+        const MAPBOX_BASE_URL = 'https://api.mapbox.com/directions/v5/mapbox';
+
+        // Test coordinates in Cebu, Philippines
+        const START_COORDS = [123.8854, 10.3157]; // [lng, lat]
+        const END_COORDS = [123.8954, 10.3257];   // [lng, lat]
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function addRouteResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('routeResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = message;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function testMapboxRoute(profile) {
+            addResult(`🧪 Testing ${profile} route...`, 'info');
+            
+            try {
+                const coordinates = `${START_COORDS[0]},${START_COORDS[1]};${END_COORDS[0]},${END_COORDS[1]}`;
+                const url = `${MAPBOX_BASE_URL}/${profile}/${coordinates}?access_token=${MAPBOX_ACCESS_TOKEN}&geometries=geojson&overview=full&steps=true`;
+                
+                addResult(`📡 Request URL: ${url.substring(0, 100)}...`, 'info');
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok && data.routes && data.routes.length > 0) {
+                    const route = data.routes[0];
+                    const distance = (route.distance / 1000).toFixed(2);
+                    const duration = Math.round(route.duration / 60);
+                    
+                    addResult(`✅ ${profile} route successful!`, 'success');
+                    addResult(`📏 Distance: ${distance} km, Duration: ${duration} min`, 'success');
+                    addRouteResult(`<strong>${profile.toUpperCase()}</strong>: ${distance} km, ${duration} min`, 'success');
+                    
+                    // Show route geometry info
+                    const coordCount = route.geometry.coordinates.length;
+                    addResult(`🗺️ Route has ${coordCount} coordinate points`, 'info');
+                    
+                    return true;
+                } else {
+                    addResult(`❌ ${profile} route failed: ${data.message || 'Unknown error'}`, 'error');
+                    addResult(`<pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                addResult(`❌ ${profile} route error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testWalkingRoute() {
+            await testMapboxRoute('walking');
+        }
+
+        async function testDrivingRoute() {
+            await testMapboxRoute('driving');
+        }
+
+        async function testCyclingRoute() {
+            await testMapboxRoute('cycling');
+        }
+
+        // Auto-run basic test on page load
+        window.onload = function() {
+            addResult('🚀 Starting Mapbox API tests...', 'info');
+            addResult(`📍 Test route: [${START_COORDS[1]}, ${START_COORDS[0]}] to [${END_COORDS[1]}, ${END_COORDS[0]}]`, 'info');
+            
+            // Test walking route automatically
+            setTimeout(() => {
+                testWalkingRoute();
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

@@ -564,12 +564,12 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
     try {
       console.log('Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
 
-      const centers = await firstValueFrom(
-        this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+      const apiResponse = await firstValueFrom(
+        this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
       );
 
-      console.log('Received centers from API:', centers);
-      this.evacuationCenters = centers || [];
+      console.log('Received centers from API:', apiResponse);
+      this.evacuationCenters = apiResponse.data || [];
 
       // Add markers for evacuation centers
       this.evacuationCenters.forEach(center => {
@@ -588,6 +588,10 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
             iconUrl = 'assets/forFlood.png';
           } else if (centerType === 'typhoon') {
             iconUrl = 'assets/forTyphoon.png';
+          } else if (centerType === 'fire') {
+            iconUrl = 'assets/forFire.png';
+          } else if (centerType === 'landslide') {
+            iconUrl = 'assets/forLandslide.png';
           }
 
           // Create and add the marker
@@ -729,11 +733,12 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
         }
       });
 
-      const centers = await firstValueFrom(
-        this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+      const apiResponse = await firstValueFrom(
+        this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
       );
 
-      console.log('Received centers from API:', centers);
+      console.log('Received centers from API:', apiResponse);
+      const centers = apiResponse.data || [];
       console.log('Number of centers received:', centers ? centers.length : 0);
 
       // Filter centers by disaster type if specified
@@ -779,17 +784,26 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
 
         if (!isNaN(lat) && !isNaN(lng)) {
           // Choose icon based on disaster type
-          let iconUrl = 'assets/forTyphoon.png'; // Default
+          let iconUrl = 'assets/forOthers.png'; // Default
 
           const centerType = this.getNormalizedDisasterType(center.disaster_type);
           console.log(`Center disaster type: ${center.disaster_type}, normalized: ${centerType}`);
 
-          if (centerType === 'Earthquake') {
+          // Check if it's an "Others:" type
+          if (typeof center.disaster_type === 'string' && center.disaster_type.startsWith('Others:')) {
+            iconUrl = 'assets/forOthers.png';
+          } else if (centerType === 'Earthquake') {
             iconUrl = 'assets/forEarthquake.png';
           } else if (centerType === 'Flood') {
             iconUrl = 'assets/forFlood.png';
           } else if (centerType === 'Typhoon') {
             iconUrl = 'assets/forTyphoon.png';
+          } else if (centerType === 'Fire') {
+            iconUrl = 'assets/forFire.png';
+          } else if (centerType === 'Landslide') {
+            iconUrl = 'assets/forLandslide.png';
+          } else if (centerType === 'Others') {
+            iconUrl = 'assets/forOthers.png';
           }
 
           console.log(`Using icon: ${iconUrl}`);
