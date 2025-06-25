@@ -1,5 +1,6 @@
 import { Component, OnInit, AfterViewInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { IonicModule, LoadingController, ToastController, AlertController } from '@ionic/angular';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -20,7 +21,7 @@ import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
   templateUrl: './landslide-map.page.html',
   styleUrls: ['./landslide-map.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, RealTimeNavigationComponent]
+  imports: [IonicModule, CommonModule, FormsModule, RealTimeNavigationComponent]
 })
 export class LandslideMapPage implements OnInit, AfterViewInit {
   private map!: L.Map;
@@ -37,9 +38,18 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
   public centerLat: number | null = null;
   public centerLng: number | null = null;
 
-  // Navigation panel properties
+  // UI panel properties
+  public showAllCentersPanel = false;
+  public showRouteFooter = false;
+
+  // Travel mode for routing (like all-maps)
+  public travelMode: 'walking' | 'cycling' | 'driving' = 'walking';
+  public routeTime: number = 0;
+  public routeDistance: number = 0;
+
+  // Navigation properties
   public selectedCenter: EvacuationCenter | null = null;
-  public selectedTransportMode: 'walking' | 'cycling' | 'driving' | null = null;
+  public selectedTransportMode: 'walking' | 'cycling' | 'driving' = 'walking';
   public routeInfo: {
     walking?: { duration: number; distance: number };
     cycling?: { duration: number; distance: number };
@@ -263,6 +273,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
         // Make marker clickable with navigation panel
         marker.on('click', () => {
+          console.log('🏔️ LANDSLIDE: Marker clicked for center:', center.name);
           this.showNavigationPanel(center);
         });
 
@@ -299,9 +310,9 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
       }
     });
 
-    // Auto-route to nearest centers
-    console.log('🏔️ Auto-routing to 2 nearest landslide centers...');
-    await this.routeToTwoNearestCenters();
+    // Don't auto-route - just show simple markers like "See Whole Map"
+    console.log('🏔️ Showing simple markers without auto-routing...');
+    // await this.routeToTwoNearestCenters();
 
     // Fit map to show all landslide centers
     if (this.evacuationCenters.length > 0) {
@@ -348,17 +359,40 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
       );
 
       if (nearestCenters.length === 0) {
+        const toast = await this.toastCtrl.create({
+          message: 'No landslide evacuation centers found nearby',
+          duration: 3000,
+          color: 'warning'
+        });
+        await toast.present();
         return;
       }
 
-      // Clear previous routes
+      // Clear previous routes and markers
       this.clearRoutes();
 
-      // Calculate and display routes with landslide color (brown)
+      // Add pulsing markers for nearest centers
+      this.addPulsingMarkers(nearestCenters);
+
+      // Calculate and display routes using Mapbox
       await this.calculateRoutes(nearestCenters);
+
+      // Show success message
+      const toast = await this.toastCtrl.create({
+        message: `🏔️ Showing routes to ${nearestCenters.length} nearest landslide centers`,
+        duration: 4000,
+        color: 'tertiary'
+      });
+      await toast.present();
 
     } catch (error) {
       console.error('🏔️ LANDSLIDE MAP: Error calculating routes', error);
+      const toast = await this.toastCtrl.create({
+        message: 'Failed to calculate routes. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
     }
   }
 
@@ -378,7 +412,50 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
       .slice(0, 2);
   }
 
-  // Calculate routes to nearest centers with landslide color
+  // Add pulsing markers for nearest centers (like all-maps)
+  addPulsingMarkers(centers: EvacuationCenter[]) {
+    // Clear existing nearest markers
+    this.nearestMarkers.forEach(marker => this.map.removeLayer(marker));
+    this.nearestMarkers = [];
+
+    centers.forEach((center, index) => {
+      const lat = Number(center.latitude);
+      const lng = Number(center.longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        // Create pulsing marker with landslide styling
+        const pulsingIcon = L.divIcon({
+          className: 'pulsing-marker',
+          html: `
+            <div class="pulse-container">
+              <div class="pulse" style="background-color: #8B4513"></div>
+              <img src="assets/forLandslide.png" class="marker-icon" />
+              <div class="marker-label">${index + 1}</div>
+            </div>
+          `,
+          iconSize: [50, 50],
+          iconAnchor: [25, 50]
+        });
+
+        const marker = L.marker([lat, lng], { icon: pulsingIcon });
+
+        marker.bindPopup(`
+          <div class="evacuation-popup nearest-popup">
+            <h3>🎯 Nearest Center #${index + 1}</h3>
+            <h4>${center.name}</h4>
+            <p><strong>Type:</strong> Landslide</p>
+            <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
+            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
+          </div>
+        `);
+
+        marker.addTo(this.map);
+        this.nearestMarkers.push(marker);
+      }
+    });
+  }
+
+  // Calculate routes to nearest centers using Mapbox (like all-maps)
   async calculateRoutes(centers: EvacuationCenter[]) {
     if (!this.userLocation) return;
 
@@ -390,40 +467,64 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        console.log(`🏔️ LANDSLIDE MAP: Creating route to center ${i + 1}: ${center.name}`);
+        try {
+          console.log(`🏔️ LANDSLIDE MAP: Creating Mapbox route to center ${i + 1}: ${center.name}`);
 
-        // Create a simple straight-line route (always works)
-        const routeColor = '#8B4513'; // Brown for landslide
+          // Use Mapbox routing for accurate routes with selected travel mode
+          const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(this.travelMode);
 
-        const routeLine = L.polyline(
-          [
-            [this.userLocation.lat, this.userLocation.lng], // Start point
-            [lat, lng] // End point
-          ],
-          {
-            color: routeColor,
-            weight: 4,
-            opacity: 0.8,
-            dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
+          const routeData = await this.mapboxRouting.getDirections(
+            this.userLocation.lng, this.userLocation.lat,
+            lng, lat,
+            mapboxProfile
+          );
+
+          if (routeData && routeData.routes && routeData.routes.length > 0) {
+            const route = routeData.routes[0];
+
+            // Draw route with landslide color
+            const routeLine = L.polyline(
+              route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
+              {
+                color: '#8B4513', // Brown for landslide
+                weight: 4,
+                opacity: 0.8,
+                dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
+              }
+            );
+
+            routeLine.addTo(this.routeLayer);
+
+            // Store route info for first center (for display)
+            if (i === 0) {
+              this.routeTime = route.duration;
+              this.routeDistance = route.distance;
+            }
+
+            console.log(`✅ LANDSLIDE MAP: Added Mapbox route to ${center.name} (${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min)`);
           }
-        );
+        } catch (error) {
+          console.error(`🏔️ Error calculating Mapbox route to center ${i + 1}:`, error);
 
-        routeLine.addTo(this.routeLayer);
+          // Fallback to straight line if Mapbox fails
+          const routeLine = L.polyline(
+            [
+              [this.userLocation.lat, this.userLocation.lng],
+              [lat, lng]
+            ],
+            {
+              color: '#8B4513',
+              weight: 4,
+              opacity: 0.8,
+              dashArray: i === 0 ? undefined : '10, 10'
+            }
+          );
 
-        // Calculate distance for display
-        const distance = this.calculateDistance(this.userLocation.lat, this.userLocation.lng, lat, lng);
-        console.log(`✅ LANDSLIDE MAP: Added route to ${center.name} (${(distance/1000).toFixed(2)}km)`);
+          routeLine.addTo(this.routeLayer);
+          console.log(`⚠️ LANDSLIDE MAP: Used fallback straight-line route to ${center.name}`);
+        }
       }
     }
-
-    // Show success message
-    const toast = await this.toastCtrl.create({
-      message: `🏔️ Routes calculated to ${centers.length} nearest landslide centers`,
-      duration: 3000,
-      color: 'tertiary',
-      position: 'top'
-    });
-    await toast.present();
   }
 
   // Clear previous routes
@@ -460,9 +561,14 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
   // Show navigation panel for online mode
   async showNavigationPanel(center: EvacuationCenter) {
+    console.log('🏔️ LANDSLIDE: showNavigationPanel called for:', center.name);
+    console.log('🏔️ LANDSLIDE: Setting selectedCenter to:', center);
+
     this.selectedCenter = center;
-    this.selectedTransportMode = null;
+    this.selectedTransportMode = 'walking';
     this.routeInfo = {};
+
+    console.log('🏔️ LANDSLIDE: selectedCenter is now:', this.selectedCenter);
 
     // Calculate routes for all transport modes
     await this.calculateAllRoutes(center);
@@ -556,17 +662,34 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
     }
   }
 
-  // Close navigation panel
-  closeNavigationPanel() {
-    this.selectedCenter = null;
-    this.selectedTransportMode = null;
-    this.routeInfo = {};
-    this.clearRoutes();
-  }
+
 
   // Go back to home
   goBack() {
     this.router.navigate(['/tabs/home']);
+  }
+
+  // Helper method for ion-segment change event
+  onTravelModeChange(event: any) {
+    const mode = event.detail.value as 'walking' | 'cycling' | 'driving';
+    this.changeTravelMode(mode);
+  }
+
+  // Change travel mode (like all-maps)
+  async changeTravelMode(mode: 'walking' | 'cycling' | 'driving') {
+    this.travelMode = mode;
+
+    const toast = await this.toastCtrl.create({
+      message: `🏔️ Travel mode changed to ${mode}`,
+      duration: 2000,
+      color: 'tertiary'
+    });
+    await toast.present();
+
+    // Recalculate routes with new travel mode
+    if (this.userLocation && this.evacuationCenters.length > 0) {
+      await this.routeToTwoNearestCenters();
+    }
   }
 
   // Enhanced download map functionality with routes
@@ -600,6 +723,185 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
     }
   }
 
+  // Show all centers panel
+  showAllCenters() {
+    this.showAllCentersPanel = true;
+  }
+
+  // Close all centers panel
+  closeAllCentersPanel() {
+    this.showAllCentersPanel = false;
+  }
+
+  // Route to nearest centers (compass button functionality)
+  async routeToNearestCenters() {
+    if (!this.userLocation || this.evacuationCenters.length === 0) {
+      const toast = await this.toastCtrl.create({
+        message: 'Unable to calculate routes. Please ensure location is available.',
+        duration: 3000,
+        color: 'warning'
+      });
+      await toast.present();
+      return;
+    }
+
+    try {
+      // Clear existing routes
+      this.clearRoutes();
+
+      // Find and route to 2 nearest centers
+      await this.routeToTwoNearestCenters();
+
+      const toast = await this.toastCtrl.create({
+        message: '🏔️ Routes calculated to 2 nearest landslide evacuation centers',
+        duration: 4000,
+        color: 'tertiary'
+      });
+      await toast.present();
+    } catch (error) {
+      console.error('Error calculating routes:', error);
+      const toast = await this.toastCtrl.create({
+        message: 'Failed to calculate routes. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
+  // Select center from all centers list
+  selectCenterFromList(center: EvacuationCenter) {
+    this.closeAllCentersPanel();
+    this.openNavigationPanel(center);
+  }
+
+  // Calculate distance in km for display
+  calculateDistanceInKm(center: EvacuationCenter): string {
+    if (!this.userLocation) return 'N/A';
+
+    const distance = this.calculateDistance(
+      this.userLocation.lat,
+      this.userLocation.lng,
+      Number(center.latitude),
+      Number(center.longitude)
+    );
+
+    return (distance / 1000).toFixed(1);
+  }
+
+  // Open navigation panel when marker is clicked
+  openNavigationPanel(center: EvacuationCenter) {
+    this.selectedCenter = center;
+    this.showRouteFooter = true;
+    this.calculateRouteInfo(center);
+  }
+
+  // Close navigation panel
+  closeNavigationPanel() {
+    this.selectedCenter = null;
+    this.showRouteFooter = false;
+    this.routeInfo = {};
+  }
+
+  // Select transport mode
+  selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
+    this.selectedTransportMode = mode;
+    if (this.selectedCenter) {
+      this.showRouteOnMap(this.selectedCenter, mode);
+    }
+  }
+
+  // Calculate route info for all transport modes
+  async calculateRouteInfo(center: EvacuationCenter) {
+    if (!this.userLocation) return;
+
+    const modes: ('walking' | 'cycling' | 'driving')[] = ['walking', 'cycling', 'driving'];
+
+    for (const mode of modes) {
+      try {
+        // Use Mapbox for route calculation
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+
+        const response = await this.mapboxRouting.getDirections(
+          this.userLocation.lng, this.userLocation.lat,
+          Number(center.longitude), Number(center.latitude),
+          mapboxProfile
+        );
+
+        if (response.routes && response.routes.length > 0) {
+          const route = response.routes[0];
+          this.routeInfo[mode] = {
+            duration: route.duration,
+            distance: route.distance
+          };
+          console.log(`🏔️ LANDSLIDE: ${mode} route calculated - ${(route.distance/1000).toFixed(2)}km, ${Math.round(route.duration/60)}min`);
+        }
+      } catch (error) {
+        console.error(`🏔️ LANDSLIDE: Error calculating ${mode} route:`, error);
+        // Fallback to straight-line distance
+        const distance = this.calculateDistance(
+          this.userLocation.lat, this.userLocation.lng,
+          Number(center.latitude), Number(center.longitude)
+        );
+        this.routeInfo[mode] = {
+          duration: distance / (mode === 'walking' ? 5000 : mode === 'cycling' ? 15000 : 50000) * 3600,
+          distance: distance
+        };
+      }
+    }
+  }
+
+  // Show route on map for selected transport mode
+  async showRouteOnMap(center: EvacuationCenter, mode: 'walking' | 'cycling' | 'driving') {
+    if (!this.userLocation) return;
+
+    try {
+      // Use Mapbox for route calculation
+      const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+
+      const response = await this.mapboxRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(center.longitude), Number(center.latitude),
+        mapboxProfile
+      );
+
+      if (response.routes && response.routes.length > 0) {
+        const route = response.routes[0];
+        const routeGeoJSON = this.mapboxRouting.convertToGeoJSON(route);
+
+        // Clear existing routes
+        this.clearRoutes();
+
+        // Add route to map with landslide color (brown)
+        L.geoJSON(routeGeoJSON as any, {
+          style: {
+            color: '#8B4513', // Brown for landslide
+            weight: 4,
+            opacity: 0.8
+          }
+        }).addTo(this.map);
+      }
+    } catch (error) {
+      console.error('Error showing route on map:', error);
+    }
+  }
+
+  // Format time for display
+  formatTime(seconds?: number): string {
+    if (!seconds) return '--';
+    const minutes = Math.round(seconds / 60);
+    return `${minutes} min`;
+  }
+
+  // Format distance for display
+  formatDistance(meters?: number): string {
+    if (!meters) return '--';
+    const km = meters / 1000;
+    return km < 1 ? `${Math.round(meters)} m` : `${km.toFixed(1)} km`;
+  }
+
+
+
   ionViewWillLeave() {
     this.clearRoutes();
     // Stop real-time navigation if active
@@ -611,10 +913,88 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
     }
   }
 
+  // Route to specific center with chosen transportation mode
+  async routeToCenter(center: EvacuationCenter, travelMode: 'walking' | 'cycling' | 'driving') {
+    if (!this.userLocation) return;
+
+    try {
+      // Clear existing routes
+      this.clearRoutes();
+
+      const lat = Number(center.latitude);
+      const lng = Number(center.longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        console.log(`🏔️ LANDSLIDE: Creating Mapbox route to ${center.name} via ${travelMode}`);
+
+        // Use Mapbox routing for accurate routes
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(travelMode);
+
+        const routeData = await this.mapboxRouting.getDirections(
+          this.userLocation.lng, this.userLocation.lat,
+          lng, lat,
+          mapboxProfile
+        );
+
+        if (routeData && routeData.routes && routeData.routes.length > 0) {
+          const route = routeData.routes[0];
+
+          // Use landslide color (brown)
+          const routeColor = '#8b5a2b';
+
+          this.routeLayer = L.layerGroup().addTo(this.map);
+
+          // Draw route
+          const routeLine = L.polyline(
+            route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
+            {
+              color: routeColor,
+              weight: 5,
+              opacity: 0.8
+            }
+          );
+
+          routeLine.addTo(this.routeLayer);
+
+          // Show route info
+          const toast = await this.toastCtrl.create({
+            message: `🏔️ Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${travelMode}`,
+            duration: 4000,
+            color: 'warning'
+          });
+          await toast.present();
+
+          // Fit map to route
+          this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+
+          console.log(`✅ LANDSLIDE: Successfully created route with ${route.geometry.coordinates.length} points`);
+        }
+      }
+    } catch (error) {
+      console.error('🏔️ Error routing to landslide center:', error);
+
+      const toast = await this.toastCtrl.create({
+        message: 'Error calculating route. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
+  }
+
   // Real-time navigation methods
-  startRealTimeNavigation(center: EvacuationCenter) {
+  async startRealTimeNavigation(center: EvacuationCenter) {
     console.log('🧭 Starting real-time navigation to landslide center:', center.name);
 
+    if (!this.selectedTransportMode) {
+      console.error('❌ No transport mode selected');
+      return;
+    }
+
+    // First, route to the center with the selected transport mode
+    await this.routeToCenter(center, this.selectedTransportMode);
+
+    // Set up real-time navigation
     this.navigationDestination = {
       lat: Number(center.latitude),
       lng: Number(center.longitude),
@@ -623,12 +1003,17 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
     this.isRealTimeNavigationActive = true;
 
+    // Close the navigation panel automatically
+    this.closeNavigationPanel();
+
     // Show success toast
     this.toastCtrl.create({
-      message: `🧭 Real-time navigation started to ${center.name}`,
+      message: `🧭 Real-time navigation started to ${center.name} via ${this.selectedTransportMode}`,
       duration: 3000,
       color: 'primary'
     }).then(toast => toast.present());
+
+    console.log('✅ Landslide map real-time navigation setup complete');
   }
 
   onNavigationRouteUpdated(route: Route) {

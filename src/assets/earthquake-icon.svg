@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- House with earthquake effects -->
+  <g>
+    <!-- Ground cracks -->
+    <path d="M0 360h100l20 20h50l30-30h50l20 20h50l30-30h50l20 20h92v152H0z" fill="#E8D5B7"/>
+    
+    <!-- Earthquake cracks in ground -->
+    <path d="M80 400l20 20 30-30 20 20 30-30 20 20 30-30 20 20 30-30 20 20" stroke="#8B4513" stroke-width="8" fill="none"/>
+    <path d="M120 450l15 15 25-25 15 15 25-25 15 15 25-25 15 15" stroke="#8B4513" stroke-width="6" fill="none"/>
+    
+    <!-- House structure -->
+    <rect x="100" y="200" width="312" height="160" fill="#A8C8EC" stroke="#000" stroke-width="8"/>
+    
+    <!-- Roof -->
+    <path d="M80 200L256 80L432 200z" fill="#A8C8EC" stroke="#000" stroke-width="8"/>
+    
+    <!-- Door -->
+    <rect x="220" y="260" width="72" height="100" fill="#F4D03F" stroke="#000" stroke-width="6"/>
+    <circle cx="275" cy="310" r="4" fill="#000"/>
+    
+    <!-- Windows (cracked) -->
+    <rect x="130" y="230" width="40" height="40" fill="#87CEEB" stroke="#000" stroke-width="4"/>
+    <path d="M130 250h40M150 230v40" stroke="#000" stroke-width="2"/>
+    
+    <rect x="342" y="230" width="40" height="40" fill="#87CEEB" stroke="#000" stroke-width="4"/>
+    <path d="M342 250h40M362 230v40" stroke="#000" stroke-width="2"/>
+    
+    <!-- Earthquake motion lines -->
+    <g stroke="#000" stroke-width="6" fill="none">
+      <!-- Left side motion lines -->
+      <path d="M20 60l40 20"/>
+      <path d="M30 100l50 25"/>
+      <path d="M40 140l35 18"/>
+      <path d="M25 180l45 22"/>
+      
+      <!-- Right side motion lines -->
+      <path d="M452 60l40 20"/>
+      <path d="M432 100l50 25"/>
+      <path d="M442 140l35 18"/>
+      <path d="M437 180l45 22"/>
+      
+      <!-- Top motion lines -->
+      <path d="M150 30l20 15"/>
+      <path d="M200 20l25 18"/>
+      <path d="M280 25l20 15"/>
+      <path d="M320 35l25 18"/>
+    </g>
+    
+    <!-- Falling objects -->
+    <rect x="400" y="40" width="20" height="30" fill="#FF6B47" stroke="#000" stroke-width="3" transform="rotate(15 410 55)"/>
+    
+    <!-- Debris/rocks -->
+    <circle cx="80" cy="240" r="8" fill="#8B4513"/>
+    <circle cx="420" cy="250" r="6" fill="#8B4513"/>
+    <circle cx="60" cy="280" r="5" fill="#8B4513"/>
+    <circle cx="440" cy="290" r="7" fill="#8B4513"/>
+  </g>
+</svg>

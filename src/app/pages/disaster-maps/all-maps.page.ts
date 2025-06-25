@@ -156,10 +156,10 @@ export class AllMapsPage implements OnInit {
       attribution: 'OpenStreetMap contributors'
     }).addTo(this.map);
 
-    // Add user marker
+    // Add user marker (use same icon as individual disaster maps)
     this.userMarker = L.marker([lat, lng], {
       icon: L.icon({
-        iconUrl: 'assets/icons/user-location.png',
+        iconUrl: 'assets/Location.png',
         iconSize: [30, 30],
         iconAnchor: [15, 30]
       })
