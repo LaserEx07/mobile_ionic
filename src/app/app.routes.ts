@@ -64,6 +64,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/disaster-maps/all-maps.page').then(m => m.AllMapsPage)
   },
   {
+    path: 'ors-test',
+    loadChildren: () => import('./pages/ors-test/ors-test.module').then(m => m.OrsTestPageModule)
+  },
+  {
+    path: 'real-time-demo',
+    loadComponent: () => import('./pages/real-time-demo/real-time-demo.page').then(m => m.RealTimeDemoPage)
+  },
+  {
     path: 'tabs',
     loadComponent: () => import('./pages/tabs/tabs.page').then(m => m.TabsPage),
     children: [

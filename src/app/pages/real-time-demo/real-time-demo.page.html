@@ -1,0 +1,150 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Real-time Navigation Demo</ion-title>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <div class="demo-container">
+    
+    <!-- Header Section -->
+    <div class="header-section">
+      <h1>🧭 Real-time Navigation Demo</h1>
+      <p>Test the real-time navigation features with live route updates</p>
+    </div>
+
+    <!-- Destination Selection -->
+    <div class="section" *ngIf="!isNavigating">
+      <h2>📍 Select Destination</h2>
+      <div class="destination-grid">
+        <div class="destination-card" 
+             *ngFor="let dest of demoDestinations"
+             [class.selected]="selectedDestination?.name === dest.name"
+             (click)="selectDestination(dest)">
+          <ion-icon name="location" color="primary"></ion-icon>
+          <span>{{ dest.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Travel Mode Selection -->
+    <div class="section" *ngIf="!isNavigating && selectedDestination">
+      <h2>🚶‍♂️ Select Travel Mode</h2>
+      <div class="travel-mode-grid">
+        <div class="mode-card"
+             [class.selected]="selectedTravelMode === 'foot-walking'"
+             (click)="selectTravelMode('foot-walking')">
+          <ion-icon name="walk" color="primary"></ion-icon>
+          <span>Walking</span>
+        </div>
+        <div class="mode-card"
+             [class.selected]="selectedTravelMode === 'cycling-regular'"
+             (click)="selectTravelMode('cycling-regular')">
+          <ion-icon name="bicycle" color="primary"></ion-icon>
+          <span>Cycling</span>
+        </div>
+        <div class="mode-card"
+             [class.selected]="selectedTravelMode === 'driving-car'"
+             (click)="selectTravelMode('driving-car')">
+          <ion-icon name="car" color="primary"></ion-icon>
+          <span>Driving</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Real-time Navigation Component -->
+    <app-real-time-navigation
+      *ngIf="selectedDestination"
+      [destination]="selectedDestination"
+      [travelMode]="selectedTravelMode"
+      (navigationStarted)="onNavigationStarted()"
+      (navigationStopped)="onNavigationStopped()"
+      (routeUpdated)="onRouteUpdated($event)"
+      (instructionChanged)="onInstructionChanged($event)">
+    </app-real-time-navigation>
+
+    <!-- Current Status -->
+    <div class="section" *ngIf="isNavigating">
+      <h2>📊 Navigation Status</h2>
+      <div class="status-grid">
+        <div class="status-item">
+          <span class="label">Destination</span>
+          <span class="value">{{ selectedDestination?.name }}</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Travel Mode</span>
+          <span class="value">{{ getTravelModeLabel(selectedTravelMode) }}</span>
+        </div>
+        <div class="status-item" *ngIf="currentRoute">
+          <span class="label">Distance</span>
+          <span class="value">{{ routingService.formatDistance(currentRoute.distance) }}</span>
+        </div>
+        <div class="status-item" *ngIf="currentRoute">
+          <span class="label">Duration</span>
+          <span class="value">{{ routingService.formatDuration(currentRoute.duration) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current Instruction -->
+    <div class="section" *ngIf="currentInstruction">
+      <h2>📍 Current Instruction</h2>
+      <div class="instruction-card">
+        <div class="instruction-content">
+          <div class="instruction-text">{{ currentInstruction.instruction }}</div>
+          <div class="instruction-distance" *ngIf="currentInstruction.distance">
+            in {{ routingService.formatDistance(currentInstruction.distance) }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo Logs -->
+    <div class="section">
+      <div class="logs-header">
+        <h2>📝 Navigation Logs</h2>
+        <ion-button fill="clear" size="small" (click)="clearLogs()">
+          <ion-icon name="trash" slot="start"></ion-icon>
+          Clear
+        </ion-button>
+      </div>
+      <div class="logs-container">
+        <div class="log-entry" *ngFor="let log of logs">{{ log }}</div>
+        <div class="no-logs" *ngIf="logs.length === 0">
+          No logs yet. Start navigation to see real-time updates.
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Info -->
+    <div class="section">
+      <h2>✨ Real-time Features</h2>
+      <div class="features-list">
+        <div class="feature-item">
+          <ion-icon name="refresh" color="primary"></ion-icon>
+          <span>Automatic route updates every 15-30 seconds</span>
+        </div>
+        <div class="feature-item">
+          <ion-icon name="location" color="primary"></ion-icon>
+          <span>Position tracking with GPS</span>
+        </div>
+        <div class="feature-item">
+          <ion-icon name="navigate" color="primary"></ion-icon>
+          <span>Turn-by-turn navigation instructions</span>
+        </div>
+        <div class="feature-item">
+          <ion-icon name="time" color="primary"></ion-icon>
+          <span>Live ETA and distance updates</span>
+        </div>
+        <div class="feature-item">
+          <ion-icon name="car" color="primary"></ion-icon>
+          <span>Multiple travel modes (walking, cycling, driving)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</ion-content>

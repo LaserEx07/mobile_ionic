@@ -1,0 +1,207 @@
+.navigation-container {
+  background: var(--ion-color-light);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--ion-color-medium-tint);
+}
+
+.navigation-header {
+  margin-bottom: 16px;
+}
+
+.route-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.destination {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: var(--ion-color-dark);
+  
+  ion-icon {
+    margin-right: 8px;
+    font-size: 18px;
+  }
+}
+
+.travel-mode {
+  ion-icon {
+    font-size: 20px;
+  }
+}
+
+.route-stats {
+  display: flex;
+  justify-content: space-around;
+  background: var(--ion-color-primary-tint);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.stat {
+  text-align: center;
+  flex: 1;
+  
+  .label {
+    display: block;
+    font-size: 12px;
+    color: var(--ion-color-primary-shade);
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  
+  .value {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ion-color-primary);
+  }
+}
+
+.current-instruction {
+  background: var(--ion-color-primary);
+  color: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.instruction-content {
+  display: flex;
+  align-items: center;
+}
+
+.maneuver-icon {
+  margin-right: 16px;
+  
+  ion-icon {
+    font-size: 32px;
+  }
+}
+
+.instruction-text {
+  flex: 1;
+  
+  .instruction {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  
+  .distance {
+    font-size: 14px;
+    opacity: 0.9;
+    font-weight: 400;
+  }
+}
+
+.navigation-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.start-navigation {
+  margin: 10px;
+  
+  ion-button {
+    --border-radius: 12px;
+    --padding-top: 12px;
+    --padding-bottom: 12px;
+    font-weight: 600;
+  }
+}
+
+.loading-navigation {
+  text-align: center;
+  padding: 20px;
+  margin: 10px;
+  
+  ion-spinner {
+    margin-bottom: 12px;
+  }
+  
+  p {
+    color: var(--ion-color-medium);
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+// Responsive design
+@media (max-width: 480px) {
+  .route-stats {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+    
+    .label, .value {
+      display: inline;
+    }
+  }
+  
+  .instruction-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .maneuver-icon {
+    margin-right: 0;
+    margin-bottom: 12px;
+  }
+}
+
+// Animation for instruction changes
+.current-instruction {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// Pulsing effect for navigation active state
+.navigation-container {
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--ion-color-primary), var(--ion-color-secondary));
+    border-radius: 14px;
+    z-index: -1;
+    animation: pulse 2s infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

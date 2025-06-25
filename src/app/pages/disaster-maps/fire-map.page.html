@@ -1,13 +1,4 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-button (click)="goBack()">
-        <ion-icon name="arrow-back"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-    <ion-title>🔥 Fire Evacuation Centers</ion-title>
-  </ion-toolbar>
-</ion-header>
+
 
 <ion-content [fullscreen]="true">
   <!-- Map Container -->
@@ -22,6 +13,17 @@
       <img src="assets/icon/download-icon.svg" alt="Download" class="download-icon">
     </ion-button>
   </div>
+
+  <!-- Real-time Navigation Component -->
+  <app-real-time-navigation
+    *ngIf="navigationDestination"
+    [destination]="navigationDestination"
+    [travelMode]="selectedTransportMode === 'walking' ? 'foot-walking' :
+                  selectedTransportMode === 'cycling' ? 'cycling-regular' : 'driving-car'"
+    [autoStart]="isRealTimeNavigationActive"
+    (routeUpdated)="onNavigationRouteUpdated($event)"
+    (navigationStopped)="onNavigationStopped()">
+  </app-real-time-navigation>
 
   <!-- Navigation Panel (slides in from right when center is selected) -->
   <div class="navigation-panel" [class.show]="selectedCenter">
@@ -80,6 +82,14 @@
             </span>
           </div>
         </div>
+
+        <!-- Start Real-time Navigation Button -->
+        <button class="start-navigation-btn"
+                *ngIf="selectedTransportMode && routeInfo && selectedCenter"
+                (click)="startRealTimeNavigation(selectedCenter)">
+          <ion-icon name="navigate"></ion-icon>
+          <span>Start Real-time Navigation</span>
+        </button>
       </div>
     </div>
   </div>

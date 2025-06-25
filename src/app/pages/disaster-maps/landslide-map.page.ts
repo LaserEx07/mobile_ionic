@@ -6,8 +6,10 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
+import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap-routing.service';
 import { MapboxRoutingService } from '../../services/mapbox-routing.service';
-import { OfflineStorageService } from '../../services/offline-storage.service';
+import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
+
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import * as L from 'leaflet';
 
@@ -18,7 +20,7 @@ import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
   templateUrl: './landslide-map.page.html',
   styleUrls: ['./landslide-map.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule]
+  imports: [IonicModule, CommonModule, RealTimeNavigationComponent]
 })
 export class LandslideMapPage implements OnInit, AfterViewInit {
   private map!: L.Map;
@@ -44,14 +46,20 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
     driving?: { duration: number; distance: number };
   } = {};
 
+  // Real-time navigation properties
+  public isRealTimeNavigationActive = false;
+  public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
+  public currentNavigationRoute: Route | null = null;
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private osmRouting = inject(OpenStreetMapRoutingService);
   private mapboxRouting = inject(MapboxRoutingService);
-  private offlineStorage = inject(OfflineStorageService);
+
   private enhancedDownload = inject(EnhancedDownloadService);
 
   ngOnInit() {
@@ -176,52 +184,35 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
       let allCenters: EvacuationCenter[] = [];
 
-      // Check if offline mode is enabled or if we're offline
-      if (this.offlineStorage.isOfflineMode() || !navigator.onLine) {
-        console.log('🔄 Loading landslide centers from offline storage');
-        allCenters = await this.offlineStorage.getEvacuationCenters();
-        console.log('📱 OFFLINE DATA:', allCenters);
-
-        if (allCenters.length === 0) {
-          console.warn('⚠️ No cached evacuation centers found');
-          const alert = await this.alertCtrl.create({
-            header: 'No Offline Data',
-            message: 'No offline evacuation data available. Please sync data when online.',
-            buttons: ['OK']
-          });
-          await alert.present();
-          return;
-        }
-      } else {
-        // Try to get data from API when online
-        try {
-          allCenters = await firstValueFrom(
-            this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-          );
-          console.log('🏔️ LANDSLIDE MAP: Total centers received from API:', allCenters?.length || 0);
-        } catch (apiError) {
-          console.error('❌ API failed, falling back to offline data:', apiError);
-          allCenters = await this.offlineStorage.getEvacuationCenters();
-
-          if (allCenters.length === 0) {
-            const alert = await this.alertCtrl.create({
-              header: 'Connection Error',
-              message: 'Cannot connect to server and no offline data available. Please check your connection or sync data when online.',
-              buttons: ['OK']
-            });
-            await alert.present();
-            return;
-          }
-        }
+      // Fetch data from API
+      try {
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
+        );
+        allCenters = apiResponse.data || [];
+        console.log('🏔️ LANDSLIDE MAP: Total centers received from API:', allCenters?.length || 0);
+      } catch (apiError) {
+        console.error('❌ API failed:', apiError);
+        const alert = await this.alertCtrl.create({
+          header: 'Connection Error',
+          message: 'Cannot connect to server. Please check your internet connection.',
+          buttons: ['OK']
+        });
+        await alert.present();
+        return;
       }
 
       // Filter for LANDSLIDE ONLY - handle both array and string formats
       this.evacuationCenters = allCenters.filter(center => {
         if (Array.isArray(center.disaster_type)) {
-          return center.disaster_type.includes('Landslide');
+          // Check if the array contains exactly 'Landslide' (case-sensitive)
+          return center.disaster_type.some(type => type === 'Landslide');
         }
         return center.disaster_type === 'Landslide';
       });
+
+      console.log(`🏔️ LANDSLIDE MAP: Filtered to ${this.evacuationCenters.length} landslide centers`);
+      console.log('🏔️ LANDSLIDE MAP: Filtered centers:', this.evacuationCenters.map(c => `${c.name} (${JSON.stringify(c.disaster_type)})`));
 
       console.log(`🏔️ LANDSLIDE MAP: Filtered to ${this.evacuationCenters.length} landslide centers`);
 
@@ -241,26 +232,8 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
     } catch (error) {
       console.error('🏔️ LANDSLIDE MAP: Error loading centers', error);
 
-      // Try to load from offline storage as last resort
-      try {
-        console.log('🔄 Last resort: trying offline storage...');
-        const offlineCenters = await this.offlineStorage.getEvacuationCenters();
-        this.evacuationCenters = offlineCenters.filter(center =>
-          center.disaster_type === 'Landslide'
-        );
-
-        if (this.evacuationCenters.length > 0) {
-          console.log(`🏔️ Loaded ${this.evacuationCenters.length} landslide centers from offline storage`);
-          // Continue with adding markers...
-          await this.addMarkersAndRoutes(userLat, userLng);
-          return;
-        }
-      } catch (offlineError) {
-        console.error('❌ Offline storage also failed:', offlineError);
-      }
-
       const toast = await this.toastCtrl.create({
-        message: 'Error loading landslide centers. Please check your connection or sync offline data.',
+        message: 'Error loading landslide centers. Please check your internet connection.',
         duration: 4000,
         color: 'danger'
       });
@@ -270,8 +243,6 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
   // Add markers and routes to map
   async addMarkersAndRoutes(userLat: number, userLng: number) {
-    // Check if we're in offline mode
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
 
     // Add landslide markers (brown)
     this.evacuationCenters.forEach(center => {
@@ -281,7 +252,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
       if (!isNaN(lat) && !isNaN(lng)) {
         const marker = L.marker([lat, lng], {
           icon: L.icon({
-            iconUrl: 'assets/icon/lanslide.jpg',
+            iconUrl: 'assets/forLandslide.png',
             iconSize: [40, 40],
             iconAnchor: [20, 40],
             popupAnchor: [0, -40]
@@ -290,20 +261,13 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
         const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-        // Make marker clickable with navigation panel (only if online)
+        // Make marker clickable with navigation panel
         marker.on('click', () => {
-          if (isOfflineMode) {
-            this.showOfflineMarkerInfo(center, distance);
-          } else {
-            this.showNavigationPanel(center);
-          }
+          this.showNavigationPanel(center);
         });
 
         // Check if this is the new center to highlight
         const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
-
-        // Create popup content based on online/offline status
-        const offlineIndicator = isOfflineMode ? '<p><em>📱 Offline Mode - Limited functionality</em></p>' : '<p><em>Click marker for route options</em></p>';
 
         marker.bindPopup(`
           <div class="evacuation-popup">
@@ -311,7 +275,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
             <p><strong>Type:</strong> Landslide Center</p>
             <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            ${offlineIndicator}
+            <p><em>Click marker for route options</em></p>
             ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
           </div>
         `);
@@ -335,13 +299,9 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
       }
     });
 
-    // Only auto-route if online
-    if (!isOfflineMode) {
-      console.log('🏔️ Online mode: Auto-routing to 2 nearest landslide centers...');
-      await this.routeToTwoNearestCenters();
-    } else {
-      console.log('🏔️ Offline mode: Showing markers only (no routing)');
-    }
+    // Auto-route to nearest centers
+    console.log('🏔️ Auto-routing to 2 nearest landslide centers...');
+    await this.routeToTwoNearestCenters();
 
     // Fit map to show all landslide centers
     if (this.evacuationCenters.length > 0) {
@@ -430,46 +390,40 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        try {
-          const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile('walking');
+        console.log(`🏔️ LANDSLIDE MAP: Creating route to center ${i + 1}: ${center.name}`);
 
-          const routeData = await this.mapboxRouting.getDirections(
-            this.userLocation.lng, this.userLocation.lat,
-            lng, lat,
-            mapboxProfile,
-            {
-              geometries: 'geojson',
-              overview: 'simplified',
-              steps: false
-            }
-          );
+        // Create a simple straight-line route (always works)
+        const routeColor = '#8B4513'; // Brown for landslide
 
-          if (routeData && routeData.routes && routeData.routes.length > 0) {
-            const route = routeData.routes[0];
-
-            // Use landslide color (brown)
-            const routeColor = '#8B4513';
-
-            // Draw route
-            const routeLine = L.polyline(
-              route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
-              {
-                color: routeColor,
-                weight: 4,
-                opacity: 0.8,
-                dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
-              }
-            );
-
-            routeLine.addTo(this.routeLayer);
-
-            console.log(`🏔️ Route ${i + 1}: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min`);
+        const routeLine = L.polyline(
+          [
+            [this.userLocation.lat, this.userLocation.lng], // Start point
+            [lat, lng] // End point
+          ],
+          {
+            color: routeColor,
+            weight: 4,
+            opacity: 0.8,
+            dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
           }
-        } catch (error) {
-          console.error(`🏔️ Error calculating route to center ${i + 1}:`, error);
-        }
+        );
+
+        routeLine.addTo(this.routeLayer);
+
+        // Calculate distance for display
+        const distance = this.calculateDistance(this.userLocation.lat, this.userLocation.lng, lat, lng);
+        console.log(`✅ LANDSLIDE MAP: Added route to ${center.name} (${(distance/1000).toFixed(2)}km)`);
       }
     }
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🏔️ Routes calculated to ${centers.length} nearest landslide centers`,
+      duration: 3000,
+      color: 'tertiary',
+      position: 'top'
+    });
+    await toast.present();
   }
 
   // Clear previous routes
@@ -553,46 +507,43 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
     try {
       const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
-      const travelMode = mode === 'walking' ? 'foot' : mode === 'cycling' ? 'bike' : 'car';
 
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${mapboxProfile}/${this.userLocation.lng},${this.userLocation.lat};${this.selectedCenter.longitude},${this.selectedCenter.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const routeData = await this.mapboxRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(this.selectedCenter.longitude), Number(this.selectedCenter.latitude),
+        mapboxProfile
       );
 
-      if (response.ok) {
-        const routeData = await response.json();
+      if (routeData && routeData.routes && routeData.routes.length > 0) {
+        const route = routeData.routes[0];
 
-        if (routeData && routeData.routes && routeData.routes.length > 0) {
-          const route = routeData.routes[0];
+        // Use landslide color (brown)
+        const routeColor = '#8B4513';
 
-          // Use landslide color (brown)
-          const routeColor = '#8B4513';
+        this.routeLayer = L.layerGroup().addTo(this.map);
 
-          this.routeLayer = L.layerGroup().addTo(this.map);
+        // Draw route
+        const routeLine = L.polyline(
+          route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
+          {
+            color: routeColor,
+            weight: 5,
+            opacity: 0.8
+          }
+        );
 
-          // Draw route
-          const routeLine = L.polyline(
-            route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
-            {
-              color: routeColor,
-              weight: 5,
-              opacity: 0.8
-            }
-          );
+        routeLine.addTo(this.routeLayer);
 
-          routeLine.addTo(this.routeLayer);
+        // Show route info
+        const toast = await this.toastCtrl.create({
+          message: `🏔️ Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${mode}`,
+          duration: 4000,
+          color: 'tertiary'
+        });
+        await toast.present();
 
-          // Show route info
-          const toast = await this.toastCtrl.create({
-            message: `🏔️ Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${travelMode}`,
-            duration: 4000,
-            color: 'tertiary'
-          });
-          await toast.present();
-
-          // Fit map to route
-          this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-        }
+        // Fit map to route
+        this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
       }
     } catch (error) {
       console.error('🏔️ Error showing route:', error);
@@ -651,8 +602,79 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
   ionViewWillLeave() {
     this.clearRoutes();
+    // Stop real-time navigation if active
+    if (this.isRealTimeNavigationActive) {
+      this.osmRouting.stopRealTimeRouting();
+    }
     if (this.map) {
       this.map.remove();
     }
+  }
+
+  // Real-time navigation methods
+  startRealTimeNavigation(center: EvacuationCenter) {
+    console.log('🧭 Starting real-time navigation to landslide center:', center.name);
+
+    this.navigationDestination = {
+      lat: Number(center.latitude),
+      lng: Number(center.longitude),
+      name: center.name
+    };
+
+    this.isRealTimeNavigationActive = true;
+
+    // Show success toast
+    this.toastCtrl.create({
+      message: `🧭 Real-time navigation started to ${center.name}`,
+      duration: 3000,
+      color: 'primary'
+    }).then(toast => toast.present());
+  }
+
+  onNavigationRouteUpdated(route: Route) {
+    console.log('🔄 Landslide map navigation route updated');
+    this.currentNavigationRoute = route;
+    this.updateMapWithNavigationRoute(route);
+  }
+
+  onNavigationStopped() {
+    console.log('⏹️ Landslide map real-time navigation stopped');
+    this.isRealTimeNavigationActive = false;
+    this.navigationDestination = null;
+    this.currentNavigationRoute = null;
+    this.clearNavigationRoute();
+
+    this.toastCtrl.create({
+      message: '⏹️ Navigation stopped',
+      duration: 2000,
+      color: 'medium'
+    }).then(toast => toast.present());
+  }
+
+  private updateMapWithNavigationRoute(route: Route) {
+    this.clearNavigationRoute();
+
+    if (route.geometry && route.geometry.coordinates) {
+      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
+
+      const navigationRoute = L.geoJSON(routeGeoJSON, {
+        style: {
+          color: '#8b4513', // Landslide brown color
+          weight: 6,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }
+      }).addTo(this.map);
+
+      (navigationRoute as any).isNavigationRoute = true;
+    }
+  }
+
+  private clearNavigationRoute() {
+    this.map.eachLayer((layer: any) => {
+      if (layer.isNavigationRoute) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 }

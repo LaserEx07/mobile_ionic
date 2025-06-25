@@ -1,0 +1,77 @@
+<div class="navigation-container" *ngIf="isNavigating">
+  <!-- Navigation Header -->
+  <div class="navigation-header">
+    <div class="route-info">
+      <div class="destination">
+        <ion-icon name="location" color="primary"></ion-icon>
+        <span>{{ destination.name || 'Destination' }}</span>
+      </div>
+      <div class="travel-mode">
+        <ion-icon [name]="getTravelModeIcon()" color="medium"></ion-icon>
+      </div>
+    </div>
+    
+    <div class="route-stats">
+      <div class="stat">
+        <span class="label">Distance</span>
+        <span class="value">{{ formatDistance(remainingDistance) }}</span>
+      </div>
+      <div class="stat">
+        <span class="label">Time</span>
+        <span class="value">{{ formatDuration(remainingTime) }}</span>
+      </div>
+      <div class="stat" *ngIf="eta">
+        <span class="label">ETA</span>
+        <span class="value">{{ formatETA() }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Current Instruction -->
+  <div class="current-instruction" *ngIf="currentInstruction">
+    <div class="instruction-content">
+      <div class="maneuver-icon">
+        <ion-icon 
+          [name]="getManeuverIcon(currentInstruction.maneuver)" 
+          color="primary"
+          size="large">
+        </ion-icon>
+      </div>
+      <div class="instruction-text">
+        <div class="instruction">{{ currentInstruction.instruction }}</div>
+        <div class="distance" *ngIf="currentInstruction.distance">
+          in {{ formatDistance(currentInstruction.distance) }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Controls -->
+  <div class="navigation-controls">
+    <ion-button 
+      fill="clear" 
+      color="danger" 
+      (click)="stopNavigation()"
+      size="small">
+      <ion-icon name="stop-circle" slot="start"></ion-icon>
+      Stop Navigation
+    </ion-button>
+  </div>
+</div>
+
+<!-- Start Navigation Button -->
+<div class="start-navigation" *ngIf="!isNavigating && destination">
+  <ion-button 
+    expand="block" 
+    color="primary" 
+    (click)="startNavigation()">
+    <ion-icon name="navigate" slot="start"></ion-icon>
+    Start Navigation
+  </ion-button>
+</div>
+
+<!-- Loading State -->
+<div class="loading-navigation" *ngIf="isNavigating && !currentRoute">
+  <ion-spinner name="crescent" color="primary"></ion-spinner>
+  <p>Calculating route...</p>
+</div>

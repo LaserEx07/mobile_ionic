@@ -41,11 +41,11 @@ export class SearchPage implements OnInit {
     this.isLoading = true;
 
     try {
-      this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
+      this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
         .subscribe({
-          next: (data) => {
-            console.log('Loaded evacuation centers:', data);
-            this.allCenters = data || [];
+          next: (apiResponse) => {
+            console.log('Loaded evacuation centers:', apiResponse);
+            this.allCenters = apiResponse.data || [];
             this.isLoading = false;
             this.loadingService.dismissLoading();
           },

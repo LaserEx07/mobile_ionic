@@ -11,16 +11,16 @@ export const environment = {
   // - Local development: 'http://localhost:8000/api'
   // - Home network: 'http://192.168.1.100:8000/api'
   // - School network: 'http://172.30.11.217:8000/api'
-  // - Current network: 'http://192.168.112.8:8000/api' (UPDATED)
+  // - Current network: 'http://192.168.112.131:8000/api' (UPDATED)
   // - ngrok tunnel: 'https://your-ngrok-url.ngrok-free.app/api'
-  apiUrl: 'http://192.168.112.8:8000/api', // Back to network IP
+  apiUrl: 'http://192.168.112.131:8000/api', // Updated to current IP
 
   // Health check endpoint (automatically derived if not specified)
-  healthCheckUrl: 'http://192.168.112.8:8000/up', // Back to network IP
+  healthCheckUrl: 'http://192.168.112.131:8000/up', // Updated to current IP
 
   // External APIs
-  orsApiKey: '5b3ce3597851110001cf6248d05f92e32cab4d1da9db6036a3a53fe7', // Keep for fallback
-  mapboxAccessToken: 'pk.eyJ1IjoianVucmVsMDcwNDA1IiwiYSI6ImNtYjNocGs1YjBxc2cydnB5OG14NmNzYTIifQ.FGsozY9ibdn28Rg91_msIg',
+  orsApiKey: '5b3ce3597851110001cf62485d16190c4e8d4358bf96e7207454806f', // Updated OpenRouteService API key
+  mapboxAccessToken: 'pk.eyJ1IjoibGFzZXJleDA3IiwiYSI6ImNtYzVuY21pejBia3IyanFzN29hbHFvamYifQ.GNxvfI8uqs7G398AtzuMtw',
 
   // Firebase configuration - synchronized with Laravel backend
   firebase: {

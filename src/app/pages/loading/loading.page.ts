@@ -76,6 +76,21 @@ export class LoadingPage implements OnInit {
         this.router.navigate(['/intro']);
       }
     }, 1000); // Reduced wait time to 1 second for better UX
+
+    // Safety timeout - if navigation hasn't happened after 5 seconds, force navigation
+    setTimeout(() => {
+      console.log('⚠️ Loading page safety timeout triggered - checking if still on loading page');
+      if (this.router.url === '/loading') {
+        console.log('🚨 Still on loading page after 5 seconds - forcing navigation');
+        if (token) {
+          console.log('🔄 Forcing navigation to welcome page');
+          this.router.navigate(['/welcome']);
+        } else {
+          console.log('🔄 Forcing navigation to intro page');
+          this.router.navigate(['/intro']);
+        }
+      }
+    }, 5000);
   }
 
   ionViewWillEnter() {
@@ -96,7 +111,8 @@ export class LoadingPage implements OnInit {
     if (win.appDebug) {
       win.appDebug('LoadingPage updateOnlineStatus, isOnline: ' + this.isOnline);
     }
-    // Always check connection status, regardless of online/offline state
-    this.checkInternetConnection();
+    console.log('🌐 Online status changed:', this.isOnline);
+    // Don't re-check connection on status change to avoid infinite loops
+    // The initial check in ngOnInit is sufficient
   }
 }

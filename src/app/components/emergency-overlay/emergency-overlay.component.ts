@@ -96,9 +96,10 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
       'Typhoon': 'assets/icon/bagyo.png',
       'Fire': 'assets/icon/fire.jpg',
       'Landslide': 'assets/icon/lanslide.jpg',
+      'Others': 'assets/otherdisasterIcon.png',
       'General': 'assets/emergency-icon.png'
     };
-    
+
     return iconMap[this.notification.category] || iconMap['General'];
   }
 

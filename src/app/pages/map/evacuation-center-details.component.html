@@ -17,22 +17,6 @@
   </div>
 
   <div *ngIf="!isLoading" class="details-container">
-    <!-- Center image -->
-    <div class="center-image">
-      <!-- Use disaster-specific images based on the center type -->
-      <img *ngIf="center.disaster_type && center.disaster_type.toLowerCase().includes('earthquake')"
-           src="assets/earthquake.png" alt="{{ center.name }}">
-      <img *ngIf="center.disaster_type && center.disaster_type.toLowerCase().includes('flood')"
-           src="assets/flood.png" alt="{{ center.name }}">
-      <img *ngIf="center.disaster_type && center.disaster_type.toLowerCase().includes('typhoon')"
-           src="assets/typhoon.png" alt="{{ center.name }}">
-      <!-- Default image if no specific disaster type -->
-      <img *ngIf="!center.disaster_type ||
-                 (!center.disaster_type.toLowerCase().includes('earthquake') &&
-                  !center.disaster_type.toLowerCase().includes('flood') &&
-                  !center.disaster_type.toLowerCase().includes('typhoon'))"
-           src="assets/ALERTO.png" alt="{{ center.name }}">
-    </div>
 
     <!-- Center name and type -->
     <h1 class="center-name">{{ center.name }}</h1>

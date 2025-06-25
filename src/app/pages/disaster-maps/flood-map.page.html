@@ -1,13 +1,4 @@
-<ion-header [translucent]="true">
-  <ion-toolbar color="primary">
-    <ion-buttons slot="start">
-      <ion-button (click)="goBack()">
-        <ion-icon name="chevron-back-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-    <ion-title>🔵 Flood Evacuation Centers</ion-title>
-  </ion-toolbar>
-</ion-header>
+
 
 <ion-content [fullscreen]="true">
   <div id="flood-map" style="height: 100%; width: 100%;"></div>
@@ -22,20 +13,18 @@
     </ion-button>
   </div>
 
-  <!-- Floating info card -->
-  <div class="floating-info">
-    <ion-card>
-      <ion-card-content>
-        <div class="info-row">
-          <ion-icon name="water" color="primary"></ion-icon>
-          <span>Flood Centers: {{ evacuationCenters.length }}</span>
-        </div>
-        <div class="info-text">
-          Showing evacuation centers specifically for flood disasters
-        </div>
-      </ion-card-content>
-    </ion-card>
-  </div>
+  <!-- Real-time Navigation Component -->
+  <app-real-time-navigation
+    *ngIf="navigationDestination"
+    [destination]="navigationDestination"
+    [travelMode]="selectedTransportMode === 'walking' ? 'foot-walking' :
+                  selectedTransportMode === 'cycling' ? 'cycling-regular' : 'driving-car'"
+    [autoStart]="isRealTimeNavigationActive"
+    (routeUpdated)="onNavigationRouteUpdated($event)"
+    (navigationStopped)="onNavigationStopped()">
+  </app-real-time-navigation>
+
+
 
   <!-- Navigation Panel (slides from right) -->
   <div class="navigation-panel" [class.show]="selectedCenter">
@@ -93,12 +82,12 @@
           </button>
         </div>
 
-        <!-- Start Navigation Button -->
+        <!-- Start Real-time Navigation Button -->
         <button class="start-navigation-btn"
-                *ngIf="selectedTransportMode && routeInfo"
-                (click)="startNavigation()">
+                *ngIf="selectedTransportMode && routeInfo && selectedCenter"
+                (click)="startRealTimeNavigation(selectedCenter)">
           <ion-icon name="navigate"></ion-icon>
-          <span>Start Navigation</span>
+          <span>Start Real-time Navigation</span>
         </button>
       </div>
     </div>

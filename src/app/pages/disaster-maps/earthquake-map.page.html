@@ -1,40 +1,94 @@
+
+<!-- Header -->
 <ion-header [translucent]="true">
   <ion-toolbar color="warning">
     <ion-buttons slot="start">
-      <ion-button (click)="goBack()">
-        <ion-icon name="chevron-back-outline"></ion-icon>
+      <ion-button fill="clear" (click)="goBack()">
+        <ion-icon name="arrow-back-outline" color="light"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>🟠 Earthquake Evacuation Centers</ion-title>
+  
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
   <div id="earthquake-map" style="height: 100%; width: 100%;"></div>
 
-  <!-- Map Controls -->
+  <!-- Map Controls - Three buttons on the right side -->
   <div class="map-controls">
+    <!-- Show All Centers Button -->
     <ion-button
       fill="clear"
-      class="download-btn"
+      class="control-btn"
+      (click)="showAllCenters()">
+      <img src="assets/home-insuranceForEarthquake.png" alt="All Centers" class="control-icon">
+    </ion-button>
+
+    <!-- Download Button -->
+    <ion-button
+      fill="clear"
+      class="control-btn"
       (click)="downloadMap()">
-      <img src="assets/icon/download-icon.svg" alt="Download" class="download-icon">
+      <img src="assets/downloadForEarthquake.png" alt="Download" class="control-icon">
+    </ion-button>
+
+    <!-- Route to Nearest Centers Button -->
+    <ion-button
+      fill="clear"
+      class="control-btn"
+      (click)="routeToNearestCenters()">
+      <img src="assets/compassForEarthquake.png" alt="Route to Nearest" class="control-icon">
     </ion-button>
   </div>
 
-  <!-- Floating info card -->
-  <div class="floating-info">
-    <ion-card>
-      <ion-card-content>
-        <div class="info-row">
-          <ion-icon name="warning" color="warning"></ion-icon>
-          <span>Earthquake Centers: {{ evacuationCenters.length }}</span>
+  <!-- Real-time Navigation Component -->
+  <app-real-time-navigation
+    *ngIf="navigationDestination"
+    [destination]="navigationDestination"
+    [travelMode]="selectedTransportMode === 'walking' ? 'foot-walking' :
+                  selectedTransportMode === 'cycling' ? 'cycling-regular' : 'driving-car'"
+    [autoStart]="isRealTimeNavigationActive"
+    (routeUpdated)="onNavigationRouteUpdated($event)"
+    (navigationStopped)="onNavigationStopped()">
+  </app-real-time-navigation>
+
+ 
+
+  <!-- All Centers Panel (slides from right) -->
+  <div class="all-centers-panel" [class.show]="showAllCentersPanel">
+    <div class="panel-content">
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <div class="header-info">
+          <h3>🟠 All Earthquake Centers</h3>
+          <p>{{ evacuationCenters.length }} centers available</p>
         </div>
-        <div class="info-text">
-          Showing evacuation centers specifically for earthquake disasters
+        <ion-button fill="clear" size="small" (click)="closeAllCentersPanel()">
+          <ion-icon name="close-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <!-- Centers List -->
+      <div class="centers-list">
+        <div class="center-item"
+             *ngFor="let center of evacuationCenters; let i = index"
+             (click)="selectCenterFromList(center)">
+          <div class="center-info">
+            <h4>{{ center.name }}</h4>
+            <p class="address">{{ center.address }}</p>
+            <div class="center-details">
+              <span class="distance" *ngIf="userLocation">
+                📍 {{ calculateDistanceInKm(center) }} km away
+              </span>
+              <span class="capacity">👥 {{ center.capacity || 'N/A' }} capacity</span>
+            </div>
+          </div>
+          <div class="center-actions">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </div>
         </div>
-      </ion-card-content>
-    </ion-card>
+      </div>
+    </div>
   </div>
 
   <!-- Navigation Panel (slides from right) -->
@@ -95,11 +149,46 @@
 
         <!-- Start Navigation Button -->
         <button class="start-navigation-btn"
-                *ngIf="selectedTransportMode && routeInfo"
-                (click)="startNavigation()">
+                *ngIf="selectedTransportMode && routeInfo && selectedCenter"
+                (click)="startRealTimeNavigation(selectedCenter)">
           <ion-icon name="navigate"></ion-icon>
-          <span>Start Navigation</span>
+          <span>Start Real-time Navigation</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer - Route Information (shows when marker is clicked) -->
+  <div class="route-footer" [class.show]="selectedCenter && selectedTransportMode">
+    <div class="footer-content" *ngIf="selectedCenter && selectedTransportMode">
+      <div class="route-summary">
+        <div class="transport-icon">
+          <ion-icon
+            [name]="selectedTransportMode === 'walking' ? 'walk-outline' :
+                   selectedTransportMode === 'cycling' ? 'bicycle-outline' : 'car-outline'">
+          </ion-icon>
+        </div>
+        <div class="route-details">
+          <div class="destination">{{ selectedCenter.name }}</div>
+          <div class="route-info-footer">
+            <span class="time" *ngIf="routeInfo[selectedTransportMode]">
+              {{ formatTime(routeInfo[selectedTransportMode]?.duration) }}
+            </span>
+            <span class="distance" *ngIf="routeInfo[selectedTransportMode]">
+              ({{ formatDistance(routeInfo[selectedTransportMode]?.distance) }})
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <ion-button
+          fill="solid"
+          color="warning"
+          size="small"
+          (click)="startRealTimeNavigation(selectedCenter)">
+          <ion-icon name="navigate" slot="start"></ion-icon>
+          Start
+        </ion-button>
       </div>
     </div>
   </div>

@@ -7,9 +7,10 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Geolocation } from '@capacitor/geolocation';
 import * as L from 'leaflet';
-import { MapboxRoutingService } from '../../services/mapbox-routing.service';
-import { OfflineStorageService } from '../../services/offline-storage.service';
+
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
+import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap-routing.service';
+import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
 import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
 @Component({
@@ -17,7 +18,7 @@ import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
   templateUrl: './typhoon-map.page.html',
   styleUrls: ['./typhoon-map.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule]
+  imports: [IonicModule, CommonModule, RealTimeNavigationComponent]
 })
 export class TyphoonMapPage implements OnInit, AfterViewInit {
   private map!: L.Map;
@@ -40,15 +41,20 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     driving?: { duration: number; distance: number };
   } = {};
 
+  // Real-time navigation properties
+  public isRealTimeNavigationActive = false;
+  public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
+  public currentNavigationRoute: Route | null = null;
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private mapboxRouting = inject(MapboxRoutingService);
-  private offlineStorage = inject(OfflineStorageService);
+
   private enhancedDownload = inject(EnhancedDownloadService);
+  private osmRouting = inject(OpenStreetMapRoutingService);
 
   ngOnInit() {
     console.log('🟢 TYPHOON MAP: Component initialized...');
@@ -173,52 +179,35 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
 
       let allCenters: EvacuationCenter[] = [];
 
-      // Check if offline mode is enabled or if we're offline
-      if (this.offlineStorage.isOfflineMode() || !navigator.onLine) {
-        console.log('🔄 Loading typhoon centers from offline storage');
-        allCenters = await this.offlineStorage.getEvacuationCenters();
-        console.log('📱 OFFLINE DATA:', allCenters);
-
-        if (allCenters.length === 0) {
-          console.warn('⚠️ No cached evacuation centers found');
-          const alert = await this.alertCtrl.create({
-            header: 'No Offline Data',
-            message: 'No offline evacuation data available. Please sync data when online.',
-            buttons: ['OK']
-          });
-          await alert.present();
-          return;
-        }
-      } else {
-        // Try to get data from API when online
-        try {
-          allCenters = await firstValueFrom(
-            this.http.get<EvacuationCenter[]>(`${environment.apiUrl}/evacuation-centers`)
-          );
-          console.log('🟢 TYPHOON MAP: Total centers received from API:', allCenters?.length || 0);
-        } catch (apiError) {
-          console.error('❌ API failed, falling back to offline data:', apiError);
-          allCenters = await this.offlineStorage.getEvacuationCenters();
-
-          if (allCenters.length === 0) {
-            const alert = await this.alertCtrl.create({
-              header: 'Connection Error',
-              message: 'Cannot connect to server and no offline data available. Please check your connection or sync data when online.',
-              buttons: ['OK']
-            });
-            await alert.present();
-            return;
-          }
-        }
+      // Fetch data from API
+      try {
+        const apiResponse = await firstValueFrom(
+          this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
+        );
+        allCenters = apiResponse.data || [];
+        console.log('🟢 TYPHOON MAP: Total centers received from API:', allCenters?.length || 0);
+      } catch (apiError) {
+        console.error('❌ API failed:', apiError);
+        const alert = await this.alertCtrl.create({
+          header: 'Connection Error',
+          message: 'Cannot connect to server. Please check your internet connection.',
+          buttons: ['OK']
+        });
+        await alert.present();
+        return;
       }
 
       // Filter for TYPHOON ONLY - handle both array and string formats
       this.evacuationCenters = allCenters.filter(center => {
         if (Array.isArray(center.disaster_type)) {
-          return center.disaster_type.includes('Typhoon');
+          // Check if the array contains exactly 'Typhoon' (case-sensitive)
+          return center.disaster_type.some(type => type === 'Typhoon');
         }
         return center.disaster_type === 'Typhoon';
       });
+
+      console.log(`🟢 TYPHOON MAP: Filtered to ${this.evacuationCenters.length} typhoon centers`);
+      console.log('🟢 TYPHOON MAP: Filtered centers:', this.evacuationCenters.map(c => `${c.name} (${JSON.stringify(c.disaster_type)})`));
 
       console.log(`🟢 TYPHOON MAP: Filtered to ${this.evacuationCenters.length} typhoon centers`);
 
@@ -231,9 +220,6 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         await alert.present();
         return;
       }
-
-      // Check if we're in offline mode
-      const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
 
       // Add typhoon markers (green)
       this.evacuationCenters.forEach(center => {
@@ -252,20 +238,13 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
 
           const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
-          // Make marker clickable with navigation panel (only if online)
+          // Make marker clickable with navigation panel
           marker.on('click', () => {
-            if (isOfflineMode) {
-              this.showOfflineMarkerInfo(center, distance);
-            } else {
-              this.openNavigationPanel(center);
-            }
+            this.openNavigationPanel(center);
           });
 
           // Check if this is the new center to highlight
           const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
-
-          // Create popup content based on online/offline status
-          const offlineIndicator = isOfflineMode ? '<p><em>📱 Offline Mode - Limited functionality</em></p>' : '<p><em>Click marker for route options</em></p>';
 
           marker.bindPopup(`
             <div class="evacuation-popup">
@@ -273,7 +252,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
               <p><strong>Type:</strong> Typhoon Center</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              ${offlineIndicator}
+              <p><em>Click marker for route options</em></p>
               ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
             </div>
           `);
@@ -297,13 +276,9 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         }
       });
 
-      // Only auto-route if online
-      if (!isOfflineMode) {
-        console.log('🟢 Online mode: Auto-routing to 2 nearest typhoon centers...');
-        await this.routeToTwoNearestCenters();
-      } else {
-        console.log('🟢 Offline mode: Showing markers only (no routing)');
-      }
+      // Auto-route to nearest centers
+      console.log('🟢 Auto-routing to 2 nearest typhoon centers...');
+      await this.routeToTwoNearestCenters();
 
       // Fit map to show all typhoon centers
       if (this.evacuationCenters.length > 0) {
@@ -380,9 +355,51 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   }
 
   async calculateRoutes(centers: EvacuationCenter[]) {
-    for (const center of centers) {
-      await this.calculateRoute(center, 'walking'); // Default to walking
+    if (!this.userLocation) return;
+
+    // Clear previous routes
+    this.clearRoutes();
+
+    for (let i = 0; i < centers.length; i++) {
+      const center = centers[i];
+      const lat = Number(center.latitude);
+      const lng = Number(center.longitude);
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        console.log(`🟢 TYPHOON MAP: Creating route to center ${i + 1}: ${center.name}`);
+
+        // Create a simple straight-line route (always works)
+        const routeColor = '#28a745'; // Green for typhoon
+
+        const routeLine = L.polyline(
+          [
+            [this.userLocation.lat, this.userLocation.lng], // Start point
+            [lat, lng] // End point
+          ],
+          {
+            color: routeColor,
+            weight: 4,
+            opacity: 0.8,
+            dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
+          }
+        );
+
+        routeLine.addTo(this.map);
+
+        // Calculate distance for display
+        const distance = this.calculateDistance(this.userLocation.lat, this.userLocation.lng, lat, lng);
+        console.log(`✅ TYPHOON MAP: Added route to ${center.name} (${(distance/1000).toFixed(2)}km)`);
+      }
     }
+
+    // Show success message
+    const toast = await this.toastCtrl.create({
+      message: `🟢 Routes calculated to ${centers.length} nearest typhoon centers`,
+      duration: 3000,
+      color: 'success',
+      position: 'top'
+    });
+    await toast.present();
   }
 
   async calculateRoute(center: EvacuationCenter, travelMode: string) {
@@ -392,23 +409,16 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         return;
       }
 
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${travelMode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
+      const response = await this.osmRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(center.longitude), Number(center.latitude),
+        osmProfile
       );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const routeGeoJSON = {
-          type: 'Feature' as const,
-          geometry: route.geometry,
-          properties: {}
-        };
+      if (response.routes && response.routes.length > 0) {
+        const route = response.routes[0];
+        const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
 
         // Add route to map with typhoon color (green)
         L.geoJSON(routeGeoJSON as any, {
@@ -426,37 +436,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     }
   }
 
-  // Show offline marker information when clicked in offline mode
-  async showOfflineMarkerInfo(center: EvacuationCenter, distance: number) {
-    const alert = await this.alertCtrl.create({
-      header: `📱 ${center.name}`,
-      message: `
-        <div style="text-align: left;">
-          <p><strong>Type:</strong> Typhoon Center</p>
-          <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-          <p><strong>Address:</strong> ${center.address || 'N/A'}</p>
-          <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-          <p><strong>Status:</strong> ${center.status || 'N/A'}</p>
-          <br>
-          <p><em>📱 Offline Mode: Routing not available. Use external navigation apps for directions.</em></p>
-        </div>
-      `,
-      buttons: [
-        {
-          text: 'Open in Maps',
-          handler: () => {
-            this.openInExternalMaps(center);
-          }
-        },
-        {
-          text: 'Close',
-          role: 'cancel'
-        }
-      ]
-    });
 
-    await alert.present();
-  }
 
   // Open evacuation center in external maps app
   async openInExternalMaps(center: EvacuationCenter, travelMode?: 'walking' | 'cycling' | 'driving') {
@@ -517,19 +497,19 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
 
     for (const mode of modes) {
       try {
-        const response = await fetch(
-          `https://api.mapbox.com/directions/v5/mapbox/${mode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+        const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
+        const response = await this.osmRouting.getDirections(
+          this.userLocation.lng, this.userLocation.lat,
+          Number(center.longitude), Number(center.latitude),
+          osmProfile
         );
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.routes && data.routes.length > 0) {
-            const route = data.routes[0];
-            this.routeInfo[mode] = {
-              duration: route.duration,
-              distance: route.distance
-            };
-          }
+        if (response.routes && response.routes.length > 0) {
+          const route = response.routes[0];
+          this.routeInfo[mode] = {
+            duration: route.duration,
+            distance: route.distance
+          };
         }
       } catch (error) {
         console.error(`Error calculating ${mode} route:`, error);
@@ -545,29 +525,25 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     this.clearRoutes();
 
     try {
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${mode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(mode);
+      const response = await this.osmRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(center.longitude), Number(center.latitude),
+        osmProfile
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const routeGeoJSON = {
-            type: 'Feature' as const,
-            geometry: route.geometry,
-            properties: {}
-          };
+      if (response.routes && response.routes.length > 0) {
+        const route = response.routes[0];
+        const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
 
-          // Add route to map with typhoon color (green)
-          L.geoJSON(routeGeoJSON as any, {
-            style: {
-              color: '#008000', // Green for typhoon
-              weight: 4,
-              opacity: 0.8
-            }
-          }).addTo(this.map);
-        }
+        // Add route to map with typhoon color (green)
+        L.geoJSON(routeGeoJSON as any, {
+          style: {
+            color: '#008000', // Green for typhoon
+            weight: 4,
+            opacity: 0.8
+          }
+        }).addTo(this.map);
       }
     } catch (error) {
       console.error('Error showing route on map:', error);
@@ -621,77 +597,45 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   async routeToCenter(center: EvacuationCenter, travelMode: 'walking' | 'cycling' | 'driving') {
     if (!this.userLocation) return;
 
-    // Check if we're offline
-    const isOfflineMode = this.offlineStorage.isOfflineMode() || !navigator.onLine;
-
-    if (isOfflineMode) {
-      console.log('🟢 Offline mode: Cannot calculate routes');
-      const toast = await this.toastCtrl.create({
-        message: '📱 Offline mode: Routing not available. Use external navigation apps.',
-        duration: 4000,
-        color: 'warning'
-      });
-      await toast.present();
-
-      // Offer to open in external maps
-      await this.openInExternalMaps(center);
-      return;
-    }
-
     try {
       // Clear existing routes
       this.clearRoutes();
 
-      // Map travel modes to Mapbox API
-      let mapboxMode = 'walking';
-      switch (travelMode) {
-        case 'walking':
-          mapboxMode = 'walking';
-          break;
-        case 'cycling':
-          mapboxMode = 'cycling';
-          break;
-        case 'driving':
-          mapboxMode = 'driving';
-          break;
-      }
-
-      const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/${mapboxMode}/${this.userLocation.lng},${this.userLocation.lat};${center.longitude},${center.latitude}?geometries=geojson&access_token=${environment.mapboxAccessToken}`
+      const osmProfile = this.osmRouting.convertTravelModeToProfile(travelMode);
+      const routeData = await this.osmRouting.getDirections(
+        this.userLocation.lng, this.userLocation.lat,
+        Number(center.longitude), Number(center.latitude),
+        osmProfile
       );
 
-      if (response.ok) {
-        const routeData = await response.json();
+      if (routeData && routeData.routes && routeData.routes.length > 0) {
+        const route = routeData.routes[0];
 
-        if (routeData && routeData.routes && routeData.routes.length > 0) {
-          const route = routeData.routes[0];
+        // Use typhoon color (green)
+        const routeColor = '#008000';
 
-          // Use typhoon color (green)
-          const routeColor = '#008000';
+        // Draw route
+        const routeLine = L.polyline(
+          route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
+          {
+            color: routeColor,
+            weight: 5,
+            opacity: 0.8
+          }
+        );
 
-          // Draw route
-          const routeLine = L.polyline(
-            route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
-            {
-              color: routeColor,
-              weight: 5,
-              opacity: 0.8
-            }
-          );
+        routeLine.addTo(this.map);
 
-          routeLine.addTo(this.map);
+        // Show route info
+        const toast = await this.toastCtrl.create({
+          message: `🟢 Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${travelMode}`,
+          duration: 4000,
+          color: 'success'
+        });
+        await toast.present();
 
-          // Show route info
-          const toast = await this.toastCtrl.create({
-            message: `🟢 Route: ${(route.distance/1000).toFixed(2)}km, ${(route.duration/60).toFixed(0)}min via ${travelMode}`,
-            duration: 4000,
-            color: 'success'
-          });
-          await toast.present();
-
-          // Fit map to route
-          this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-        }
+        // Fit map to route
+        this.map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
       }
     } catch (error) {
       console.error('🟢 TYPHOON MAP: Error calculating individual route:', error);
@@ -758,8 +702,88 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
 
 
   ionViewWillLeave() {
+    // Stop real-time navigation if active
+    if (this.isRealTimeNavigationActive) {
+      this.osmRouting.stopRealTimeRouting();
+    }
     if (this.map) {
       this.map.remove();
     }
+  }
+
+  // Real-time navigation methods
+  startRealTimeNavigation(center: EvacuationCenter) {
+    console.log('🧭 Starting real-time navigation to typhoon center:', center.name);
+
+    this.navigationDestination = {
+      lat: Number(center.latitude),
+      lng: Number(center.longitude),
+      name: center.name
+    };
+
+    this.isRealTimeNavigationActive = true;
+
+    // Show success toast
+    this.toastCtrl.create({
+      message: `🧭 Real-time navigation started to ${center.name}`,
+      duration: 3000,
+      color: 'primary'
+    }).then(toast => toast.present());
+  }
+
+  onNavigationRouteUpdated(route: Route) {
+    console.log('🔄 Typhoon map navigation route updated');
+    this.currentNavigationRoute = route;
+
+    // Update the map with the new route
+    this.updateMapWithNavigationRoute(route);
+  }
+
+  onNavigationStopped() {
+    console.log('⏹️ Typhoon map real-time navigation stopped');
+    this.isRealTimeNavigationActive = false;
+    this.navigationDestination = null;
+    this.currentNavigationRoute = null;
+
+    // Clear navigation route from map
+    this.clearNavigationRoute();
+
+    // Show toast
+    this.toastCtrl.create({
+      message: '⏹️ Navigation stopped',
+      duration: 2000,
+      color: 'medium'
+    }).then(toast => toast.present());
+  }
+
+  private updateMapWithNavigationRoute(route: Route) {
+    // Clear existing navigation route
+    this.clearNavigationRoute();
+
+    // Add new navigation route to map with typhoon color
+    if (route.geometry && route.geometry.coordinates) {
+      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
+
+      const navigationRoute = L.geoJSON(routeGeoJSON, {
+        style: {
+          color: '#007bff', // Typhoon blue color
+          weight: 6,
+          opacity: 0.8,
+          dashArray: '10, 5'
+        }
+      }).addTo(this.map);
+
+      // Store reference for cleanup
+      (navigationRoute as any).isNavigationRoute = true;
+    }
+  }
+
+  private clearNavigationRoute() {
+    // Remove existing navigation routes
+    this.map.eachLayer((layer: any) => {
+      if (layer.isNavigationRoute) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 }

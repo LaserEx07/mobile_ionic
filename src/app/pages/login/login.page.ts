@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { OfflineStorageService } from '../../services/offline-storage.service';
+
 import { NetworkService } from '../../services/network.service';
 import { FCMService } from '../../services/fcm.service';
 
@@ -30,9 +30,7 @@ export class LoginPage implements OnInit {
     this.router.navigate(['/register']);
   }
 
-  openNetworkDiagnostics() {
-    this.router.navigate(['/network-diagnostics']);
-  }
+
 
 
 
@@ -42,7 +40,7 @@ export class LoginPage implements OnInit {
     private http: HttpClient,
     private alertController: AlertController,
     private platform: Platform,
-    private offlineStorage: OfflineStorageService,
+
     private networkService: NetworkService,
     private fcmService: FCMService
   ) {}
@@ -111,37 +109,17 @@ export class LoginPage implements OnInit {
     console.log('🌐 API URL:', environment.apiUrl);
     console.log('📱 Platform:', this.platform.is('android') ? 'Android' : this.platform.is('ios') ? 'iOS' : 'Browser');
     console.log('🌍 Network status:', navigator.onLine ? 'Online' : 'Offline');
-    console.log('� Offline mode:', this.offlineStorage.isOfflineMode());
-    console.log('�🔥 FCM Token ready:', this.fcmTokenReady, 'Token:', this.fcmToken ? this.fcmToken.substring(0, 20) + '...' : 'None');
-
-    // Check if we're in offline mode or have no network connectivity
-    const isOfflineMode = this.offlineStorage.isOfflineMode();
-    const isNetworkAvailable = navigator.onLine;
-
-    if (!isNetworkAvailable || isOfflineMode) {
-      console.log('🔄 Attempting offline authentication...');
-      const offlineLoginSuccess = await this.attemptOfflineLogin();
-      if (offlineLoginSuccess) {
-        return; // Successfully logged in offline
-      }
-
-      if (!isNetworkAvailable) {
-        await this.presentOfflineAlert();
-        return;
-      }
-    }
+    console.log('🔥 FCM Token ready:', this.fcmTokenReady, 'Token:', this.fcmToken ? this.fcmToken.substring(0, 20) + '...' : 'None');
 
     // FCM functionality temporarily disabled
     console.log('🔥 FCM functionality temporarily disabled');
 
-    // Test API connectivity first (only when online and not in offline mode)
-    if (isNetworkAvailable && !isOfflineMode) {
-      console.log('🧪 Testing API connectivity...');
-      const backendConnected = await this.networkService.checkBackendConnectivity();
-      if (!backendConnected) {
-        await this.presentConnectionErrorAlert();
-        return;
-      }
+    // Test API connectivity first
+    console.log('🧪 Testing API connectivity...');
+    const backendConnected = await this.networkService.checkBackendConnectivity();
+    if (!backendConnected) {
+      await this.presentConnectionErrorAlert();
+      return;
     }
 
     this.authService.login(this.credentials).subscribe({
@@ -157,39 +135,11 @@ export class LoginPage implements OnInit {
         // Store user data for FCM service
         localStorage.setItem('user', JSON.stringify(response.user));
 
-        // Register FCM token after successful login
-        try {
-          console.log('🔥 Attempting FCM token registration after login...');
-          if (this.fcmTokenReady && this.fcmToken) {
-            await this.registerTokenWithEndpoints({
-              token: this.fcmToken,
-              device_type: 'android',
-              project_id: environment.firebase.projectId,
-              user_id: response.user.id
-            });
-            console.log('✅ FCM token registered successfully after login');
-          } else {
-            console.log('⚠️ FCM token not ready, attempting to get token...');
-            // Try to get FCM token if not ready
-            await this.initializeFCMToken();
-            if (this.fcmTokenReady && this.fcmToken) {
-              await this.registerTokenWithEndpoints({
-                token: this.fcmToken,
-                device_type: 'android',
-                project_id: environment.firebase.projectId,
-                user_id: response.user.id
-              });
-              console.log('✅ FCM token registered successfully after retry');
-            } else {
-              console.log('❌ Failed to get FCM token');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error registering FCM token after login:', error);
-        }
-
-        // Navigate to loading page to handle proper routing
+        // Navigate to loading page immediately - don't wait for FCM registration
         this.router.navigate(['/loading']);
+
+        // Register FCM token in background (non-blocking)
+        this.registerFCMTokenInBackground(response.user.id);
       },
       error: (error) => {
         console.error('❌ Login error:', error);
@@ -249,65 +199,9 @@ export class LoginPage implements OnInit {
     await alert.present();
   }
 
-  async attemptOfflineLogin(): Promise<boolean> {
-    try {
-      // Check if user credentials are stored offline
-      const storedCredentials = localStorage.getItem('offline_credentials');
-      if (!storedCredentials) {
-        console.log('❌ No offline credentials stored');
-        return false;
-      }
 
-      const credentials = JSON.parse(storedCredentials);
 
-      // Simple credential check (in production, use proper hashing)
-      if (credentials.email === this.credentials.email &&
-          credentials.password === this.credentials.password) {
 
-        console.log('✅ Offline login successful');
-
-        // Set offline mode token
-        this.authService.setToken('offline_token_' + Date.now());
-
-        await this.presentSuccessAlert('Offline Login', 'Logged in using cached credentials');
-
-        // Navigate to loading page to handle proper routing
-        this.router.navigate(['/loading']);
-        return true;
-      }
-
-      console.log('❌ Offline credentials do not match');
-      await this.presentAlert('Login Failed', 'The email and password didn\'t match');
-      return false;
-    } catch (error) {
-      console.error('❌ Error during offline login:', error);
-      return false;
-    }
-  }
-
-  async presentOfflineAlert() {
-    const alert = await this.alertController.create({
-      header: 'No Internet Connection',
-      message: 'You are currently offline. Please check your internet connection and try again, or continue in offline mode if you have previously logged in.',
-      buttons: [
-        {
-          text: 'Retry',
-          handler: () => {
-            this.onLogin();
-          }
-        },
-        {
-          text: 'Continue Offline',
-          handler: () => {
-            this.attemptOfflineLogin();
-          }
-        }
-      ],
-      cssClass: 'offline-alert'
-    });
-
-    await alert.present();
-  }
 
   async presentConnectionErrorAlert() {
     const alert = await this.alertController.create({
@@ -320,12 +214,7 @@ export class LoginPage implements OnInit {
             this.onLogin();
           }
         },
-        {
-          text: 'Network Diagnostics',
-          handler: () => {
-            this.router.navigate(['/network-diagnostics']);
-          }
-        }
+
       ],
       cssClass: 'connection-error-alert'
     });
@@ -352,6 +241,44 @@ export class LoginPage implements OnInit {
       }
     } catch (error) {
       console.error('Error initializing FCM token:', error);
+    }
+  }
+
+  /**
+   * Register FCM token in background without blocking navigation
+   * @param userId The user ID to associate with the token
+   */
+  private async registerFCMTokenInBackground(userId: number) {
+    try {
+      console.log('🔥 Starting background FCM token registration...');
+
+      if (this.fcmTokenReady && this.fcmToken) {
+        await this.registerTokenWithEndpoints({
+          token: this.fcmToken,
+          device_type: 'android',
+          project_id: environment.firebase.projectId,
+          user_id: userId
+        });
+        console.log('✅ FCM token registered successfully in background');
+      } else {
+        console.log('⚠️ FCM token not ready, attempting to get token in background...');
+        // Try to get FCM token if not ready
+        await this.initializeFCMToken();
+        if (this.fcmTokenReady && this.fcmToken) {
+          await this.registerTokenWithEndpoints({
+            token: this.fcmToken,
+            device_type: 'android',
+            project_id: environment.firebase.projectId,
+            user_id: userId
+          });
+          console.log('✅ FCM token registered successfully in background after retry');
+        } else {
+          console.log('❌ Failed to get FCM token in background');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error registering FCM token in background:', error);
+      // Don't throw error - this is background operation
     }
   }
 

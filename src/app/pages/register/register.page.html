@@ -48,16 +48,7 @@
       </ion-button>
     </form>
 
-    <!-- Debug: Show FCM Token -->
-    <ion-item *ngIf="fcmToken" lines="none" class="ion-margin-top">
-      <ion-label>
-        <h3>FCM Token (for testing):</h3>
-        <p style="font-size: 10px; word-break: break-all; color: #666;">{{ fcmToken }}</p>
-      </ion-label>
-      <ion-button fill="clear" (click)="copyToken()">
-        <ion-icon name="copy"></ion-icon>
-      </ion-button>
-    </ion-item>
+   
 
     <div class="ion-text-left ion-margin-top">
       <ion-text style="color: black;">Already have an account? </ion-text>

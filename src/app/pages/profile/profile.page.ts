@@ -35,6 +35,81 @@ export class ProfilePage {
     }
   }
 
+  async logout() {
+    const alert = await this.alertCtrl.create({
+      header: 'Confirm Logout',
+      message: 'Are you sure you want to log out?',
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Log Out',
+          handler: () => {
+            this.performLogout();
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  async performLogout() {
+    try {
+      // Show loading toast
+      const loading = await this.toastCtrl.create({
+        message: 'Logging out...',
+        duration: 1000
+      });
+      await loading.present();
+
+      // Clear all stored data
+      localStorage.removeItem('token');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('user');
+      localStorage.removeItem('fcm_token');
+      localStorage.removeItem('offline_credentials');
+
+      // Optional: Call logout API endpoint to invalidate token on server
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await this.http.post(`${environment.apiUrl}/auth/logout`, {}, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }).toPromise();
+        } catch (error) {
+          console.log('Server logout failed, but continuing with local logout:', error);
+        }
+      }
+
+      // Navigate to intro page
+      this.router.navigate(['/intro'], { replaceUrl: true });
+
+      // Show success message
+      const successToast = await this.toastCtrl.create({
+        message: 'Successfully logged out',
+        duration: 2000,
+        color: 'success'
+      });
+      await successToast.present();
+
+    } catch (error) {
+      console.error('Logout error:', error);
+
+      // Show error message
+      const errorAlert = await this.alertCtrl.create({
+        header: 'Logout Error',
+        message: 'There was an error logging out. Please try again.',
+        buttons: ['OK']
+      });
+      await errorAlert.present();
+    }
+  }
+
   async openTermsModal() {
     const modal = await this.modalCtrl.create({
       component: TermsModalComponent,
