@@ -1,16 +1,43 @@
 
 
-<ion-content [fullscreen]="true">
-  <!-- Map Container -->
-  <div id="fire-map" class="map-container"></div>
+<!-- Header -->
+<ion-header [translucent]="true">
+  <ion-toolbar color="danger">
+    <ion-buttons slot="start">
+      <ion-button fill="clear" (click)="goBack()">
+        <ion-icon name="arrow-back-outline" color="light"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
 
-  <!-- Map Controls -->
+<ion-content [fullscreen]="true">
+  <div id="fire-map" style="height: 100%; width: 100%;"></div>
+
+  <!-- Map Controls - Three buttons on the right side -->
   <div class="map-controls">
+    <!-- Show All Centers Button -->
     <ion-button
       fill="clear"
-      class="download-btn"
+      class="control-btn"
+      (click)="showAllCenters()">
+      <img src="assets/home-insuranceForFire.png" alt="All Centers" class="control-icon">
+    </ion-button>
+
+    <!-- Download Button -->
+    <ion-button
+      fill="clear"
+      class="control-btn"
       (click)="downloadMap()">
-      <img src="assets/icon/download-icon.svg" alt="Download" class="download-icon">
+      <img src="assets/downloadForFire.png" alt="Download" class="control-icon">
+    </ion-button>
+
+    <!-- Route to Nearest Centers Button -->
+    <ion-button
+      fill="clear"
+      class="control-btn"
+      (click)="routeToNearestCenters()">
+      <img src="assets/compassForFire.png" alt="Route to Nearest" class="control-icon">
     </ion-button>
   </div>
 
@@ -25,65 +52,100 @@
     (navigationStopped)="onNavigationStopped()">
   </app-real-time-navigation>
 
-  <!-- Navigation Panel (slides in from right when center is selected) -->
-  <div class="navigation-panel" [class.show]="selectedCenter">
-    <div class="panel-header">
-      <h3>🔥 {{ selectedCenter?.name }}</h3>
-      <ion-button fill="clear" (click)="closeNavigationPanel()">
-        <ion-icon name="close"></ion-icon>
-      </ion-button>
+  <!-- All Centers Panel (slides from right) -->
+  <div class="all-centers-panel" [class.show]="showAllCentersPanel">
+    <div class="panel-content">
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <div class="header-info">
+          <h3>🔥 All Fire Centers</h3>
+          <p>{{ evacuationCenters.length }} centers available</p>
+        </div>
+        <ion-button fill="clear" size="small" (click)="closeAllCentersPanel()">
+          <ion-icon name="close-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <!-- Centers List -->
+      <div class="centers-list">
+        <div class="center-item"
+             *ngFor="let center of evacuationCenters; let i = index"
+             (click)="selectCenterFromList(center)">
+          <div class="center-info">
+            <h4>{{ center.name }}</h4>
+            <p class="address">{{ center.address }}</p>
+            <div class="center-details">
+              <span class="distance" *ngIf="userLocation">
+                📍 {{ calculateDistanceInKm(center) }} km away
+              </span>
+              <span class="capacity">👥 {{ center.capacity || 'N/A' }} capacity</span>
+            </div>
+          </div>
+          <div class="center-actions">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </div>
+        </div>
+      </div>
     </div>
-    
-    <div class="panel-content" *ngIf="selectedCenter">
-      <p><strong>Address:</strong> {{ selectedCenter.address }}</p>
-      <p><strong>Capacity:</strong> {{ selectedCenter.capacity || 'N/A' }}</p>
-      
-      <div class="transport-options">
-        <h4>Choose Transport Mode:</h4>
-        
-        <!-- Walking Option -->
-        <div class="transport-option" 
-             [class.selected]="selectedTransportMode === 'walking'"
-             (click)="navigateWithMode('walking')">
-          <ion-icon name="walk-outline"></ion-icon>
-          <div class="transport-info">
-            <span class="mode">Walking</span>
-            <span class="details" *ngIf="routeInfo.walking">
-              {{ (routeInfo.walking.distance / 1000).toFixed(1) }}km • 
-              {{ (routeInfo.walking.duration / 60).toFixed(0) }}min
-            </span>
-          </div>
+  </div>
+
+  <!-- Navigation Panel (slides from right) -->
+  <div class="navigation-panel" [class.show]="selectedCenter">
+    <div class="panel-content">
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <div class="center-info" *ngIf="selectedCenter">
+          <h3>{{ selectedCenter.name }}</h3>
+          <p>{{ selectedCenter.address }}</p>
         </div>
-        
-        <!-- Cycling Option -->
-        <div class="transport-option" 
-             [class.selected]="selectedTransportMode === 'cycling'"
-             (click)="navigateWithMode('cycling')">
-          <ion-icon name="bicycle-outline"></ion-icon>
-          <div class="transport-info">
-            <span class="mode">Cycling</span>
-            <span class="details" *ngIf="routeInfo.cycling">
-              {{ (routeInfo.cycling.distance / 1000).toFixed(1) }}km • 
-              {{ (routeInfo.cycling.duration / 60).toFixed(0) }}min
-            </span>
-          </div>
-        </div>
-        
-        <!-- Driving Option -->
-        <div class="transport-option" 
-             [class.selected]="selectedTransportMode === 'driving'"
-             (click)="navigateWithMode('driving')">
-          <ion-icon name="car-outline"></ion-icon>
-          <div class="transport-info">
-            <span class="mode">Driving</span>
-            <span class="details" *ngIf="routeInfo.driving">
-              {{ (routeInfo.driving.distance / 1000).toFixed(1) }}km • 
-              {{ (routeInfo.driving.duration / 60).toFixed(0) }}min
-            </span>
-          </div>
+        <ion-button fill="clear" size="small" (click)="closeNavigationPanel()">
+          <ion-icon name="close-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <!-- Transportation Options -->
+      <div class="transport-options" *ngIf="selectedCenter">
+        <div class="option-header">
+          <ion-icon name="navigate-outline"></ion-icon>
+          <span>Choose Transportation</span>
         </div>
 
-        <!-- Start Real-time Navigation Button -->
+        <div class="transport-buttons">
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'walking'"
+                  (click)="selectTransportMode('walking')">
+            <ion-icon name="walk-outline"></ion-icon>
+            <span>Walk</span>
+            <div class="route-info" *ngIf="routeInfo && selectedTransportMode === 'walking'">
+              <span class="time">{{ formatTime(routeInfo.walking?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.walking?.distance) }}</span>
+            </div>
+          </button>
+
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'cycling'"
+                  (click)="selectTransportMode('cycling')">
+            <ion-icon name="bicycle-outline"></ion-icon>
+            <span>Cycle</span>
+            <div class="route-info" *ngIf="routeInfo && selectedTransportMode === 'cycling'">
+              <span class="time">{{ formatTime(routeInfo.cycling?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.cycling?.distance) }}</span>
+            </div>
+          </button>
+
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'driving'"
+                  (click)="selectTransportMode('driving')">
+            <ion-icon name="car-outline"></ion-icon>
+            <span>Drive</span>
+            <div class="route-info" *ngIf="routeInfo && selectedTransportMode === 'driving'">
+              <span class="time">{{ formatTime(routeInfo.driving?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.driving?.distance) }}</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Start Navigation Button -->
         <button class="start-navigation-btn"
                 *ngIf="selectedTransportMode && routeInfo && selectedCenter"
                 (click)="startRealTimeNavigation(selectedCenter)">
@@ -94,9 +156,38 @@
     </div>
   </div>
 
-  <!-- Overlay to close navigation panel -->
-  <div class="navigation-overlay" 
-       [class.show]="selectedCenter" 
-       (click)="closeNavigationPanel()">
+  <!-- Footer - Route Information (shows when marker is clicked) -->
+  <div class="route-footer" [class.show]="selectedCenter && selectedTransportMode">
+    <div class="footer-content" *ngIf="selectedCenter && selectedTransportMode">
+      <div class="route-summary">
+        <div class="transport-icon">
+          <ion-icon
+            [name]="selectedTransportMode === 'walking' ? 'walk-outline' :
+                   selectedTransportMode === 'cycling' ? 'bicycle-outline' : 'car-outline'">
+          </ion-icon>
+        </div>
+        <div class="route-details">
+          <div class="destination">{{ selectedCenter.name }}</div>
+          <div class="route-info-footer">
+            <span class="time" *ngIf="routeInfo[selectedTransportMode]">
+              {{ formatTime(routeInfo[selectedTransportMode]?.duration) }}
+            </span>
+            <span class="distance" *ngIf="routeInfo[selectedTransportMode]">
+              ({{ formatDistance(routeInfo[selectedTransportMode]?.distance) }})
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <ion-button
+          fill="solid"
+          color="danger"
+          size="small"
+          (click)="startRealTimeNavigation(selectedCenter)">
+          <ion-icon name="navigate" slot="start"></ion-icon>
+          Start
+        </ion-button>
+      </div>
+    </div>
   </div>
 </ion-content>

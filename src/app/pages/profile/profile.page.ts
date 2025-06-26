@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { IonicModule, ModalController, AlertController, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -150,7 +150,21 @@ export class ProfilePage {
     await modal.present();
   }
 
+  async openUserGuideModal() {
+    const modal = await this.modalCtrl.create({
+      component: UserGuideModalComponent,
+      cssClass: 'user-guide-modal'
+    });
+    await modal.present();
+  }
 
+  async openNotificationHistoryModal() {
+    const modal = await this.modalCtrl.create({
+      component: NotificationHistoryModalComponent,
+      cssClass: 'notification-history-modal'
+    });
+    await modal.present();
+  }
 
   async testFCM() {
     // First, check if Google Play Services is missing
@@ -305,12 +319,14 @@ export class ProfilePage {
 // Terms and Conditions Modal
 @Component({
   template: `
-    <ion-header>
+    <ion-header [translucent]="true">
       <ion-toolbar>
-        <ion-title class="modal-title"><strong>Terms and Conditions</strong></ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="dismiss()">Close</ion-button>
+        <ion-buttons slot="start">
+          <ion-button (click)="dismiss()">
+            <ion-icon name="arrow-back"></ion-icon>
+          </ion-button>
         </ion-buttons>
+        <ion-title class="modal-title"><strong>Terms and Conditions</strong></ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
@@ -359,9 +375,19 @@ export class ProfilePage {
     </ion-content>
   `,
   styles: [`
+    ion-header {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+
+      ion-toolbar {
+        --background: transparent;
+        --color: white;
+      }
+    }
     .modal-title {
       font-size: 1.2rem;
       font-weight: bold;
+      color: white;
     }
     .modal-section-title {
       font-size: 0.9375rem;
@@ -374,20 +400,22 @@ export class ProfilePage {
 export class TermsModalComponent {
   constructor(private modalCtrl: ModalController) {}
 
-  dismiss() {
-    this.modalCtrl.dismiss();
+  async dismiss() {
+    await this.modalCtrl.dismiss();
   }
 }
 
 // Privacy Policy Modal
 @Component({
   template: `
-    <ion-header>
+    <ion-header [translucent]="true">
       <ion-toolbar>
-        <ion-title class="modal-title"><strong>Privacy Policy</strong></ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="dismiss()">Close</ion-button>
+        <ion-buttons slot="start">
+          <ion-button (click)="dismiss()">
+            <ion-icon name="arrow-back"></ion-icon>
+          </ion-button>
         </ion-buttons>
+        <ion-title class="modal-title"><strong>Privacy Policy</strong></ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
@@ -431,9 +459,19 @@ export class TermsModalComponent {
     </ion-content>
   `,
   styles: [`
+    ion-header {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+
+      ion-toolbar {
+        --background: transparent;
+        --color: white;
+      }
+    }
     .modal-title {
       font-size: 1.2rem;
       font-weight: bold;
+      color: white;
     }
     .modal-section-title {
       font-size: 0.9375rem;
@@ -446,86 +484,198 @@ export class TermsModalComponent {
 export class PrivacyModalComponent {
   constructor(private modalCtrl: ModalController) {}
 
-  dismiss() {
-    this.modalCtrl.dismiss();
+  async dismiss() {
+    await this.modalCtrl.dismiss();
   }
 }
 
 // Guide Modal
 @Component({
   template: `
-    <ion-header>
+    <ion-header [translucent]="true">
       <ion-toolbar>
-        <ion-title class="modal-title">Map Symbols Guide</ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="dismiss()">Close</ion-button>
+        <ion-buttons slot="start">
+          <ion-button (click)="dismiss()">
+            <ion-icon name="arrow-back"></ion-icon>
+          </ion-button>
         </ion-buttons>
+        <ion-title class="modal-title">Map Symbols Guide</ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
       <h3 class="modal-section-title"><strong>Reference Guide for Map Symbols</strong></h3>
-      <div class="legend-items">
-        <div class="legend-item" *ngFor="let item of legendItems">
-          <div class="legend-icon-container">
-            <img *ngIf="item.label === 'Your Location'" src="assets/Location.png" class="legend-icon-img" />
-            <img *ngIf="item.label === 'for Earthquake'" src="assets/forEarthquake.png" class="legend-icon-img" />
-            <img *ngIf="item.label === 'for Typhoon'" src="assets/forTyphoon.png" class="legend-icon-img" />
-            <img *ngIf="item.label === 'for Flash flood'" src="assets/forFlood.png" class="legend-icon-img" />
-            <span *ngIf="item.label !== 'Your Location' && item.label !== 'for Earthquake' && item.label !== 'for Typhoon' && item.label !== 'for Flash flood'" class="legend-icon">{{ item.icon }}</span>
-            <span class="legend-label">{{ item.label }}</span>
+
+      <!-- Location Markers Section -->
+      <div class="legend-section">
+        <h4 class="section-header">📍 Location Markers</h4>
+        <div class="legend-items">
+          <div class="legend-item">
+            <img src="assets/Location.png" class="legend-icon-img" />
+            <span class="legend-label">Your Current Location</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Disaster Evacuation Centers Section -->
+      <div class="legend-section">
+        <h4 class="section-header">🏠 Evacuation Centers by Disaster Type</h4>
+        <div class="legend-items">
+          <div class="legend-item">
+            <img src="assets/forEarthquake.png" class="legend-icon-img" />
+            <span class="legend-label">Earthquake Evacuation Centers</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/forTyphoon.png" class="legend-icon-img" />
+            <span class="legend-label">Typhoon Evacuation Centers</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/forFlood.png" class="legend-icon-img" />
+            <span class="legend-label">Flood Evacuation Centers</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/forFire.png" class="legend-icon-img" />
+            <span class="legend-label">Fire Evacuation Centers</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/forLandslide.png" class="legend-icon-img" />
+            <span class="legend-label">Landslide Evacuation Centers</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/forOthers.png" class="legend-icon-img" />
+            <span class="legend-label">Other Disaster Centers</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/forMultiple.png" class="legend-icon-img" />
+            <span class="legend-label">Multiple Disaster Centers</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Control Icons Section -->
+      <div class="legend-section">
+        <h4 class="section-header">🎛️ Map Control Icons</h4>
+        <div class="legend-items">
+          <div class="legend-item">
+            <img src="assets/home-insuranceForEarthquake.png" class="legend-icon-img" />
+            <span class="legend-label">Show All Evacuation Centers List</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/downloadForEarthquake.png" class="legend-icon-img" />
+            <span class="legend-label">Download Map with Routes</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/compassForEarthquake.png" class="legend-icon-img" />
+            <span class="legend-label">Route to 2 Nearest Centers</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Options Section -->
+      <div class="legend-section">
+        <h4 class="section-header">🚶 Navigation Options</h4>
+        <div class="legend-items">
+          <div class="legend-item">
+            <img src="assets/walking.png" class="legend-icon-img" />
+            <span class="legend-label">Walking Route</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/bike.png" class="legend-icon-img" />
+            <span class="legend-label">Cycling Route</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/car.png" class="legend-icon-img" />
+            <span class="legend-label">Driving Route</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- App Features Section -->
+      <div class="legend-section">
+        <h4 class="section-header">📱 App Features</h4>
+        <div class="legend-items">
+          <div class="legend-item">
+            <img src="assets/home1.png" class="legend-icon-img" />
+            <span class="legend-label">Home - Disaster Selection</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/search1.png" class="legend-icon-img" />
+            <span class="legend-label">Search - Find Locations</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/map1.png" class="legend-icon-img" />
+            <span class="legend-label">Map - View All Centers</span>
+          </div>
+          <div class="legend-item">
+            <img src="assets/lamp1.png" class="legend-icon-img" />
+            <span class="legend-label">Tips - Safety Information</span>
           </div>
         </div>
       </div>
     </ion-content>
   `,
   styles: [`
+    ion-header {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+
+      ion-toolbar {
+        --background: transparent;
+        --color: white;
+      }
+    }
     .modal-title {
       font-size: 1.2rem;
       font-weight: bold;
+      color: white;
     }
     .modal-section-title {
-      font-size: 0.9375rem;
-      margin-bottom: 15px;
+      font-size: 1rem;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .legend-section {
+      margin-bottom: 25px;
+    }
+    .section-header {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--ion-color-primary);
+      border-bottom: 1px solid var(--ion-color-light);
+      padding-bottom: 5px;
     }
     .legend-items {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
-    .legend-icon-container {
+    .legend-item {
       display: flex;
       align-items: center;
       gap: 15px;
-    }
-    .legend-icon {
-      font-size: 24px;
-      width: 30px;
-      text-align: center;
+      padding: 8px;
+      background: var(--ion-color-light);
+      border-radius: 8px;
     }
     .legend-label {
       flex-grow: 1;
+      font-size: 0.9rem;
     }
     .legend-icon-img {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       object-fit: contain;
+      flex-shrink: 0;
     }
   `],
   standalone: true,
   imports: [IonicModule, CommonModule]
 })
 export class GuideModalComponent {
-  legendItems = [
-    { icon: '', label: 'Your Location', isCustom: true, iconType: 'diamond' },
-    { icon: '', label: 'for Earthquake', isCustom: true, iconType: 'pin', color: '#ff9500' },
-    { icon: '', label: 'for Typhoon', isCustom: true, iconType: 'pin', color: '#22c55e' },
-    { icon: '', label: 'for Flash flood', isCustom: true, iconType: 'pin', color: '#3dc2ff' }
-  ];
-
   constructor(private modalCtrl: ModalController) {}
 
-  dismiss() {
-    this.modalCtrl.dismiss();
+  async dismiss() {
+    await this.modalCtrl.dismiss();
   }
 }
 
@@ -534,12 +684,14 @@ export class GuideModalComponent {
 // Emergency Contacts Modal
 @Component({
   template: `
-    <ion-header>
+    <ion-header [translucent]="true">
       <ion-toolbar>
-        <ion-title class="modal-title">Emergency Contacts</ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="dismiss()">Close</ion-button>
+        <ion-buttons slot="start">
+          <ion-button (click)="dismiss()">
+            <ion-icon name="arrow-back"></ion-icon>
+          </ion-button>
         </ion-buttons>
+        <ion-title class="modal-title">Emergency Contacts</ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
@@ -583,9 +735,19 @@ export class GuideModalComponent {
     </ion-content>
   `,
   styles: [`
+    ion-header {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+
+      ion-toolbar {
+        --background: transparent;
+        --color: white;
+      }
+    }
     .modal-title {
       font-size: 1.2rem;
       font-weight: bold;
+      color: white;
     }
     h2 {
       font-size: 1rem;
@@ -602,20 +764,22 @@ export class GuideModalComponent {
 export class EmergencyContactsModalComponent {
   constructor(private modalCtrl: ModalController) {}
 
-  dismiss() {
-    this.modalCtrl.dismiss();
+  async dismiss() {
+    await this.modalCtrl.dismiss();
   }
 }
 
 // Safety Tips Modal
 @Component({
   template: `
-    <ion-header>
+    <ion-header [translucent]="true">
       <ion-toolbar>
-        <ion-title class="modal-title">Helpful Tips to Prepare for Disasters</ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="dismiss()">Close</ion-button>
+        <ion-buttons slot="start">
+          <ion-button (click)="dismiss()">
+            <ion-icon name="arrow-back"></ion-icon>
+          </ion-button>
         </ion-buttons>
+        <ion-title class="modal-title">Helpful Tips to Prepare for Disasters</ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
@@ -773,9 +937,19 @@ export class EmergencyContactsModalComponent {
     </ion-content>
   `,
   styles: [`
+    ion-header {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+
+      ion-toolbar {
+        --background: transparent;
+        --color: white;
+      }
+    }
     .modal-title {
       font-size: 1.1rem;
       font-weight: bold;
+      color: white;
     }
 
     .safety-tips-container {
@@ -888,7 +1062,637 @@ export class SafetyTipsModalComponent {
       !this.expandedCards[cardType as keyof typeof this.expandedCards];
   }
 
-  dismiss() {
-    this.modalCtrl.dismiss();
+  async dismiss() {
+    await this.modalCtrl.dismiss();
+  }
+}
+
+// User Guide Modal Component
+@Component({
+  template: `
+    <ion-header [translucent]="true">
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-button (click)="dismiss()">
+            <ion-icon name="arrow-back"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+        <ion-title class="modal-title">ALERTO User Guide</ion-title>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <!-- App Purpose Section -->
+      <div class="guide-section">
+        <h3 class="section-title">🛡️ Welcome to ALERTO - The Safe Zone</h3>
+        <p class="section-content">
+          ALERTO is your comprehensive disaster preparedness and evacuation assistance app.
+          Our mission is to keep you safe by providing real-time access to evacuation centers,
+          emergency contacts, and safety information during natural disasters.
+        </p>
+      </div>
+
+      <!-- Main Features Section -->
+      <div class="guide-section">
+        <h3 class="section-title">✨ Main Features</h3>
+        <div class="feature-list">
+          <div class="feature-item">
+            <img src="assets/home1.png" class="feature-icon" />
+            <div class="feature-text">
+              <h4>Disaster Selection</h4>
+              <p>Choose from 6 disaster types to find specific evacuation centers</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <img src="assets/map1.png" class="feature-icon" />
+            <div class="feature-text">
+              <h4>Interactive Maps</h4>
+              <p>View evacuation centers with real-time navigation and routing</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <img src="assets/search1.png" class="feature-icon" />
+            <div class="feature-text">
+              <h4>Location Search</h4>
+              <p>Find specific locations and nearby evacuation centers</p>
+            </div>
+          </div>
+          <div class="feature-item">
+            <img src="assets/lamp1.png" class="feature-icon" />
+            <div class="feature-text">
+              <h4>Safety Tips & Contacts</h4>
+              <p>Access emergency contacts and disaster-specific safety information</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- How to Use Section -->
+      <div class="guide-section">
+        <h3 class="section-title">📱 How to Use ALERTO</h3>
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h4>Select Disaster Type</h4>
+              <p>From the home screen, tap on the disaster type you need help with (Earthquake, Typhoon, Flood, Fire, Landslide, or General)</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h4>View Evacuation Centers</h4>
+              <p>The map will show evacuation centers specific to your selected disaster type with your current location</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h4>Use Map Controls</h4>
+              <p>• Tap the house icon to see all centers list<br>• Tap download to save map offline<br>• Tap compass to route to 2 nearest centers</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <h4>Navigate to Safety</h4>
+              <p>Choose walking, cycling, or driving routes to reach your selected evacuation center safely</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Disaster Types Section -->
+      <div class="guide-section">
+        <h3 class="section-title">🌪️ Supported Disaster Types</h3>
+        <div class="disaster-grid">
+          <div class="disaster-type">
+            <img src="assets/earthquake-icon.svg" class="disaster-icon" />
+            <span>Earthquake</span>
+          </div>
+          <div class="disaster-type">
+            <img src="assets/icon/bagyo.png" class="disaster-icon" />
+            <span>Typhoon</span>
+          </div>
+          <div class="disaster-type">
+            <img src="assets/flood.png" class="disaster-icon" />
+            <span>Flood</span>
+          </div>
+          <div class="disaster-type">
+            <img src="assets/fireIcon.png" class="disaster-icon" />
+            <span>Fire</span>
+          </div>
+          <div class="disaster-type">
+            <img src="assets/landslideIcon.png" class="disaster-icon" />
+            <span>Landslide</span>
+          </div>
+          <div class="disaster-type">
+            <img src="assets/otherdisasterIcon.png" class="disaster-icon" />
+            <span>General</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Emergency Tips Section -->
+      <div class="guide-section">
+        <h3 class="section-title">🚨 Emergency Tips</h3>
+        <div class="tips-list">
+          <div class="tip-item">
+            <ion-icon name="call-outline" class="tip-icon"></ion-icon>
+            <p>Always call 911 for immediate emergency assistance</p>
+          </div>
+          <div class="tip-item">
+            <ion-icon name="location-outline" class="tip-icon"></ion-icon>
+            <p>Enable location services for accurate evacuation center directions</p>
+          </div>
+          <div class="tip-item">
+            <ion-icon name="download-outline" class="tip-icon"></ion-icon>
+            <p>Download maps when you have internet for offline access during emergencies</p>
+          </div>
+          <div class="tip-item">
+            <ion-icon name="notifications-outline" class="tip-icon"></ion-icon>
+            <p>Keep notifications enabled to receive emergency alerts</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Section -->
+      <div class="guide-section">
+        <h3 class="section-title">📞 Need Help?</h3>
+        <p class="section-content">
+          For technical support or questions about ALERTO, visit the Tips tab for emergency contacts
+          and safety information. Stay safe and prepared!
+        </p>
+      </div>
+    </ion-content>
+  `,
+  styles: [`
+    ion-header {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+
+      ion-toolbar {
+        --background: transparent;
+        --color: white;
+      }
+    }
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: white;
+    }
+    .guide-section {
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--ion-color-light);
+    }
+    .guide-section:last-child {
+      border-bottom: none;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--ion-color-primary);
+    }
+    .section-content {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--ion-color-medium-shade);
+    }
+    .feature-list, .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .feature-item, .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      padding: 12px;
+      background: var(--ion-color-light);
+      border-radius: 10px;
+    }
+    .feature-icon {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .feature-text h4, .step-content h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: var(--ion-color-dark);
+    }
+    .feature-text p, .step-content p {
+      font-size: 0.9rem;
+      color: var(--ion-color-medium-shade);
+      margin: 0;
+      line-height: 1.4;
+    }
+    .step-number {
+      width: 30px;
+      height: 30px;
+      background: var(--ion-color-primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .disaster-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    .disaster-type {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 15px;
+      background: var(--ion-color-light);
+      border-radius: 10px;
+      text-align: center;
+    }
+    .disaster-icon {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    .disaster-type span {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--ion-color-dark);
+    }
+    .tips-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .tip-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: var(--ion-color-light);
+      border-radius: 8px;
+    }
+    .tip-icon {
+      color: var(--ion-color-primary);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .tip-item p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--ion-color-medium-shade);
+    }
+  `],
+  standalone: true,
+  imports: [IonicModule, CommonModule]
+})
+export class UserGuideModalComponent {
+  constructor(private modalCtrl: ModalController) {}
+
+  async dismiss() {
+    await this.modalCtrl.dismiss();
+  }
+}
+
+// Notification History Modal Component
+@Component({
+  template: `
+    <ion-header [translucent]="true">
+      <ion-toolbar>
+        <ion-buttons slot="start">
+          <ion-button (click)="dismiss()">
+            <ion-icon name="arrow-back"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+        <ion-title class="modal-title">Push Notification History</ion-title>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+      <div class="history-section">
+        <h3 class="section-title">📱 FCM Notifications</h3>
+        <p class="section-content">
+          This shows the history of push notifications sent via Firebase Cloud Messaging (FCM).
+          These notifications include emergency alerts, evacuation center updates, and system notifications.
+        </p>
+      </div>
+
+      <div class="history-section" *ngIf="notifications.length > 0">
+        <h4 class="section-header">Recent Notifications</h4>
+        <div class="notification-list">
+          <div class="notification-item" *ngFor="let notification of notifications">
+            <div class="notification-header">
+              <h5 class="notification-title">{{ notification.title }}</h5>
+              <span class="notification-time">{{ formatTime(notification.created_at) }}</span>
+            </div>
+            <p class="notification-message">{{ notification.message }}</p>
+            <div class="notification-meta" *ngIf="notification.data">
+              <span class="notification-category" [class]="'category-' + notification.type">
+                {{ getCategoryLabel(notification.type) }}
+              </span>
+              <span class="notification-status" [class]="notification.read ? 'read' : 'unread'">
+                {{ notification.read ? 'Read' : 'Unread' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-section" *ngIf="notifications.length === 0 && !isLoading">
+        <div class="empty-state">
+          <ion-icon name="notifications-off-outline" class="empty-icon"></ion-icon>
+          <h4>No Notifications Yet</h4>
+          <p>You haven't received any push notifications yet. When emergency alerts or evacuation center updates are sent, they will appear here.</p>
+        </div>
+      </div>
+
+      <div class="history-section" *ngIf="isLoading">
+        <div class="loading-state">
+          <ion-spinner></ion-spinner>
+          <p>Loading notification history...</p>
+        </div>
+      </div>
+
+      <!-- Information Section -->
+      <div class="info-section">
+        <h4 class="section-header">ℹ️ About Push Notifications</h4>
+        <div class="info-items">
+          <div class="info-item">
+            <ion-icon name="warning-outline" class="info-icon emergency"></ion-icon>
+            <div class="info-content">
+              <h5>Emergency Alerts</h5>
+              <p>Critical notifications for fire and landslide disasters with sound and vibration</p>
+            </div>
+          </div>
+          <div class="info-item">
+            <ion-icon name="home-outline" class="info-icon evacuation"></ion-icon>
+            <div class="info-content">
+              <h5>Evacuation Centers</h5>
+              <p>Updates when new evacuation centers are added to your area</p>
+            </div>
+          </div>
+          <div class="info-item">
+            <ion-icon name="information-circle-outline" class="info-icon system"></ion-icon>
+            <div class="info-content">
+              <h5>System Updates</h5>
+              <p>App updates and important system announcements</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ion-content>
+  `,
+  styles: [`
+    ion-header {
+      background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+
+      ion-toolbar {
+        --background: transparent;
+        --color: white;
+      }
+    }
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+    }
+    .history-section {
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--ion-color-light);
+    }
+    .history-section:last-child {
+      border-bottom: none;
+    }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--ion-color-primary);
+    }
+    .section-header {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--ion-color-dark);
+    }
+    .section-content {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--ion-color-medium-shade);
+      margin: 0;
+    }
+    .notification-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .notification-item {
+      background: var(--ion-color-light);
+      border-radius: 8px;
+      padding: 12px;
+      border-left: 4px solid var(--ion-color-primary);
+    }
+    .notification-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .notification-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--ion-color-dark);
+      flex: 1;
+    }
+    .notification-time {
+      font-size: 0.8rem;
+      color: var(--ion-color-medium);
+      margin-left: 8px;
+    }
+    .notification-message {
+      font-size: 0.85rem;
+      color: var(--ion-color-medium-shade);
+      margin: 0 0 8px 0;
+      line-height: 1.4;
+    }
+    .notification-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .notification-category {
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .category-emergency_alert {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .category-evacuation_center_added {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+    .category-system_update {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    .category-general {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+    .notification-status {
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .notification-status.read {
+      background: #e8f5e8;
+      color: #2e7d32;
+    }
+    .notification-status.unread {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+    .empty-state, .loading-state {
+      text-align: center;
+      padding: 32px 16px;
+    }
+    .empty-icon {
+      font-size: 48px;
+      color: var(--ion-color-medium);
+      margin-bottom: 16px;
+    }
+    .empty-state h4 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+      color: var(--ion-color-dark);
+    }
+    .empty-state p {
+      font-size: 0.9rem;
+      color: var(--ion-color-medium-shade);
+      margin: 0;
+      line-height: 1.5;
+    }
+    .loading-state p {
+      margin-top: 16px;
+      color: var(--ion-color-medium);
+    }
+    .info-section {
+      background: var(--ion-color-light);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .info-items {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .info-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .info-icon {
+      font-size: 20px;
+      margin-top: 2px;
+    }
+    .info-icon.emergency {
+      color: #f44336;
+    }
+    .info-icon.evacuation {
+      color: #4caf50;
+    }
+    .info-icon.system {
+      color: #2196f3;
+    }
+    .info-content h5 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      color: var(--ion-color-dark);
+    }
+    .info-content p {
+      font-size: 0.8rem;
+      color: var(--ion-color-medium-shade);
+      margin: 0;
+      line-height: 1.4;
+    }
+  `],
+  standalone: true,
+  imports: [IonicModule, CommonModule]
+})
+export class NotificationHistoryModalComponent implements OnInit {
+  notifications: any[] = [];
+  isLoading = true;
+
+  constructor(
+    private modalCtrl: ModalController,
+    private http: HttpClient
+  ) {}
+
+  ngOnInit() {
+    this.loadNotificationHistory();
+  }
+
+  async loadNotificationHistory() {
+    try {
+      const response = await this.http.get<{
+        notifications: any[],
+        unread_count: number
+      }>(`${environment.apiUrl}/notifications?limit=50`).toPromise();
+
+      if (response) {
+        this.notifications = response.notifications || [];
+      }
+    } catch (error) {
+      console.error('Error loading notification history:', error);
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  formatTime(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString();
+  }
+
+  getCategoryLabel(type: string): string {
+    switch (type) {
+      case 'emergency_alert': return 'Emergency';
+      case 'evacuation_center_added': return 'Evacuation';
+      case 'system_update': return 'System';
+      default: return 'General';
+    }
+  }
+
+  async dismiss() {
+    await this.modalCtrl.dismiss();
   }
 }

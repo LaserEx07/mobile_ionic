@@ -206,9 +206,9 @@ export class OpenStreetMapRoutingService {
         console.error('❌ Retry also failed:', retryError);
       }
 
-      // Only fall back to straight line if both attempts fail
-      console.log('🔄 All attempts failed, falling back to straight-line route');
-      return this.createStraightLineRoute(startLng, startLat, endLng, endLat, profile);
+      // Don't fallback to straight line route - just throw the error
+      console.log('🔄 All attempts failed, throwing error instead of fallback');
+      throw error;
     }
   }
 
@@ -276,40 +276,7 @@ export class OpenStreetMapRoutingService {
     return distance / speed; // duration in seconds
   }
 
-  /**
-   * Simple routing fallback using straight line when API fails
-   */
-  createStraightLineRoute(
-    startLng: number,
-    startLat: number,
-    endLng: number,
-    endLat: number,
-    profile: string = 'foot-walking'
-  ): RouteResponse {
-    const coordinates = [[startLng, startLat], [endLng, endLat]];
 
-    // Calculate approximate distance using Haversine formula
-    const distance = this.calculateDistance(startLat, startLng, endLat, endLng);
-    const duration = this.estimateDuration(distance, profile);
-
-    console.log(`📏 Fallback route: ${(distance/1000).toFixed(2)} km, ${Math.round(duration/60)} min`);
-
-    return {
-      routes: [{
-        geometry: {
-          coordinates: coordinates,
-          type: 'LineString'
-        },
-        distance: distance,
-        duration: duration,
-        legs: [{
-          distance: distance,
-          duration: duration
-        }]
-      }],
-      code: 'Ok'
-    };
-  }
 
   /**
    * Calculate distance between two points using Haversine formula

@@ -123,10 +123,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   openNotifications() {
+    console.log('Notification button clicked! Navigating to notifications...');
     this.router.navigate(['/notifications']);
   }
-
-
-
-
 }

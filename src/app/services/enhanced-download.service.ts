@@ -102,19 +102,65 @@ export class EnhancedDownloadService {
     const markers: MarkerData[] = [];
     const routes: RouteData[] = [];
 
+    console.log('🔍 Extracting map data for download...');
+
     // Extract markers and routes from map layers
     map.eachLayer((layer: any) => {
       if (layer instanceof L.Marker) {
         const latLng = layer.getLatLng();
         const icon = layer.options.icon;
 
+        console.log('📍 Found marker:', {
+          position: latLng,
+          icon: icon,
+          iconOptions: icon?.options
+        });
+
         // Handle iconSize properly
-        let iconSize: [number, number] = [30, 30];
+        let iconSize: [number, number] = [40, 40]; // Default size matching disaster maps
         if (icon?.options?.iconSize) {
           if (Array.isArray(icon.options.iconSize)) {
             iconSize = icon.options.iconSize as [number, number];
           } else if (icon.options.iconSize instanceof L.Point) {
             iconSize = [icon.options.iconSize.x, icon.options.iconSize.y];
+          }
+        }
+
+        // Extract icon URL - handle different icon types
+        let iconUrl = 'assets/Location.png'; // Default fallback
+
+        if (icon) {
+          // For L.Icon instances (image-based icons)
+          if (icon.options && 'iconUrl' in icon.options && icon.options.iconUrl) {
+            iconUrl = icon.options.iconUrl;
+            console.log('✅ Found iconUrl from L.Icon:', iconUrl);
+          }
+          // For L.DivIcon instances (HTML-based icons) - extract from HTML
+          else if (icon.options && 'html' in icon.options && icon.options.html) {
+            const htmlContent = icon.options.html;
+            // Try to extract image src from HTML content
+            let htmlString = '';
+            if (typeof htmlContent === 'string') {
+              htmlString = htmlContent;
+            } else if (htmlContent instanceof HTMLElement) {
+              htmlString = htmlContent.outerHTML;
+            }
+
+            const imgMatch = htmlString.match(/src="([^"]+)"/);
+            if (imgMatch && imgMatch[1]) {
+              iconUrl = imgMatch[1];
+              console.log('✅ Found iconUrl from DivIcon HTML:', iconUrl);
+            } else {
+              console.log('⚠️ DivIcon found but no image src, using default');
+            }
+          }
+          // Fallback: check if icon has a _url property (some icon implementations)
+          else if ((icon as any)._url) {
+            iconUrl = (icon as any)._url;
+            console.log('✅ Found iconUrl from _url property:', iconUrl);
+          }
+          else {
+            console.log('⚠️ Icon found but no iconUrl detected, using default:', iconUrl);
           }
         }
 
@@ -130,13 +176,16 @@ export class EnhancedDownloadService {
           }
         }
 
-        markers.push({
+        const markerData = {
           lat: latLng.lat,
           lng: latLng.lng,
-          iconUrl: icon?.options?.iconUrl || 'assets/Location.png',
+          iconUrl: iconUrl,
           iconSize: iconSize,
           popupContent: popupContent
-        });
+        };
+
+        console.log('📌 Adding marker to download:', markerData);
+        markers.push(markerData);
       } else if (layer instanceof L.Polyline) {
         const latLngs = layer.getLatLngs() as L.LatLng[];
         routes.push({
@@ -144,8 +193,11 @@ export class EnhancedDownloadService {
           color: layer.options.color || '#3388ff',
           weight: layer.options.weight || 3
         });
+        console.log('🛣️ Found route with', latLngs.length, 'points');
       }
     });
+
+    console.log(`📊 Extraction complete: ${markers.length} markers, ${routes.length} routes`);
 
     return {
       markers,
@@ -265,13 +317,19 @@ export class EnhancedDownloadService {
     markers: MarkerData[],
     _mapRect: DOMRect
   ): Promise<void> {
-    for (const marker of markers) {
+    console.log(`🎨 Drawing ${markers.length} markers on canvas...`);
+
+    for (let i = 0; i < markers.length; i++) {
+      const marker = markers[i];
       try {
         const point = map.latLngToContainerPoint([marker.lat, marker.lng]);
+        console.log(`📍 Drawing marker ${i + 1}/${markers.length} at point:`, point, 'iconUrl:', marker.iconUrl);
 
         // Load marker image
         const img = await this.loadImage(marker.iconUrl);
         const [width, height] = marker.iconSize;
+
+        console.log(`✅ Loaded marker image: ${width}x${height}`);
 
         // Draw marker image
         ctx.drawImage(
@@ -281,27 +339,82 @@ export class EnhancedDownloadService {
           width,
           height
         );
+
+        console.log(`✅ Drew marker ${i + 1} successfully`);
       } catch (error) {
-        console.warn('Failed to load marker image:', marker.iconUrl, error);
-        // Draw a simple circle as fallback
+        console.warn(`❌ Failed to load marker image ${i + 1}:`, marker.iconUrl, error);
+
+        // Draw a disaster-type specific colored circle as fallback
         const point = map.latLngToContainerPoint([marker.lat, marker.lng]);
-        ctx.fillStyle = '#ff0000';
+
+        // Determine color based on icon URL
+        let fallbackColor = '#ff0000'; // Default red
+        if (marker.iconUrl.includes('Earthquake')) {
+          fallbackColor = '#ff9500'; // Orange
+        } else if (marker.iconUrl.includes('Flood')) {
+          fallbackColor = '#3dc2ff'; // Blue
+        } else if (marker.iconUrl.includes('Typhoon')) {
+          fallbackColor = '#2dd36f'; // Green
+        } else if (marker.iconUrl.includes('Fire')) {
+          fallbackColor = '#ef4444'; // Red
+        } else if (marker.iconUrl.includes('Landslide')) {
+          fallbackColor = '#8b5a2b'; // Brown
+        } else if (marker.iconUrl.includes('Others')) {
+          fallbackColor = '#9333ea'; // Purple
+        }
+
+        // Draw colored circle with white border
+        ctx.fillStyle = fallbackColor;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
+        ctx.arc(point.x, point.y, 12, 0, 2 * Math.PI);
         ctx.fill();
+        ctx.stroke();
+
+        console.log(`✅ Drew fallback marker ${i + 1} with color ${fallbackColor}`);
       }
     }
+
+    console.log(`🎨 Completed drawing all markers on canvas`);
   }
 
   /**
-   * Load image as Promise
+   * Load image as Promise with better error handling
    */
   private loadImage(src: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
       const img = new Image();
+
+      // Set crossOrigin for better compatibility
       img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = reject;
+
+      // Set up success handler
+      img.onload = () => {
+        console.log(`✅ Successfully loaded image: ${src}`);
+        resolve(img);
+      };
+
+      // Set up error handler with more details
+      img.onerror = (error) => {
+        console.error(`❌ Failed to load image: ${src}`, error);
+        reject(new Error(`Failed to load image: ${src}`));
+      };
+
+      // Handle timeout for slow loading images
+      const timeout = setTimeout(() => {
+        console.error(`⏰ Image load timeout: ${src}`);
+        reject(new Error(`Image load timeout: ${src}`));
+      }, 10000); // 10 second timeout
+
+      img.onload = () => {
+        clearTimeout(timeout);
+        console.log(`✅ Successfully loaded image: ${src}`);
+        resolve(img);
+      };
+
+      // Start loading the image
+      console.log(`🔄 Loading image: ${src}`);
       img.src = src;
     });
   }
