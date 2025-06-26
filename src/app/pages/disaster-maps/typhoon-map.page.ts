@@ -36,6 +36,9 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   public centerLat: number | null = null;
   public centerLng: number | null = null;
 
+  // Emergency navigation flag
+  public shouldAutoRouteEmergency: boolean = false;
+
   // UI panel properties
   public showAllCentersPanel = false;
   public showRouteFooter = false;
@@ -74,7 +77,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     console.log('🟢 TYPHOON MAP: Component initialized...');
     // Don't initialize map here - wait for view to be ready
 
-    // Check for query parameters to highlight new center
+    // Check for query parameters to highlight new center or emergency navigation
     this.route.queryParams.subscribe((params: any) => {
       if (params['newCenterId']) {
         this.newCenterId = params['newCenterId'];
@@ -82,6 +85,13 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         this.centerLat = params['centerLat'] ? parseFloat(params['centerLat']) : null;
         this.centerLng = params['centerLng'] ? parseFloat(params['centerLng']) : null;
         console.log('🟢 TYPHOON MAP: New center to highlight:', this.newCenterId);
+      }
+
+      // Handle emergency navigation
+      if (params['emergency'] === 'true' && params['autoRoute'] === 'true') {
+        console.log('🚨 Emergency navigation triggered for typhoon map');
+        // Set flag to auto-route to nearest centers after map loads
+        this.shouldAutoRouteEmergency = true;
       }
     });
   }
@@ -295,6 +305,13 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
       console.log('🟢 Showing simple markers without auto-routing...');
       // await this.routeToTwoNearestCenters();
 
+      // Handle emergency auto-routing
+      if (this.shouldAutoRouteEmergency) {
+        console.log('🚨 Performing emergency auto-routing to nearest typhoon evacuation centers');
+        await this.performEmergencyRouting();
+        this.shouldAutoRouteEmergency = false; // Reset flag
+      }
+
       // Fit map to show all typhoon centers
       if (this.evacuationCenters.length > 0) {
         const bounds = L.latLngBounds([]);
@@ -373,6 +390,46 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     }
   }
 
+  // Emergency routing method for FCM notifications
+  async performEmergencyRouting() {
+    try {
+      console.log('🚨 Starting emergency routing to nearest typhoon evacuation centers');
+
+      // Show emergency routing toast
+      const emergencyToast = await this.toastCtrl.create({
+        message: '🚨 EMERGENCY: Routing to nearest typhoon evacuation centers',
+        duration: 5000,
+        color: 'danger',
+        position: 'top',
+        cssClass: 'emergency-toast'
+      });
+      await emergencyToast.present();
+
+      // Perform the same routing as normal but with emergency styling
+      await this.routeToTwoNearestCenters();
+
+      // Show completion message
+      const completionToast = await this.toastCtrl.create({
+        message: '✅ Emergency routes calculated. Follow the highlighted paths to safety.',
+        duration: 7000,
+        color: 'success',
+        position: 'bottom'
+      });
+      await completionToast.present();
+
+    } catch (error) {
+      console.error('Error in emergency routing:', error);
+
+      const errorToast = await this.toastCtrl.create({
+        message: '⚠️ Emergency routing failed. Please manually navigate to nearest evacuation center.',
+        duration: 5000,
+        color: 'warning',
+        position: 'top'
+      });
+      await errorToast.present();
+    }
+  }
+
   getTwoNearestCenters(userLat: number, userLng: number): EvacuationCenter[] {
     const centersWithDistance = this.evacuationCenters.map(center => ({
       ...center,
@@ -431,8 +488,31 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   }
 
   clearRoutes() {
-    this.map.eachLayer(layer => {
-      if (layer instanceof L.GeoJSON) {
+    // Remove route layer
+    if (this.routeLayer) {
+      this.map.removeLayer(this.routeLayer);
+      this.routeLayer = null;
+    }
+
+    // Remove nearest markers
+    if (this.nearestMarkers) {
+      this.nearestMarkers.forEach(marker => {
+        this.map.removeLayer(marker);
+      });
+      this.nearestMarkers = [];
+    }
+
+    // Clear any remaining route layers by checking all map layers
+    this.map.eachLayer((layer: any) => {
+      if (layer instanceof L.GeoJSON ||
+          layer instanceof L.Polyline ||
+          (layer.options && (
+            layer.options.color === '#2dd36f' ||
+            layer.options.color === '#008000' ||
+            layer.options.color === '#007bff' ||
+            layer.isRouteLayer ||
+            layer.isNavigationRoute
+          ))) {
         this.map.removeLayer(layer);
       }
     });
@@ -488,23 +568,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
           }
         } catch (error) {
           console.error(`🟢 Error calculating Mapbox route to center ${i + 1}:`, error);
-
-          // Fallback to straight line if Mapbox fails
-          const routeLine = L.polyline(
-            [
-              [this.userLocation.lat, this.userLocation.lng],
-              [lat, lng]
-            ],
-            {
-              color: '#2dd36f',
-              weight: 4,
-              opacity: 0.8,
-              dashArray: i === 0 ? undefined : '10, 10'
-            }
-          );
-
-          routeLine.addTo(this.routeLayer);
-          console.log(`⚠️ TYPHOON MAP: Used fallback straight-line route to ${center.name}`);
+          // Skip fallback straight line - only show proper Mapbox routes
         }
       }
     }
@@ -664,6 +728,8 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
           }
         );
 
+        // Mark as route layer for easier identification
+        (routeLine as any).isRouteLayer = true;
         routeLine.addTo(this.routeLayer);
 
         // Show route info
@@ -920,14 +986,23 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         // Clear existing routes
         this.clearRoutes();
 
-        // Add route to map with typhoon color (green)
-        L.geoJSON(routeGeoJSON as any, {
+        // Create route layer if it doesn't exist
+        if (!this.routeLayer) {
+          this.routeLayer = L.layerGroup().addTo(this.map);
+        }
+
+        // Add route to route layer with typhoon color (green)
+        const routeLayer = L.geoJSON(routeGeoJSON as any, {
           style: {
             color: '#2dd36f', // Green for typhoon
             weight: 4,
             opacity: 0.8
           }
-        }).addTo(this.map);
+        });
+
+        // Mark as route layer for easier identification
+        (routeLayer as any).isRouteLayer = true;
+        routeLayer.addTo(this.routeLayer);
       }
     } catch (error) {
       console.error('Error showing route on map:', error);
@@ -1031,7 +1106,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
 
       const navigationRoute = L.geoJSON(routeGeoJSON, {
         style: {
-          color: '#007bff', // Typhoon blue color
+          color: '#2dd36f', // Typhoon green color (consistent with other routes)
           weight: 6,
           opacity: 0.8,
           dashArray: '10, 5'

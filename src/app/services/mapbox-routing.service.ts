@@ -104,7 +104,7 @@ export class MapboxRoutingService {
       throw new Error('No routes found in Mapbox response');
     } catch (error: any) {
       console.error('❌ Mapbox routing error:', error);
-      
+
       // Log more detailed error information
       if (error.status) {
         console.error(`HTTP Status: ${error.status}`);
@@ -113,9 +113,8 @@ export class MapboxRoutingService {
         console.error('Error details:', error.error);
       }
 
-      // Fallback to straight line route
-      console.log('🔄 Falling back to straight-line route');
-      return this.createStraightLineRoute(startLng, startLat, endLng, endLat, profile);
+      // Don't fallback to straight line route - just throw the error
+      throw error;
     }
   }
 
@@ -194,40 +193,7 @@ export class MapboxRoutingService {
     };
   }
 
-  /**
-   * Simple routing fallback using straight line when API fails
-   */
-  createStraightLineRoute(
-    startLng: number,
-    startLat: number,
-    endLng: number,
-    endLat: number,
-    profile: string = 'walking'
-  ): MapboxRouteResponse {
-    const coordinates = [[startLng, startLat], [endLng, endLat]];
 
-    // Calculate approximate distance using Haversine formula
-    const distance = this.calculateDistance(startLat, startLng, endLat, endLng);
-    const duration = this.estimateDuration(distance, profile);
-
-    console.log(`📏 Fallback route: ${(distance/1000).toFixed(2)} km, ${Math.round(duration/60)} min`);
-
-    return {
-      routes: [{
-        geometry: {
-          coordinates: coordinates,
-          type: 'LineString'
-        },
-        distance: distance,
-        duration: duration,
-        legs: [{
-          distance: distance,
-          duration: duration
-        }]
-      }],
-      code: 'Ok'
-    };
-  }
 
   /**
    * Calculate distance between two points using Haversine formula

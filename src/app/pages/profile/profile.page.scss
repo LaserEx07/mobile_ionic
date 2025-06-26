@@ -3,10 +3,12 @@ ion-content {
 }
 
 ion-header {
-  background: var(--ion-color-primary);
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 
   ion-toolbar {
     --background: transparent;
+    --color: white;
 
     ion-title {
       color: white;

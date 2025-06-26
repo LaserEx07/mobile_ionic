@@ -428,7 +428,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
           className: 'pulsing-marker',
           html: `
             <div class="pulse-container">
-              <div class="pulse" style="background-color: #8B4513"></div>
+              <div class="pulse" style="background-color: #8b5a2b"></div>
               <img src="assets/forLandslide.png" class="marker-icon" />
               <div class="marker-label">${index + 1}</div>
             </div>
@@ -486,7 +486,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
             const routeLine = L.polyline(
               route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]]),
               {
-                color: '#8B4513', // Brown for landslide
+                color: '#8b5a2b', // Brown for landslide
                 weight: 4,
                 opacity: 0.8,
                 dashArray: i === 0 ? undefined : '10, 10' // Solid for first, dashed for second
@@ -505,23 +505,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
           }
         } catch (error) {
           console.error(`🏔️ Error calculating Mapbox route to center ${i + 1}:`, error);
-
-          // Fallback to straight line if Mapbox fails
-          const routeLine = L.polyline(
-            [
-              [this.userLocation.lat, this.userLocation.lng],
-              [lat, lng]
-            ],
-            {
-              color: '#8B4513',
-              weight: 4,
-              opacity: 0.8,
-              dashArray: i === 0 ? undefined : '10, 10'
-            }
-          );
-
-          routeLine.addTo(this.routeLayer);
-          console.log(`⚠️ LANDSLIDE MAP: Used fallback straight-line route to ${center.name}`);
+          // Skip fallback straight line - only show proper Mapbox routes
         }
       }
     }
@@ -529,15 +513,31 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
   // Clear previous routes
   clearRoutes() {
+    // Remove route layer
     if (this.routeLayer) {
       this.map.removeLayer(this.routeLayer);
       this.routeLayer = null;
     }
 
+    // Remove nearest markers
     this.nearestMarkers.forEach(marker => {
       this.map.removeLayer(marker);
     });
     this.nearestMarkers = [];
+
+    // Clear any remaining route layers by checking all map layers
+    this.map.eachLayer((layer: any) => {
+      if (layer instanceof L.GeoJSON ||
+          layer instanceof L.Polyline ||
+          (layer.options && (
+            layer.options.color === '#8b5a2b' ||
+            layer.options.color === '#8b5a2b' ||
+            layer.isRouteLayer ||
+            layer.isNavigationRoute
+          ))) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 
   // Show offline marker information when clicked in offline mode
@@ -624,7 +624,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
         const route = routeData.routes[0];
 
         // Use landslide color (brown)
-        const routeColor = '#8B4513';
+        const routeColor = '#8b5a2b';
 
         this.routeLayer = L.layerGroup().addTo(this.map);
 
@@ -872,14 +872,23 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
         // Clear existing routes
         this.clearRoutes();
 
-        // Add route to map with landslide color (brown)
-        L.geoJSON(routeGeoJSON as any, {
+        // Create route layer if it doesn't exist
+        if (!this.routeLayer) {
+          this.routeLayer = L.layerGroup().addTo(this.map);
+        }
+
+        // Add route to route layer with landslide color (brown)
+        const routeLayer = L.geoJSON(routeGeoJSON as any, {
           style: {
-            color: '#8B4513', // Brown for landslide
+            color: '#8b5a2b', // Brown for landslide
             weight: 4,
             opacity: 0.8
           }
-        }).addTo(this.map);
+        });
+
+        // Mark as route layer for easier identification
+        (routeLayer as any).isRouteLayer = true;
+        routeLayer.addTo(this.routeLayer);
       }
     } catch (error) {
       console.error('Error showing route on map:', error);
@@ -954,6 +963,8 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
             }
           );
 
+          // Mark as route layer for easier identification
+          (routeLine as any).isRouteLayer = true;
           routeLine.addTo(this.routeLayer);
 
           // Show route info
@@ -1044,7 +1055,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
 
       const navigationRoute = L.geoJSON(routeGeoJSON, {
         style: {
-          color: '#8b4513', // Landslide brown color
+          color: '#8b5a2b', // Landslide brown color
           weight: 6,
           opacity: 0.8,
           dashArray: '10, 5'

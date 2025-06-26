@@ -1,15 +1,29 @@
 
+<!-- Header -->
+<ion-header [translucent]="true">
+  <ion-toolbar color="secondary">
+  </ion-toolbar>
+</ion-header>
 
 <ion-content [fullscreen]="true">
   <div id="all-maps" style="height: 100%; width: 100%;"></div>
 
-  <!-- Map Controls -->
+  <!-- Map Controls - Two buttons on the right side -->
   <div class="map-controls">
+    <!-- Show All Centers Button -->
     <ion-button
       fill="clear"
-      class="download-btn"
+      class="control-btn"
+      (click)="showAllCenters()">
+      <img src="assets/ListOfEvacuationArea.png" alt="All Centers" class="control-icon">
+    </ion-button>
+
+    <!-- Download Button -->
+    <ion-button
+      fill="clear"
+      class="control-btn"
       (click)="downloadMap()">
-      <ion-icon name="download-outline"></ion-icon>
+      <img src="assets/downloadForSeeWholeMap.png" alt="Download" class="control-icon">
     </ion-button>
   </div>
 
@@ -24,88 +38,91 @@
     (navigationStopped)="onNavigationStopped()">
   </app-real-time-navigation>
 
-  <!-- Floating info card -->
-  <div class="floating-info">
-    <ion-card>
-      <ion-card-content>
-        <div class="info-header">
-          <ion-icon name="map" color="secondary"></ion-icon>
-          <span>All Centers: {{ centerCounts.total }}</span>
+  <!-- All Centers Panel (slides in from right) -->
+  <div class="all-centers-panel" [class.show]="showAllCentersPanel">
+    <div class="panel-content">
+      <div class="panel-header">
+        <ion-button fill="clear" class="back-btn" (click)="closeAllCentersPanel()">
+          <img src="assets/backIcon.png" alt="Back" class="back-icon">
+        </ion-button>
+        <div class="header-info">
+          <h3>🗺️ All Evacuation Centers</h3>
+          <p>{{ centerCounts.total }} centers available</p>
+        </div>
+      </div>
+
+      <!-- Disaster Type Counts -->
+      <div class="disaster-counts">
+        <div class="count-row">
+          <span class="disaster-icon">🟠</span>
+          <span class="disaster-label">Earthquake:</span>
+          <span class="disaster-count">{{ centerCounts.earthquake }}</span>
         </div>
 
-        <div class="disaster-counts">
-          <div class="count-row">
-            <span class="disaster-icon">🟠</span>
-            <span class="disaster-label">Earthquake:</span>
-            <span class="disaster-count">{{ centerCounts.earthquake }}</span>
-          </div>
-
-          <div class="count-row">
-            <span class="disaster-icon">🟢</span>
-            <span class="disaster-label">Typhoon:</span>
-            <span class="disaster-count">{{ centerCounts.typhoon }}</span>
-          </div>
-
-          <div class="count-row">
-            <span class="disaster-icon">🔵</span>
-            <span class="disaster-label">Flood:</span>
-            <span class="disaster-count">{{ centerCounts.flood }}</span>
-          </div>
-
-          <div class="count-row">
-            <span class="disaster-icon">🔴</span>
-            <span class="disaster-label">Fire:</span>
-            <span class="disaster-count">{{ centerCounts.fire }}</span>
-          </div>
-
-          <div class="count-row">
-            <span class="disaster-icon">🟤</span>
-            <span class="disaster-label">Landslide:</span>
-            <span class="disaster-count">{{ centerCounts.landslide }}</span>
-          </div>
-
-          <div class="count-row">
-            <span class="disaster-icon">🟣</span>
-            <span class="disaster-label">Others:</span>
-            <span class="disaster-count">{{ centerCounts.others }}</span>
-          </div>
-
-          <div class="count-row">
-            <span class="disaster-icon">🔘</span>
-            <span class="disaster-label">Multiple:</span>
-            <span class="disaster-count">{{ centerCounts.multiple }}</span>
-          </div>
+        <div class="count-row">
+          <span class="disaster-icon">🟢</span>
+          <span class="disaster-label">Typhoon:</span>
+          <span class="disaster-count">{{ centerCounts.typhoon }}</span>
         </div>
 
-        <div class="info-text">
-          Complete overview of all evacuation centers by disaster type
+        <div class="count-row">
+          <span class="disaster-icon">🔵</span>
+          <span class="disaster-label">Flood:</span>
+          <span class="disaster-count">{{ centerCounts.flood }}</span>
         </div>
-      </ion-card-content>
-    </ion-card>
+
+        <div class="count-row">
+          <span class="disaster-icon">🔴</span>
+          <span class="disaster-label">Fire:</span>
+          <span class="disaster-count">{{ centerCounts.fire }}</span>
+        </div>
+
+        <div class="count-row">
+          <span class="disaster-icon">🟤</span>
+          <span class="disaster-label">Landslide:</span>
+          <span class="disaster-count">{{ centerCounts.landslide }}</span>
+        </div>
+
+        <div class="count-row">
+          <span class="disaster-icon">🟣</span>
+          <span class="disaster-label">Others:</span>
+          <span class="disaster-count">{{ centerCounts.others }}</span>
+        </div>
+
+        <div class="count-row">
+          <span class="disaster-icon">🔘</span>
+          <span class="disaster-label">Multiple:</span>
+          <span class="disaster-count">{{ centerCounts.multiple }}</span>
+        </div>
+      </div>
+
+      <!-- Centers List -->
+      <div class="centers-list">
+        <div class="center-item"
+             *ngFor="let center of evacuationCenters; let i = index"
+             (click)="selectCenterFromList(center)">
+          <div class="center-info">
+            <h4>{{ center.name }}</h4>
+            <p class="address">{{ center.address }}</p>
+            <div class="center-details">
+              <span class="distance" *ngIf="userLocation">
+                📍 {{ calculateDistanceInKm(center) }} km away
+              </span>
+              <span class="capacity">👥 {{ center.capacity || 'N/A' }} capacity</span>
+            </div>
+          </div>
+          <div class="center-actions">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-
-
-  <!-- Route Information -->
-  <div *ngIf="routeTime && routeDistance" class="route-info">
-    <ion-card>
-      <ion-card-content>
-        <div class="route-header">
-          <ion-icon name="time-outline" color="success"></ion-icon>
-          <span>Route to Nearest Center</span>
-        </div>
-        <div class="route-details">
-          <div class="route-item">
-            <ion-icon [name]="travelMode === 'walking' ? 'walk-outline' : travelMode === 'cycling' ? 'bicycle-outline' : 'car-outline'"></ion-icon>
-            <span>{{ (routeTime/60).toFixed(0) }} min</span>
-          </div>
-          <div class="route-item">
-            <ion-icon name="location-outline"></ion-icon>
-            <span>{{ (routeDistance/1000).toFixed(2) }} km</span>
-          </div>
-        </div>
-      </ion-card-content>
-    </ion-card>
+  <!-- Overlay to close all centers panel -->
+  <div class="all-centers-overlay"
+       [class.show]="showAllCentersPanel"
+       (click)="closeAllCentersPanel()">
   </div>
 
   <!-- Navigation Panel (slides from right) -->
@@ -175,11 +192,5 @@
     </div>
   </div>
 
-  <!-- Route Button -->
-  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-    <ion-fab-button color="primary" (click)="routeToTwoNearestCenters()">
-      <ion-icon name="navigate-outline"></ion-icon>
-    </ion-fab-button>
-    <ion-label class="fab-label">Route to 2 Nearest Centers</ion-label>
-  </ion-fab>
+
 </ion-content>

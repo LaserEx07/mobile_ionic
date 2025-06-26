@@ -29,7 +29,7 @@ export class SettingsPage implements OnInit {
     // Use auth service to properly logout
     this.authService.logout();
 
-    // Navigate to loading page which will handle proper routing
-    this.router.navigate(['/loading']);
+    // Navigate directly to intro page after logout
+    this.router.navigate(['/intro']);
   }
 }

@@ -135,8 +135,22 @@ export class LoginPage implements OnInit {
         // Store user data for FCM service
         localStorage.setItem('user', JSON.stringify(response.user));
 
-        // Navigate to loading page immediately - don't wait for FCM registration
-        this.router.navigate(['/loading']);
+        // Store server-side onboarding status (overrides any local storage)
+        let onboardingComplete = false;
+        if (response.onboarding_complete !== undefined) {
+          onboardingComplete = response.onboarding_complete;
+          localStorage.setItem('onboardingComplete', onboardingComplete ? 'true' : 'false');
+          console.log('🎯 Server onboarding status:', onboardingComplete);
+        }
+
+        // Navigate directly based on onboarding status - no loading page needed
+        if (onboardingComplete) {
+          console.log('✅ User has completed onboarding → navigating to tabs/home');
+          this.router.navigate(['/tabs/home']);
+        } else {
+          console.log('✅ User needs onboarding → navigating to welcome');
+          this.router.navigate(['/welcome']);
+        }
 
         // Register FCM token in background (non-blocking)
         this.registerFCMTokenInBackground(response.user.id);

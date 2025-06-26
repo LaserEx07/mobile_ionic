@@ -40,24 +40,7 @@
     </ion-button>
   </div>
 
-  <!-- Travel Mode Selector (like all-maps) -->
-  <div class="travel-mode-selector">
-    <ion-segment [(ngModel)]="travelMode" (ionChange)="onTravelModeChange($event)">
-      <ion-segment-button value="walking">
-        <ion-icon name="walk-outline"></ion-icon>
-        <ion-label>Walk</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="cycling">
-        <ion-icon name="bicycle-outline"></ion-icon>
-        <ion-label>Cycle</ion-label>
-      </ion-segment-button>
-      <ion-segment-button value="driving">
-        <ion-icon name="car-outline"></ion-icon>
-        <ion-label>Drive</ion-label>
-      </ion-segment-button>
-    </ion-segment>
-  </div>
-
+  
   <!-- Route Information Display -->
   <div class="route-info" *ngIf="routeTime > 0 && routeDistance > 0">
     <ion-card>

@@ -69,6 +69,9 @@ export class AllMapsPage implements OnInit {
   public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
   public currentNavigationRoute: Route | null = null;
 
+  // All centers panel properties
+  public showAllCentersPanel = false;
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -585,15 +588,30 @@ export class AllMapsPage implements OnInit {
 
   // Clear previous routes and markers
   clearRoutes() {
+    // Remove route layer
     if (this.routeLayer) {
       this.map.removeLayer(this.routeLayer);
       this.routeLayer = null;
     }
 
+    // Remove nearest markers
     this.nearestMarkers.forEach(marker => {
       this.map.removeLayer(marker);
     });
     this.nearestMarkers = [];
+
+    // Clear any remaining route layers by checking all map layers
+    this.map.eachLayer((layer: any) => {
+      if (layer instanceof L.GeoJSON ||
+          layer instanceof L.Polyline ||
+          (layer.options && (layer.options.color || layer.isRouteLayer))) {
+        // Check if it's a route color (orange, green, blue, red, etc.)
+        const routeColors = ['#ff9500', '#2dd36f', '#3dc2ff', '#3880ff', '#008000', '#0066CC', '#ef4444', '#dc3545', '#ffa500', '#17a2b8', '#007bff'];
+        if (routeColors.includes(layer.options.color) || layer.isRouteLayer || layer.isNavigationRoute) {
+          this.map.removeLayer(layer);
+        }
+      }
+    });
 
     this.routeTime = 0;
     this.routeDistance = 0;
@@ -763,6 +781,8 @@ export class AllMapsPage implements OnInit {
             }
           );
 
+          // Mark as route layer for easier identification
+          (routeLine as any).isRouteLayer = true;
           routeLine.addTo(this.routeLayer);
 
           // Show route info
@@ -792,6 +812,40 @@ export class AllMapsPage implements OnInit {
   goBack() {
     this.router.navigate(['/tabs/home']);
   }
+
+  // Show all centers panel
+  showAllCenters() {
+    this.showAllCentersPanel = true;
+    // Close navigation panel if open
+    this.selectedCenter = null;
+  }
+
+  // Close all centers panel
+  closeAllCentersPanel() {
+    this.showAllCentersPanel = false;
+  }
+
+  // Select center from list
+  selectCenterFromList(center: EvacuationCenter) {
+    this.closeAllCentersPanel();
+    this.showNavigationPanel(center);
+  }
+
+  // Calculate distance in kilometers
+  calculateDistanceInKm(center: EvacuationCenter): string {
+    if (!this.userLocation) return 'N/A';
+
+    const distance = this.calculateDistance(
+      this.userLocation.lat,
+      this.userLocation.lng,
+      Number(center.latitude),
+      Number(center.longitude)
+    );
+
+    return (distance / 1000).toFixed(1);
+  }
+
+
 
   // Enhanced download map functionality with routes
   async downloadMap() {

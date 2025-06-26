@@ -3,16 +3,12 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/loading',
+    redirectTo: '/intro',
     pathMatch: 'full',
   },
   {
     path: 'intro',
     loadComponent: () => import('./pages/intro/intro.page').then(m => m.IntroPage)
-  },
-  {
-    path: 'loading',
-    loadComponent: () => import('./pages/loading/loading.page').then(m => m.LoadingPage)
   },
   {
     path: 'login',

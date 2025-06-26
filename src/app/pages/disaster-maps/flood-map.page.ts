@@ -434,8 +434,30 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   }
 
   clearRoutes() {
-    this.map.eachLayer(layer => {
-      if (layer instanceof L.GeoJSON) {
+    // Remove route layer
+    if (this.routeLayer) {
+      this.map.removeLayer(this.routeLayer);
+      this.routeLayer = null;
+    }
+
+    // Remove nearest markers
+    if (this.nearestMarkers) {
+      this.nearestMarkers.forEach(marker => {
+        this.map.removeLayer(marker);
+      });
+      this.nearestMarkers = [];
+    }
+
+    // Clear any remaining route layers by checking all map layers
+    this.map.eachLayer((layer: any) => {
+      if (layer instanceof L.GeoJSON ||
+          layer instanceof L.Polyline ||
+          (layer.options && (
+            layer.options.color === '#0066CC' ||
+            layer.options.color === '#17a2b8' ||
+            layer.options.color === '#3880ff' ||
+            layer.isRouteLayer
+          ))) {
         this.map.removeLayer(layer);
       }
     });
@@ -491,23 +513,7 @@ export class FloodMapPage implements OnInit, AfterViewInit {
           }
         } catch (error) {
           console.error(`🔵 Error calculating Mapbox route to center ${i + 1}:`, error);
-
-          // Fallback to straight line if Mapbox fails
-          const routeLine = L.polyline(
-            [
-              [this.userLocation.lat, this.userLocation.lng],
-              [lat, lng]
-            ],
-            {
-              color: '#0066CC',
-              weight: 4,
-              opacity: 0.8,
-              dashArray: i === 0 ? undefined : '10, 10'
-            }
-          );
-
-          routeLine.addTo(this.routeLayer);
-          console.log(`⚠️ FLOOD MAP: Used fallback straight-line route to ${center.name}`);
+          // Skip fallback straight line - only show proper Mapbox routes
         }
       }
     }
@@ -531,14 +537,26 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         const route = response.routes[0];
         const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
 
-        // Add route to map with flood color (blue)
-        L.geoJSON(routeGeoJSON as any, {
+        // Clear existing routes first
+        this.clearRoutes();
+
+        // Create route layer if it doesn't exist
+        if (!this.routeLayer) {
+          this.routeLayer = L.layerGroup().addTo(this.map);
+        }
+
+        // Add route to route layer with flood color (blue)
+        const routeLayer = L.geoJSON(routeGeoJSON as any, {
           style: {
             color: '#0066CC', // Blue for flood
             weight: 4,
             opacity: 0.8
           }
-        }).addTo(this.map);
+        });
+
+        // Mark as route layer for easier identification
+        (routeLayer as any).isRouteLayer = true;
+        routeLayer.addTo(this.routeLayer);
 
         console.log(`🔵 FLOOD MAP: Route added to ${center.name}`);
       }
@@ -685,14 +703,23 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         const route = response.routes[0];
         const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
 
-        // Add route to map with flood color (blue)
-        L.geoJSON(routeGeoJSON as any, {
+        // Create route layer if it doesn't exist
+        if (!this.routeLayer) {
+          this.routeLayer = L.layerGroup().addTo(this.map);
+        }
+
+        // Add route to route layer with flood color (blue)
+        const routeLayer = L.geoJSON(routeGeoJSON as any, {
           style: {
             color: '#0066CC', // Blue for flood
             weight: 4,
             opacity: 0.8
           }
-        }).addTo(this.map);
+        });
+
+        // Mark as route layer for easier identification
+        (routeLayer as any).isRouteLayer = true;
+        routeLayer.addTo(this.routeLayer);
       }
     } catch (error) {
       console.error('Error showing route on map:', error);
@@ -780,6 +807,8 @@ export class FloodMapPage implements OnInit, AfterViewInit {
           }
         );
 
+        // Mark as route layer for easier identification
+        (routeLine as any).isRouteLayer = true;
         routeLine.addTo(this.routeLayer);
 
         // Show route info

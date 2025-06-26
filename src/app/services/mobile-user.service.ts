@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiConfigService } from './api-config.service';
 
@@ -24,11 +24,30 @@ export class MobileUserService {
     private apiConfig: ApiConfigService
   ) {}
 
+  private getHeaders(): HttpHeaders {
+    const token = localStorage.getItem('token');
+    const headers: any = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return new HttpHeaders(headers);
+  }
+
   saveUserData(data: UserData): Observable<any> {
-    return this.http.post(this.apiUrl, data);
+    return this.http.post(this.apiUrl, data, {
+      headers: this.getHeaders()
+    });
   }
 
   createUser(userData: any): Observable<any> {
-    return this.http.post(this.apiUrl, userData);
+    return this.http.post(this.apiUrl, userData, {
+      headers: this.getHeaders()
+    });
   }
 }

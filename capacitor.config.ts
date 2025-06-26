@@ -37,12 +37,11 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1000,
-      backgroundColor: "#FFFFFF",
-      androidSplashResourceName: "splash",
-      showSpinner: true,
-      spinnerColor: "#999999",
-      autoHide: true
+       launchShowDuration: 0,              // ✅ disables Capacitor splash screen display
+  showSplash: false,                  // ✅ prevent splash from rendering
+  autoHide: true,
+  backgroundColor: "#FFFFFF",         // optional, if you still want white background
+  showSpinner: false 
     },
     Geolocation: {
       permissions: {
@@ -74,6 +73,10 @@ const config: CapacitorConfig = {
     contentInset: "always",
     preferredContentMode: "mobile"
   }
-};
+  
+}
+
+
+
 
 export default config;

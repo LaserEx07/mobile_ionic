@@ -505,23 +505,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
           }
         } catch (error) {
           console.error(`🔥 Error calculating Mapbox route to center ${i + 1}:`, error);
-
-          // Fallback to straight line if Mapbox fails
-          const routeLine = L.polyline(
-            [
-              [this.userLocation.lat, this.userLocation.lng],
-              [lat, lng]
-            ],
-            {
-              color: '#dc3545',
-              weight: 4,
-              opacity: 0.8,
-              dashArray: i === 0 ? undefined : '10, 10'
-            }
-          );
-
-          routeLine.addTo(this.routeLayer);
-          console.log(`⚠️ FIRE MAP: Used fallback straight-line route to ${center.name}`);
+          // Skip fallback straight line - only show proper Mapbox routes
         }
       }
     }
@@ -529,15 +513,31 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
   // Clear previous routes
   clearRoutes() {
+    // Remove route layer
     if (this.routeLayer) {
       this.map.removeLayer(this.routeLayer);
       this.routeLayer = null;
     }
 
+    // Remove nearest markers
     this.nearestMarkers.forEach(marker => {
       this.map.removeLayer(marker);
     });
     this.nearestMarkers = [];
+
+    // Clear any remaining route layers by checking all map layers
+    this.map.eachLayer((layer: any) => {
+      if (layer instanceof L.GeoJSON ||
+          layer instanceof L.Polyline ||
+          (layer.options && (
+            layer.options.color === '#ef4444' ||
+            layer.options.color === '#dc3545' ||
+            layer.isRouteLayer ||
+            layer.isNavigationRoute
+          ))) {
+        this.map.removeLayer(layer);
+      }
+    });
   }
 
 
@@ -788,11 +788,35 @@ export class FireMapPage implements OnInit, AfterViewInit {
     this.map.setView([lat, lng], 15);
   }
 
-  // Format time for display
-  formatTime(seconds?: number): string {
-    if (!seconds) return '--';
+  // Format time helper
+  formatTime(seconds: number | undefined): string {
+    if (!seconds) return '';
     const minutes = Math.round(seconds / 60);
-    return `${minutes} min`;
+    if (minutes < 60) {
+      return `${minutes}m`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return `${hours}h ${remainingMinutes}m`;
+    }
+  }
+
+  // Format distance helper
+  formatDistance(meters: number | undefined): string {
+    if (!meters) return '';
+    if (meters < 1000) {
+      return `${Math.round(meters)}m`;
+    } else {
+      return `${(meters / 1000).toFixed(1)}km`;
+    }
+  }
+
+  // Select transport mode and show route
+  selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
+    this.selectedTransportMode = mode;
+    if (this.selectedCenter) {
+      this.navigateWithMode(mode);
+    }
   }
 
 
@@ -851,6 +875,8 @@ export class FireMapPage implements OnInit, AfterViewInit {
             }
           );
 
+          // Mark as route layer for easier identification
+          (routeLine as any).isRouteLayer = true;
           routeLine.addTo(this.routeLayer);
 
           // Show route info
