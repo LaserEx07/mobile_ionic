@@ -313,7 +313,7 @@ export class MapPage implements OnInit, OnDestroy {
           // Create user marker if it doesn't exist
           this.userMarker = L.marker([freshLat, freshLng], {
             icon: L.icon({
-              iconUrl: 'assets/Location.png',
+              iconUrl: 'assets/myLocation.png',
               iconSize: [32, 32],
               iconAnchor: [16, 32]
             })
@@ -700,6 +700,36 @@ export class MapPage implements OnInit, OnDestroy {
         return;
       }
 
+      // Check for emergency notification routing
+      if (params['emergency'] === 'true' && params['notification'] === 'true') {
+        console.log('🚨 EMERGENCY NOTIFICATION: Handling disaster notification routing');
+
+        const category = params['category'] || 'unknown';
+        const severity = params['severity'] || 'medium';
+        const title = params['title'] || 'Emergency Alert';
+        const message = params['message'] || 'Emergency notification received';
+
+        console.log(`📱 Emergency notification details:`, {
+          category,
+          severity,
+          title,
+          autoRoute: params['autoRoute'] === 'true'
+        });
+
+        // Show emergency alert for non-earthquake disasters
+        this.showDisasterEmergencyAlert({
+          category,
+          severity,
+          title,
+          message,
+          autoRoute: params['autoRoute'] === 'true'
+        });
+
+        // Load map with all evacuation centers for emergency
+        this.loadEmergencyMap();
+        return;
+      }
+
       // Default: Load clean map with user location only (NO evacuation centers)
       console.log('🗺️ MAIN MAP: Loading clean map with user location only');
       this.loadCleanMap();
@@ -889,7 +919,7 @@ export class MapPage implements OnInit, OnDestroy {
       // Add search location marker
       const searchMarker = L.marker([lat, lng], {
         icon: L.icon({
-          iconUrl: 'assets/Location.png',
+          iconUrl: 'assets/myLocation.png',
           iconSize: [40, 40],
           iconAnchor: [20, 40],
           popupAnchor: [0, -40]
@@ -1077,7 +1107,7 @@ export class MapPage implements OnInit, OnDestroy {
       // Add user marker
       this.userMarker = L.marker([userLat, userLng], {
         icon: L.icon({
-          iconUrl: 'assets/Location.png',
+          iconUrl: 'assets/myLocation.png',
           iconSize: [30, 30],
           iconAnchor: [15, 30]
         })
@@ -1630,7 +1660,7 @@ export class MapPage implements OnInit, OnDestroy {
       if (!this.userMarker) {
         this.userMarker = L.marker([lat, lng], {
           icon: L.icon({
-            iconUrl: 'assets/Location.png',
+            iconUrl: 'assets/myLocation.png',
             iconSize: [32, 32],
             iconAnchor: [16, 32]
           })
@@ -2557,6 +2587,114 @@ export class MapPage implements OnInit, OnDestroy {
           this.getPrimaryDisasterType(center.disaster_type)
         );
       }
+    }
+  }
+
+  /**
+   * Show emergency alert for disaster notifications (non-earthquake)
+   */
+  private async showDisasterEmergencyAlert(params: any): Promise<void> {
+    const disasterEmojis: { [key: string]: string } = {
+      'flood': '🌊',
+      'typhoon': '🌪️',
+      'fire': '🔥',
+      'landslide': '⛰️',
+      'default': '⚠️'
+    };
+
+    const emoji = disasterEmojis[params.category] || disasterEmojis['default'];
+    const disasterName = params.category.toUpperCase();
+
+    const alert = await this.alertCtrl.create({
+      header: `${emoji} ${disasterName} EMERGENCY`,
+      subHeader: params.title || 'Emergency Notification',
+      message: `
+        <div style="text-align: left;">
+          <p><strong>Alert:</strong> ${params.message || `${disasterName} emergency detected`}</p>
+          <p><strong>Severity:</strong> ${(params.severity || 'medium').toUpperCase()}</p>
+          <p><strong>Action:</strong> Showing all evacuation centers for ${params.category} emergency</p>
+          <p><strong>Map View:</strong> General evacuation centers map</p>
+        </div>
+      `,
+      buttons: [
+        {
+          text: 'Show All Centers',
+          role: 'confirm',
+          cssClass: 'alert-button-confirm',
+          handler: () => {
+            console.log(`🚨 User confirmed viewing all centers for ${params.category} emergency`);
+            // Emergency map will be loaded automatically
+          }
+        },
+        {
+          text: 'View Map Only',
+          role: 'cancel',
+          cssClass: 'alert-button-cancel',
+          handler: () => {
+            console.log('📍 User chose to view map without emergency centers');
+            // Load clean map instead
+            this.loadCleanMap();
+          }
+        }
+      ],
+      cssClass: 'emergency-alert'
+    });
+
+    await alert.present();
+  }
+
+  /**
+   * Load emergency map with all evacuation centers for disaster notifications
+   */
+  private async loadEmergencyMap(): Promise<void> {
+    console.log('🚨 EMERGENCY MAP: Loading all evacuation centers for emergency...');
+
+    await this.loadingService.showLoading('Loading emergency evacuation centers...');
+
+    try {
+      // Get user location
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 20000
+      });
+
+      const userLat = position.coords.latitude;
+      const userLng = position.coords.longitude;
+
+      console.log(`📍 User location: [${userLat}, ${userLng}]`);
+
+      // Initialize map
+      this.initializeMap(userLat, userLng);
+
+      // Load ALL evacuation centers for emergency
+      await this.loadEvacuationCenters(userLat, userLng);
+
+      // Show emergency toast
+      const toast = await this.toastController.create({
+        message: '🚨 Emergency mode: Showing all evacuation centers',
+        duration: 3000,
+        color: 'danger',
+        position: 'top',
+        cssClass: 'emergency-toast'
+      });
+      await toast.present();
+
+      await this.loadingService.dismissLoading();
+
+    } catch (error) {
+      console.error('❌ Error loading emergency map:', error);
+      await this.loadingService.dismissLoading();
+
+      // Fallback to clean map
+      this.loadCleanMap();
+
+      const toast = await this.toastController.create({
+        message: '⚠️ Could not load emergency centers. Showing basic map.',
+        duration: 3000,
+        color: 'warning',
+        position: 'top'
+      });
+      await toast.present();
     }
   }
 }

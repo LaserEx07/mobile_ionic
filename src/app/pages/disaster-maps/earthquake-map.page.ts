@@ -87,6 +87,20 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       // Handle emergency navigation
       if (params['emergency'] === 'true' && params['autoRoute'] === 'true') {
         console.log('🚨 Emergency navigation triggered for earthquake map');
+
+        // Check if this came from a notification
+        if (params['notification'] === 'true') {
+          console.log('📱 Emergency triggered by notification:', {
+            category: params['category'],
+            severity: params['severity'],
+            title: params['title'],
+            message: params['message']
+          });
+
+          // Show notification-specific emergency alert
+          this.showNotificationEmergencyAlert(params);
+        }
+
         // Set flag to auto-route to nearest centers after map loads
         this.shouldAutoRouteEmergency = true;
       }
@@ -1086,6 +1100,46 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   }
 
 
+
+  /**
+   * Show emergency alert for notification-triggered navigation
+   */
+  private async showNotificationEmergencyAlert(params: any): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: '🚨 EARTHQUAKE EMERGENCY',
+      subHeader: params['title'] || 'Emergency Notification',
+      message: `
+        <div style="text-align: left;">
+          <p><strong>Alert:</strong> ${params['message'] || 'Earthquake emergency detected'}</p>
+          <p><strong>Severity:</strong> ${(params['severity'] || 'medium').toUpperCase()}</p>
+          <p><strong>Action:</strong> Routing to nearest earthquake evacuation centers</p>
+        </div>
+      `,
+      buttons: [
+        {
+          text: 'Navigate Now',
+          role: 'confirm',
+          cssClass: 'alert-button-confirm',
+          handler: () => {
+            console.log('🚨 User confirmed emergency navigation');
+            // Emergency routing will be triggered by shouldAutoRouteEmergency flag
+          }
+        },
+        {
+          text: 'View Map Only',
+          role: 'cancel',
+          cssClass: 'alert-button-cancel',
+          handler: () => {
+            console.log('📍 User chose to view map without auto-routing');
+            this.shouldAutoRouteEmergency = false;
+          }
+        }
+      ],
+      cssClass: 'emergency-alert'
+    });
+
+    await alert.present();
+  }
 
   ionViewWillLeave() {
     this.clearRoutes();

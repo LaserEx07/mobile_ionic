@@ -37,6 +37,9 @@ import {
   saveConfig
 } from "./chunk-ZWBDDU4U.js";
 import {
+  NgControl
+} from "./chunk-OTNWX5TU.js";
+import {
   ActivatedRoute,
   ChildrenOutletContexts,
   NavigationStart,
@@ -45,9 +48,6 @@ import {
   RouterLink,
   UrlSerializer
 } from "./chunk-W6FH2FKK.js";
-import {
-  NgControl
-} from "./chunk-OTNWX5TU.js";
 import {
   DOCUMENT,
   Location,
@@ -4133,4 +4133,4 @@ export {
    * (C) Ionic http://ionicframework.com - MIT License
    *)
 */
-//# sourceMappingURL=chunk-VRH2IY4S.js.map
+//# sourceMappingURL=chunk-BUQ65AUB.js.map

@@ -61,6 +61,9 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
   public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
   public currentNavigationRoute: Route | null = null;
 
+  // Emergency notification properties
+  public shouldAutoRouteEmergency = false;
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -76,7 +79,7 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
     console.log('🏔️ LANDSLIDE MAP: Component initialized...');
     // Don't initialize map here - wait for view to be ready
 
-    // Check for query parameters to highlight new center
+    // Check for query parameters to highlight new center or emergency navigation
     this.route.queryParams.subscribe((params: any) => {
       if (params['newCenterId']) {
         this.newCenterId = params['newCenterId'];
@@ -84,6 +87,27 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
         this.centerLat = params['centerLat'] ? parseFloat(params['centerLat']) : null;
         this.centerLng = params['centerLng'] ? parseFloat(params['centerLng']) : null;
         console.log('🏔️ LANDSLIDE MAP: New center to highlight:', this.newCenterId);
+      }
+
+      // Handle emergency navigation from notifications
+      if (params['emergency'] === 'true' && params['autoRoute'] === 'true') {
+        console.log('🚨 Emergency navigation triggered for landslide map');
+
+        // Check if this came from a notification
+        if (params['notification'] === 'true') {
+          console.log('📱 Emergency triggered by notification:', {
+            category: params['category'],
+            severity: params['severity'],
+            title: params['title'],
+            message: params['message']
+          });
+
+          // Show notification-specific emergency alert
+          this.showNotificationEmergencyAlert(params);
+        }
+
+        // Set flag to auto-route to nearest centers after map loads
+        this.shouldAutoRouteEmergency = true;
       }
     });
   }
@@ -1072,5 +1096,45 @@ export class LandslideMapPage implements OnInit, AfterViewInit {
         this.map.removeLayer(layer);
       }
     });
+  }
+
+  /**
+   * Show emergency alert for notification-triggered navigation
+   */
+  private async showNotificationEmergencyAlert(params: any): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: '⛰️ LANDSLIDE EMERGENCY',
+      subHeader: params['title'] || 'Emergency Notification',
+      message: `
+        <div style="text-align: left;">
+          <p><strong>Alert:</strong> ${params['message'] || 'Landslide emergency detected'}</p>
+          <p><strong>Severity:</strong> ${(params['severity'] || 'medium').toUpperCase()}</p>
+          <p><strong>Action:</strong> Routing to nearest landslide evacuation centers</p>
+        </div>
+      `,
+      buttons: [
+        {
+          text: 'Navigate Now',
+          role: 'confirm',
+          cssClass: 'alert-button-confirm',
+          handler: () => {
+            console.log('🚨 User confirmed emergency navigation for landslide');
+            // Emergency routing will be triggered by shouldAutoRouteEmergency flag
+          }
+        },
+        {
+          text: 'View Map Only',
+          role: 'cancel',
+          cssClass: 'alert-button-cancel',
+          handler: () => {
+            console.log('📍 User chose to view landslide map without auto-routing');
+            this.shouldAutoRouteEmergency = false;
+          }
+        }
+      ],
+      cssClass: 'emergency-alert'
+    });
+
+    await alert.present();
   }
 }

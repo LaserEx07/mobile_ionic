@@ -8,8 +8,16 @@
 <ion-content [fullscreen]="true">
   <div id="all-maps" style="height: 100%; width: 100%;"></div>
 
-  <!-- Map Controls - Two buttons on the right side -->
+  <!-- Map Controls - Three buttons on the right side -->
   <div class="map-controls">
+    <!-- Filter Pins Button -->
+    <ion-button
+      fill="clear"
+      class="control-btn"
+      (click)="toggleFilterPanel()">
+      <img src="assets/allPin.png" alt="Filter Pins" class="control-icon">
+    </ion-button>
+
     <!-- Show All Centers Button -->
     <ion-button
       fill="clear"
@@ -123,6 +131,134 @@
   <div class="all-centers-overlay"
        [class.show]="showAllCentersPanel"
        (click)="closeAllCentersPanel()">
+  </div>
+
+  <!-- Filter Panel (slides from right) -->
+  <div class="filter-panel" [class.show]="showFilterPanel">
+    <div class="panel-content">
+      <div class="panel-header">
+        <ion-button fill="clear" class="back-btn" (click)="closeFilterPanel()">
+          <img src="assets/backIcon.png" alt="Back" class="back-icon">
+        </ion-button>
+        <div class="header-info">
+          <h3>🎯 Filter Pins</h3>
+          <p>Show/hide pins by disaster type</p>
+        </div>
+      </div>
+
+      <!-- Filter Options -->
+      <div class="filter-options">
+        <!-- Show All Button -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'all'"
+             (click)="applyFilter('all')">
+          <div class="filter-icon">
+            <img src="assets/allPin.png" alt="All" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Show All Pins</span>
+            <span class="filter-count">{{ centerCounts.total }} centers</span>
+          </div>
+        </div>
+
+        <!-- Earthquake Filter -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'Earthquake'"
+             (click)="applyFilter('Earthquake')">
+          <div class="filter-icon">
+            <img src="assets/forEarthquake.png" alt="Earthquake" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Earthquake Centers</span>
+            <span class="filter-count">{{ centerCounts.earthquake }} centers</span>
+          </div>
+        </div>
+
+        <!-- Typhoon Filter -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'Typhoon'"
+             (click)="applyFilter('Typhoon')">
+          <div class="filter-icon">
+            <img src="assets/forTyphoon.png" alt="Typhoon" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Typhoon Centers</span>
+            <span class="filter-count">{{ centerCounts.typhoon }} centers</span>
+          </div>
+        </div>
+
+        <!-- Flood Filter -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'Flood'"
+             (click)="applyFilter('Flood')">
+          <div class="filter-icon">
+            <img src="assets/forFlood.png" alt="Flood" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Flood Centers</span>
+            <span class="filter-count">{{ centerCounts.flood }} centers</span>
+          </div>
+        </div>
+
+        <!-- Fire Filter -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'Fire'"
+             (click)="applyFilter('Fire')">
+          <div class="filter-icon">
+            <img src="assets/forFire.png" alt="Fire" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Fire Centers</span>
+            <span class="filter-count">{{ centerCounts.fire }} centers</span>
+          </div>
+        </div>
+
+        <!-- Landslide Filter -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'Landslide'"
+             (click)="applyFilter('Landslide')">
+          <div class="filter-icon">
+            <img src="assets/forLandslide.png" alt="Landslide" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Landslide Centers</span>
+            <span class="filter-count">{{ centerCounts.landslide }} centers</span>
+          </div>
+        </div>
+
+        <!-- Others Filter -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'Others'"
+             (click)="applyFilter('Others')">
+          <div class="filter-icon">
+            <img src="assets/forOthers.png" alt="Others" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Other Disasters</span>
+            <span class="filter-count">{{ centerCounts.others }} centers</span>
+          </div>
+        </div>
+
+        <!-- Multiple Filter -->
+        <div class="filter-option"
+             [class.active]="currentFilter === 'Multiple'"
+             (click)="applyFilter('Multiple')">
+          <div class="filter-icon">
+            <img src="assets/forMultiple.png" alt="Multiple" class="disaster-type-icon">
+          </div>
+          <div class="filter-info">
+            <span class="filter-label">Multiple Types</span>
+            <span class="filter-count">{{ centerCounts.multiple }} centers</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay to close filter panel -->
+  <div class="filter-overlay"
+       [class.show]="showFilterPanel"
+       (click)="closeFilterPanel()">
   </div>
 
   <!-- Navigation Panel (slides from right) -->
