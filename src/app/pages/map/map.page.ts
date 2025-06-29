@@ -16,6 +16,7 @@ import { DirectionsPanelComponent } from './directions-panel.component';
 import html2canvas from 'html2canvas';
 
 import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
+import { OfflineStorageService } from '../../services/offline-storage.service';
 
 // Define GeolocationPosition interface to match Capacitor's Geolocation plugin
 interface GeolocationPosition {
@@ -418,6 +419,7 @@ export class MapPage implements OnInit, OnDestroy {
   private toastCtrl = inject(ToastController);
   private modalCtrl = inject(ModalController);
   private http = inject(HttpClient);
+  private offlineStorage = inject(OfflineStorageService);
   private watchId: string | number | null = null;
 
   // For disaster type filtering
@@ -438,7 +440,152 @@ export class MapPage implements OnInit, OnDestroy {
   private lastErrorToast: number = 0;
   private readonly ERROR_TOAST_DEBOUNCE = 5000; // 5 seconds between error toasts
 
-  constructor() {}
+  constructor() {
+    // Initialize offline storage and clean expired cache
+    this.initializeOfflineMode();
+  }
+
+  /**
+   * Initialize offline mode functionality
+   */
+  private async initializeOfflineMode(): Promise<void> {
+    try {
+      // Clean expired cache items on startup
+      await this.offlineStorage.cleanExpiredCache();
+
+      // Subscribe to offline data availability
+      this.offlineStorage.offlineDataAvailable$.subscribe(hasOfflineData => {
+        console.log(`📱 Offline data available: ${hasOfflineData}`);
+      });
+
+      console.log('✅ Offline mode initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize offline mode:', error);
+    }
+  }
+
+  /**
+   * Cache essential map data for offline use
+   */
+  private async cacheMapData(userLat: number, userLng: number): Promise<void> {
+    try {
+      const mapData = {
+        userLocation: { lat: userLat, lng: userLng },
+        zoomLevel: this.map?.getZoom() || 15,
+        mapBounds: this.map?.getBounds(),
+        lastUpdated: new Date()
+      };
+
+      await this.offlineStorage.setItem('mapData', mapData);
+      console.log('🗺️ Cached essential map data');
+    } catch (error) {
+      console.error('❌ Failed to cache map data:', error);
+    }
+  }
+
+  /**
+   * Load cached map data for offline use
+   */
+  private async loadCachedMapData(): Promise<any> {
+    try {
+      const cachedMapData = await this.offlineStorage.getItem('mapData');
+      if (cachedMapData) {
+        console.log('📦 Loaded cached map data');
+        return cachedMapData;
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Failed to load cached map data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Set up network status monitoring for automatic data synchronization
+   */
+  private setupNetworkStatusMonitoring(): void {
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      console.log('📶 Network came back online - starting data sync');
+      this.syncDataWhenOnline();
+    });
+
+    window.addEventListener('offline', () => {
+      console.log('📵 Network went offline - switching to cached data');
+    });
+
+    // Initial sync if online
+    if (navigator.onLine) {
+      console.log('📶 App started online - checking for data sync');
+      this.syncDataWhenOnline();
+    }
+  }
+
+  /**
+   * Sync data when network becomes available
+   */
+  private async syncDataWhenOnline(): Promise<void> {
+    try {
+      console.log('🔄 Starting data synchronization...');
+
+      // Get current user location for sync
+      const cachedLocation = await this.offlineStorage.getCachedUserLocation();
+      if (cachedLocation) {
+        // Try to refresh evacuation centers data
+        await this.syncEvacuationCenters(cachedLocation.lat, cachedLocation.lng);
+      }
+
+      console.log('✅ Data synchronization completed');
+    } catch (error) {
+      console.error('❌ Data synchronization failed:', error);
+    }
+  }
+
+  /**
+   * Sync evacuation centers data
+   */
+  private async syncEvacuationCenters(userLat: number, userLng: number): Promise<void> {
+    try {
+      console.log('🔄 Syncing evacuation centers...');
+
+      const apiResponse = await firstValueFrom(
+        this.http.get<{success: boolean, data: EvacuationCenter[], count: number}>(`${environment.apiUrl}/evacuation-centers`)
+      );
+
+      if (apiResponse.data && apiResponse.data.length > 0) {
+        await this.offlineStorage.cacheEvacuationCenters(apiResponse.data);
+        console.log(`✅ Synced ${apiResponse.data.length} evacuation centers`);
+
+        // Show sync success toast
+        this.toastCtrl.create({
+          message: `🔄 Synced ${apiResponse.data.length} evacuation centers`,
+          duration: 2000,
+          color: 'success'
+        }).then(toast => toast.present());
+      }
+    } catch (error) {
+      console.error('❌ Failed to sync evacuation centers:', error);
+    }
+  }
+
+  /**
+   * Get offline data summary for debugging
+   */
+  async getOfflineDataSummary(): Promise<void> {
+    try {
+      const summary = await this.offlineStorage.getOfflineDataSummary();
+      console.log('📊 Offline Data Summary:', summary);
+
+      const toast = await this.toastCtrl.create({
+        message: `📱 Offline: ${summary.evacuationCenters} centers, ${summary.cacheSize}KB cached`,
+        duration: 3000,
+        color: 'medium'
+      });
+      await toast.present();
+    } catch (error) {
+      console.error('❌ Failed to get offline data summary:', error);
+    }
+  }
 
   /**
    * Helper function to get the primary disaster type from string or array
@@ -661,6 +808,9 @@ export class MapPage implements OnInit, OnDestroy {
 
   async ngOnInit() {
     console.log('🗺️ MAIN MAP: Initializing clean map (tabs/map)...');
+
+    // Set up network status monitoring for data sync
+    this.setupNetworkStatusMonitoring();
 
     // Check if we have query parameters from search page
     this.route.queryParams.subscribe((params: any) => {
@@ -1647,6 +1797,9 @@ export class MapPage implements OnInit, OnDestroy {
     this.map = L.map('map').setView([lat, lng], 15);
     console.log('Map initialized');
 
+    // Cache map data for offline use
+    this.cacheMapData(lat, lng);
+
     // Load online map tiles
     console.log('🌐 Loading online map tiles...');
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1786,6 +1939,10 @@ export class MapPage implements OnInit, OnDestroy {
 
       let allCenters: EvacuationCenter[] = [];
 
+      // Cache user location
+      await this.offlineStorage.cacheUserLocation({ lat: userLat, lng: userLng });
+
+      // Try to load from online API first
       console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
       try {
         const apiResponse = await firstValueFrom(
@@ -1794,14 +1951,38 @@ export class MapPage implements OnInit, OnDestroy {
         console.log('📡 RAW API RESPONSE:', apiResponse);
         allCenters = apiResponse.data || [];
         console.log('📊 TOTAL CENTERS RECEIVED:', allCenters?.length || 0);
+
+        // Cache the fresh data for offline use
+        if (allCenters.length > 0) {
+          await this.offlineStorage.cacheEvacuationCenters(allCenters);
+          console.log('💾 Cached evacuation centers for offline use');
+        }
       } catch (error) {
-        console.error('❌ Failed to fetch evacuation centers:', error);
-        this.toastCtrl.create({
-          message: 'Failed to load evacuation centers. Please check your internet connection.',
-          duration: 3000,
-          color: 'danger'
-        }).then(toast => toast.present());
-        return;
+        console.error('❌ Failed to fetch evacuation centers from API:', error);
+
+        // Try to load from offline cache
+        console.log('🔄 Attempting to load from offline cache...');
+        const cachedCenters = await this.offlineStorage.getCachedEvacuationCenters();
+
+        if (cachedCenters && cachedCenters.length > 0) {
+          allCenters = cachedCenters;
+          console.log(`📦 Loaded ${allCenters.length} evacuation centers from offline cache`);
+
+          // Show offline mode toast
+          this.toastCtrl.create({
+            message: `📱 Offline mode: Using cached data for ${disasterType} centers`,
+            duration: 3000,
+            color: 'warning'
+          }).then(toast => toast.present());
+        } else {
+          console.log('❌ No cached evacuation centers available');
+          this.toastCtrl.create({
+            message: 'No evacuation centers available. Please check your internet connection.',
+            duration: 3000,
+            color: 'danger'
+          }).then(toast => toast.present());
+          return;
+        }
       }
 
       // Debug: Show all disaster types in the database
@@ -2090,6 +2271,10 @@ export class MapPage implements OnInit, OnDestroy {
 
       let centers: EvacuationCenter[] = [];
 
+      // Cache user location
+      await this.offlineStorage.cacheUserLocation({ lat: userLat, lng: userLng });
+
+      // Try to load from online API first
       console.log('🌐 Fetching evacuation centers from:', `${environment.apiUrl}/evacuation-centers`);
       try {
         const apiResponse = await firstValueFrom(
@@ -2097,14 +2282,38 @@ export class MapPage implements OnInit, OnDestroy {
         );
         centers = apiResponse.data || [];
         console.log('📡 Received centers from API:', centers);
+
+        // Cache the fresh data for offline use
+        if (centers.length > 0) {
+          await this.offlineStorage.cacheEvacuationCenters(centers);
+          console.log('💾 Cached evacuation centers for offline use');
+        }
       } catch (error) {
-        console.error('❌ Failed to fetch evacuation centers:', error);
-        this.toastCtrl.create({
-          message: 'Failed to load evacuation centers. Please check your internet connection.',
-          duration: 3000,
-          color: 'danger'
-        }).then(toast => toast.present());
-        return;
+        console.error('❌ Failed to fetch evacuation centers from API:', error);
+
+        // Try to load from offline cache
+        console.log('🔄 Attempting to load from offline cache...');
+        const cachedCenters = await this.offlineStorage.getCachedEvacuationCenters();
+
+        if (cachedCenters && cachedCenters.length > 0) {
+          centers = cachedCenters;
+          console.log(`📦 Loaded ${centers.length} evacuation centers from offline cache`);
+
+          // Show offline mode toast
+          this.toastCtrl.create({
+            message: `📱 Offline mode: Loaded ${centers.length} cached evacuation centers`,
+            duration: 3000,
+            color: 'warning'
+          }).then(toast => toast.present());
+        } else {
+          console.log('❌ No cached evacuation centers available');
+          this.toastCtrl.create({
+            message: 'No evacuation centers available. Please check your internet connection.',
+            duration: 3000,
+            color: 'danger'
+          }).then(toast => toast.present());
+          return;
+        }
       }
 
       this.evacuationCenters = centers || [];

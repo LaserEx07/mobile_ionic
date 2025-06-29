@@ -8,8 +8,8 @@ import {
   WebView,
   buildRequestInit,
   registerPlugin
-} from "./chunk-QU63WDX7.js";
-import "./chunk-SCNEKAWF.js";
+} from "./chunk-MCFBZ5YE.js";
+import "./chunk-EAE2VPRF.js";
 export {
   Capacitor,
   CapacitorCookies,

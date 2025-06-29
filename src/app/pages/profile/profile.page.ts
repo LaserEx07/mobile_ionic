@@ -166,6 +166,10 @@ export class ProfilePage {
     await modal.present();
   }
 
+  openOfflineDataPage() {
+    this.router.navigate(['/offline-data']);
+  }
+
   async testFCM() {
     // First, check if Google Play Services is missing
     const googlePlayMissing = localStorage.getItem('google_play_services_missing');

@@ -1,0 +1,65 @@
+<!-- Offline Status Banner -->
+<div class="offline-status-banner" [ngClass]="'status-' + getStatusColor()">
+  <div class="status-content" (click)="toggleDetails()">
+    <ion-icon [name]="getStatusIcon()" class="status-icon"></ion-icon>
+    <span class="status-text">{{ getStatusText() }}</span>
+    <ion-icon 
+      [name]="showDetails ? 'chevron-up' : 'chevron-down'" 
+      class="toggle-icon">
+    </ion-icon>
+  </div>
+
+  <!-- Expandable Details -->
+  <div class="status-details" *ngIf="showDetails" [@slideDown]>
+    <div class="details-content">
+      
+      <!-- Network Status -->
+      <div class="detail-item">
+        <ion-icon name="wifi" class="detail-icon"></ion-icon>
+        <span class="detail-label">Network:</span>
+        <span class="detail-value" [ngClass]="isOnline ? 'online' : 'offline'">
+          {{ isOnline ? 'Connected' : 'Disconnected' }}
+        </span>
+      </div>
+
+      <!-- Offline Data Status -->
+      <div class="detail-item" *ngIf="offlineDataSummary">
+        <ion-icon name="archive" class="detail-icon"></ion-icon>
+        <span class="detail-label">Cached Data:</span>
+        <span class="detail-value">
+          {{ offlineDataSummary.evacuationCenters }} centers, 
+          {{ formatCacheSize(offlineDataSummary.cacheSize) }}
+        </span>
+      </div>
+
+      <!-- User Location Status -->
+      <div class="detail-item" *ngIf="offlineDataSummary">
+        <ion-icon name="location" class="detail-icon"></ion-icon>
+        <span class="detail-label">Location:</span>
+        <span class="detail-value" [ngClass]="offlineDataSummary.userLocation ? 'cached' : 'not-cached'">
+          {{ offlineDataSummary.userLocation ? 'Cached' : 'Not cached' }}
+        </span>
+      </div>
+
+      <!-- Emergency Contacts Status -->
+      <div class="detail-item" *ngIf="offlineDataSummary && offlineDataSummary.emergencyContacts > 0">
+        <ion-icon name="call" class="detail-icon"></ion-icon>
+        <span class="detail-label">Emergency Contacts:</span>
+        <span class="detail-value">{{ offlineDataSummary.emergencyContacts }} contacts</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons" *ngIf="hasOfflineData">
+        <ion-button 
+          size="small" 
+          fill="clear" 
+          color="danger"
+          (click)="clearOfflineData()">
+          <ion-icon name="trash" slot="start"></ion-icon>
+          Clear Cache
+        </ion-button>
+      </div>
+
+    </div>
+  </div>
+</div>

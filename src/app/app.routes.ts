@@ -60,6 +60,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/disaster-maps/all-maps.page').then(m => m.AllMapsPage)
   },
   {
+    path: 'offline-data',
+    loadComponent: () => import('./pages/offline-data/offline-data.page').then(m => m.OfflineDataPage)
+  },
+  {
     path: 'ors-test',
     loadChildren: () => import('./pages/ors-test/ors-test.module').then(m => m.OrsTestPageModule)
   },
@@ -111,6 +115,10 @@ export const routes: Routes = [
       {
         path: 'all-maps',
         loadComponent: () => import('./pages/disaster-maps/all-maps.page').then(m => m.AllMapsPage)
+      },
+      {
+        path: 'offline-data',
+        loadComponent: () => import('./pages/offline-data/offline-data.page').then(m => m.OfflineDataPage)
       },
       {
         path: '',

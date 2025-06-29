@@ -4,19 +4,22 @@ import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { registerIcons } from './icons';
 import { FCMService } from './services/fcm.service';
 import { EmergencyOverlayService } from './services/emergency-overlay.service';
+import { OfflineStatusComponent } from './components/offline-status/offline-status.component';
+import { EmergencyContactsService } from './services/emergency-contacts.service';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
   standalone: true,
-  imports: [IonApp, IonRouterOutlet]
+  imports: [IonApp, IonRouterOutlet, OfflineStatusComponent]
 })
 export class AppComponent {
   constructor(
     private platform: Platform,
     private fcmService: FCMService,
-    private emergencyOverlay: EmergencyOverlayService
+    private emergencyOverlay: EmergencyOverlayService,
+    private emergencyContacts: EmergencyContactsService
   ) {
     // Register all Ionicons used in the app
     try {
@@ -38,6 +41,9 @@ export class AppComponent {
 
         // Initialize FCM
         this.initializeFCM();
+
+        // Initialize emergency contacts
+        this.initializeEmergencyContacts();
 
         console.log('App initialization completed successfully');
       } catch (error) {
@@ -64,6 +70,19 @@ export class AppComponent {
 
     } catch (error) {
       console.error('Error initializing FCM:', error);
+    }
+  }
+
+  /**
+   * Initialize emergency contacts and disaster preparedness info
+   */
+  private async initializeEmergencyContacts() {
+    try {
+      console.log('Initializing emergency contacts...');
+      await this.emergencyContacts.initializeEmergencyContacts();
+      console.log('Emergency contacts initialized successfully');
+    } catch (error) {
+      console.error('Error initializing emergency contacts:', error);
     }
   }
 

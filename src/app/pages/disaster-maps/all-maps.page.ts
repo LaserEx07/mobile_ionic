@@ -170,9 +170,9 @@ export class AllMapsPage implements OnInit {
     // Add user marker (use same icon as individual disaster maps)
     this.userMarker = L.marker([lat, lng], {
       icon: L.icon({
-        iconUrl: 'assets/Location.png',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
+        iconUrl: 'assets/myLocation.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
       })
     }).addTo(this.map);
 

@@ -13,6 +13,7 @@ import { MapboxRoutingService } from '../../services/mapbox-routing.service';
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
 import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
+import { OfflineStorageService } from '../../services/offline-storage.service';
 
 import * as L from 'leaflet';
 
@@ -73,6 +74,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   private mapboxRouting = inject(MapboxRoutingService);
 
   private enhancedDownload = inject(EnhancedDownloadService);
+  private offlineStorage = inject(OfflineStorageService);
 
   ngOnInit() {
     // Check for query parameters to highlight new center or emergency navigation
@@ -274,9 +276,9 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     // Add user marker
     this.userMarker = L.marker([lat, lng], {
       icon: L.icon({
-        iconUrl: 'assets/Location.png',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
+        iconUrl: 'assets/myLocation.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
       })
     }).addTo(this.map);
 
@@ -343,7 +345,10 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     try {
       let allCenters: EvacuationCenter[] = [];
 
-      // Fetch data from API
+      // Cache user location
+      await this.offlineStorage.cacheUserLocation({ lat: userLat, lng: userLng });
+
+      // Try to fetch data from API first
       try {
         console.log('🟠 EARTHQUAKE MAP: Fetching from API...');
 
@@ -359,20 +364,45 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         allCenters = apiResponse.data || [];
 
         console.log(`🟠 EARTHQUAKE MAP: API returned ${allCenters?.length || 0} centers`);
+
+        // Cache the fresh data for offline use
+        if (allCenters.length > 0) {
+          await this.offlineStorage.cacheEvacuationCenters(allCenters);
+          console.log('💾 Cached evacuation centers for offline use');
+        }
       } catch (apiError) {
         console.error('❌ API failed:', apiError);
-        const alert = await this.alertCtrl.create({
-          header: 'Connection Error',
-          message: 'Cannot connect to server. Please check your internet connection.',
-          buttons: [
-            {
-              text: 'OK',
-              handler: () => this.router.navigate(['/tabs/home'])
-            }
-          ]
-        });
-        await alert.present();
-        return;
+
+        // Try to load from offline cache
+        console.log('🔄 Attempting to load from offline cache...');
+        const cachedCenters = await this.offlineStorage.getCachedEvacuationCenters();
+
+        if (cachedCenters && cachedCenters.length > 0) {
+          allCenters = cachedCenters;
+          console.log(`📦 Loaded ${allCenters.length} evacuation centers from offline cache`);
+
+          // Show offline mode toast
+          const toast = await this.toastCtrl.create({
+            message: `📱 Offline mode: Using cached earthquake centers`,
+            duration: 3000,
+            color: 'warning'
+          });
+          await toast.present();
+        } else {
+          console.log('❌ No cached evacuation centers available');
+          const alert = await this.alertCtrl.create({
+            header: 'Connection Error',
+            message: 'Cannot connect to server and no offline data available. Please check your internet connection.',
+            buttons: [
+              {
+                text: 'OK',
+                handler: () => this.router.navigate(['/tabs/home'])
+              }
+            ]
+          });
+          await alert.present();
+          return;
+        }
       }
 
       // Filter for EARTHQUAKE ONLY - handle both array and string formats
