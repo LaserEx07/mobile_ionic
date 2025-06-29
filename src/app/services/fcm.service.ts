@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Platform, ModalController } from '@ionic/angular';
+import { Platform, ModalController, ToastController } from '@ionic/angular';
+import { Router } from '@angular/router';
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { HttpClient } from '@angular/common/http';
@@ -19,7 +20,9 @@ export class FCMService {
     private platform: Platform,
     private http: HttpClient,
     private modalController: ModalController,
-    private emergencyOverlay: EmergencyOverlayService
+    private emergencyOverlay: EmergencyOverlayService,
+    private router: Router,
+    private toastController: ToastController
   ) {}
 
   /**
@@ -542,13 +545,101 @@ export class FCMService {
    * Handle notification action (when user taps notification)
    */
   private async handleNotificationAction(action: any): Promise<void> {
-    console.log('Handling notification action:', action);
+    console.log('🔔 Handling notification action:', action);
 
     // Extract notification data
     const notificationData = action.notification?.extra || action.notification?.data || {};
 
     if (notificationData) {
-      // Show detailed notification modal
+      const category = notificationData.category?.toLowerCase() || '';
+      const severity = notificationData.severity?.toLowerCase() || '';
+
+      console.log('📱 Notification data:', {
+        category,
+        severity,
+        title: notificationData.title || notificationData.original_title,
+        emergency: this.isEmergencyNotification({ data: notificationData })
+      });
+
+      // Check if this is a disaster notification that should route to specific map
+      if (this.shouldRouteToDisasterMap(category, severity)) {
+        await this.routeToDisasterMap(category, notificationData);
+      } else {
+        // Show detailed notification modal for non-disaster notifications
+        await this.showNotificationDetail(notificationData);
+      }
+    }
+  }
+
+  /**
+   * Check if notification should route to disaster map
+   */
+  private shouldRouteToDisasterMap(category: string, severity: string): boolean {
+    const disasterCategories = ['earthquake', 'flood', 'typhoon', 'fire', 'landslide'];
+    const emergencySeverities = ['high', 'critical', 'emergency'];
+
+    return disasterCategories.includes(category) || emergencySeverities.includes(severity);
+  }
+
+  /**
+   * Route to appropriate disaster map based on notification category
+   */
+  private async routeToDisasterMap(category: string, notificationData: any): Promise<void> {
+    try {
+      console.log(`🗺️ Routing for ${category} disaster notification...`);
+
+      let route: string;
+      let mapType: string;
+
+      // Map specific disaster types to their dedicated maps
+      const disasterRoutes: { [key: string]: string } = {
+        'earthquake': '/tabs/earthquake-map',
+        'flood': '/tabs/flood-map',
+        'typhoon': '/tabs/typhoon-map',
+        'landslide': '/tabs/landslide-map',
+        'fire': '/tabs/fire-map'
+      };
+
+      // Check if this disaster has a specific map, otherwise use general map
+      if (disasterRoutes[category]) {
+        route = disasterRoutes[category];
+        mapType = `${category} evacuation centers`;
+      } else {
+        // "other" category and unknown disasters go to general map
+        route = '/tabs/map';
+        mapType = 'evacuation centers';
+      }
+
+      // Navigate to the appropriate map with emergency parameters
+      await this.router.navigate([route], {
+        queryParams: {
+          emergency: true,
+          autoRoute: true,
+          notification: true,
+          category: category,
+          severity: notificationData.severity || 'medium',
+          timestamp: Date.now(),
+          title: notificationData.title || notificationData.original_title,
+          message: notificationData.message || notificationData.body
+        }
+      });
+
+      // Show emergency toast with appropriate message
+      const toast = await this.toastController.create({
+        message: `🚨 Emergency: Navigating to ${mapType} for ${category} alert`,
+        duration: 4000,
+        color: 'danger',
+        position: 'top',
+        cssClass: 'emergency-toast'
+      });
+      await toast.present();
+
+      console.log(`✅ Successfully routed to ${route} for ${category} emergency`);
+
+    } catch (error) {
+      console.error('❌ Error routing to disaster map:', error);
+
+      // Fallback: show notification detail modal
       await this.showNotificationDetail(notificationData);
     }
   }

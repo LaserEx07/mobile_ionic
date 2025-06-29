@@ -703,7 +703,7 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
       // Create a new user marker with real GPS data
       this.userMarker = L.marker([lat, lng], {
         icon: L.icon({
-          iconUrl: 'assets/Location.png',
+          iconUrl: 'assets/myLocation.png',
           iconSize: [32, 32],
           iconAnchor: [16, 32]
         })
@@ -926,7 +926,7 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
           // Create user marker if it doesn't exist
           this.userMarker = L.marker([freshLat, freshLng], {
             icon: L.icon({
-              iconUrl: 'assets/Location.png',
+              iconUrl: 'assets/myLocation.png',
               iconSize: [32, 32],
               iconAnchor: [16, 32]
             })

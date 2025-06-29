@@ -90,6 +90,20 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
       // Handle emergency navigation
       if (params['emergency'] === 'true' && params['autoRoute'] === 'true') {
         console.log('🚨 Emergency navigation triggered for typhoon map');
+
+        // Check if this came from a notification
+        if (params['notification'] === 'true') {
+          console.log('📱 Emergency triggered by notification:', {
+            category: params['category'],
+            severity: params['severity'],
+            title: params['title'],
+            message: params['message']
+          });
+
+          // Show notification-specific emergency alert
+          this.showNotificationEmergencyAlert(params);
+        }
+
         // Set flag to auto-route to nearest centers after map loads
         this.shouldAutoRouteEmergency = true;
       }
@@ -188,9 +202,9 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     // Add user marker
     this.userMarker = L.marker([lat, lng], {
       icon: L.icon({
-        iconUrl: 'assets/Location.png',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
+        iconUrl: 'assets/myLocation.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
       })
     }).addTo(this.map);
 
@@ -1125,5 +1139,45 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         this.map.removeLayer(layer);
       }
     });
+  }
+
+  /**
+   * Show emergency alert for notification-triggered navigation
+   */
+  private async showNotificationEmergencyAlert(params: any): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: '🌪️ TYPHOON EMERGENCY',
+      subHeader: params['title'] || 'Emergency Notification',
+      message: `
+        <div style="text-align: left;">
+          <p><strong>Alert:</strong> ${params['message'] || 'Typhoon emergency detected'}</p>
+          <p><strong>Severity:</strong> ${(params['severity'] || 'medium').toUpperCase()}</p>
+          <p><strong>Action:</strong> Routing to nearest typhoon evacuation centers</p>
+        </div>
+      `,
+      buttons: [
+        {
+          text: 'Navigate Now',
+          role: 'confirm',
+          cssClass: 'alert-button-confirm',
+          handler: () => {
+            console.log('🚨 User confirmed emergency navigation for typhoon');
+            // Emergency routing will be triggered by shouldAutoRouteEmergency flag
+          }
+        },
+        {
+          text: 'View Map Only',
+          role: 'cancel',
+          cssClass: 'alert-button-cancel',
+          handler: () => {
+            console.log('📍 User chose to view typhoon map without auto-routing');
+            this.shouldAutoRouteEmergency = false;
+          }
+        }
+      ],
+      cssClass: 'emergency-alert'
+    });
+
+    await alert.present();
   }
 }
