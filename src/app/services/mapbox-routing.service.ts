@@ -144,8 +144,11 @@ export class MapboxRoutingService {
   /**
    * Convert travel mode from OpenStreetMap format to Mapbox format
    */
-  convertTravelModeToProfile(travelMode: string): 'walking' | 'cycling' | 'driving' {
-    switch (travelMode.toLowerCase()) {
+  convertTravelModeToProfile(travelMode: string | any): 'walking' | 'cycling' | 'driving' {
+    // Ensure travelMode is a string and handle null/undefined cases
+    const mode = (travelMode || 'walking').toString().toLowerCase();
+
+    switch (mode) {
       case 'walking':
       case 'foot':
       case 'foot-walking':
@@ -160,6 +163,7 @@ export class MapboxRoutingService {
       case 'driving-car':
         return 'driving';
       default:
+        console.warn(`Unknown travel mode: ${travelMode}, defaulting to walking`);
         return 'walking';
     }
   }

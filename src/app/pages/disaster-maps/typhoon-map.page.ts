@@ -27,6 +27,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
   private userMarker: L.Marker<any> | null = null;
   private routeLayer: L.LayerGroup | null = null;
   private nearestMarkers: L.Marker[] = [];
+  private evacuationMarkers: L.Marker[] = [];
   public evacuationCenters: EvacuationCenter[] = [];
   public userLocation: { lat: number; lng: number } | null = null;
 
@@ -193,19 +194,51 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
       this.map.remove();
     }
 
-    this.map = L.map('typhoon-map').setView([lat, lng], 13);
+    this.map = L.map('typhoon-map', {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: false,
+      keyboard: true,
+      dragging: true,
+      touchZoom: true,
+      zoomAnimation: true,
+      zoomAnimationThreshold: 4,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
+      transform3DLimit: 2^23,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      trackResize: true,
+      inertia: true,
+      inertiaDeceleration: 3000,
+      inertiaMaxSpeed: Infinity,
+      easeLinearity: 0.2,
+      worldCopyJump: false,
+      maxBoundsViscosity: 0.0
+    }).setView([lat, lng], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OpenStreetMap contributors'
     }).addTo(this.map);
 
-    // Add user marker
-    this.userMarker = L.marker([lat, lng], {
+    // Add user marker with stability options
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    this.userMarker = L.marker([preciseLat, preciseLng], {
       icon: L.icon({
         iconUrl: 'assets/myLocation.png',
         iconSize: [32, 32],
         iconAnchor: [16, 32]
-      })
+      }),
+      // Add marker stability options
+      riseOnHover: false,
+      riseOffset: 0,
+      zIndexOffset: 1000,
+      opacity: 1,
+      interactive: true,
+      bubblingMouseEvents: true
     }).addTo(this.map);
 
     this.userMarker.bindPopup('📍 You are here!').openPopup();
@@ -259,10 +292,15 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         return;
       }
 
+      // Clear existing evacuation markers to prevent duplicates
+      this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
+      this.evacuationMarkers = [];
+
       // Add typhoon markers (green)
       this.evacuationCenters.forEach(center => {
-        const lat = Number(center.latitude);
-        const lng = Number(center.longitude);
+        // Use high precision coordinates for stability
+        const lat = parseFloat(Number(center.latitude).toFixed(8));
+        const lng = parseFloat(Number(center.longitude).toFixed(8));
 
         if (!isNaN(lat) && !isNaN(lng)) {
           const marker = L.marker([lat, lng], {
@@ -271,7 +309,14 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
               iconSize: [40, 40],
               iconAnchor: [20, 40],
               popupAnchor: [0, -40]
-            })
+            }),
+            // Add marker stability options
+            riseOnHover: false,
+            riseOffset: 0,
+            zIndexOffset: 0,
+            opacity: 1,
+            interactive: true,
+            bubblingMouseEvents: true
           });
 
           const distance = this.calculateDistance(userLat, userLng, lat, lng);
@@ -311,6 +356,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
           }
 
           marker.addTo(this.map);
+          this.evacuationMarkers.push(marker);
           console.log(`🟢 Added typhoon marker: ${center.name}`);
         }
       });
@@ -465,6 +511,9 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     this.nearestMarkers.forEach(marker => this.map.removeLayer(marker));
     this.nearestMarkers = [];
 
+    // Hide regular evacuation markers to avoid duplication
+    this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
+
     centers.forEach((center, index) => {
       const lat = Number(center.latitude);
       const lng = Number(center.longitude);
@@ -472,18 +521,38 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
       if (!isNaN(lat) && !isNaN(lng)) {
         // Create pulsing marker with typhoon styling
         const pulsingIcon = L.divIcon({
-          className: 'pulsing-marker',
+          className: '', // Leave empty to avoid default leaflet styles
           html: `
-            <div class="pulse-container">
-              <img src="assets/forTyphoon.png" class="marker-icon" />
-              <div class="marker-label">${index + 1}</div>
+            <div class="pulse-marker">
+              <div class="pulse-circle typhoon smooth"></div>
+              <img src="assets/forTyphoon.png" />
+              <div class="marker-label typhoon">${index + 1}</div>
             </div>
           `,
-          iconSize: [50, 50],
-          iconAnchor: [25, 50]
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
         });
 
-        const marker = L.marker([lat, lng], { icon: pulsingIcon });
+        // Use high precision coordinates for stability
+        const preciseLat = parseFloat(Number(lat).toFixed(8));
+        const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+        const marker = L.marker([preciseLat, preciseLng], {
+          icon: pulsingIcon,
+          // Add marker stability options
+          riseOnHover: false,
+          riseOffset: 0,
+          zIndexOffset: 500, // Higher than regular markers but lower than user
+          opacity: 1,
+          interactive: true,
+          bubblingMouseEvents: true
+        });
+
+        // Add click handler for navigation panel
+        marker.on('click', () => {
+          console.log('🌀 TYPHOON: Pulsing marker clicked for center:', center.name);
+          this.showNavigationPanel(center);
+        });
 
         marker.bindPopup(`
           <div class="evacuation-popup nearest-popup">
@@ -492,6 +561,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
             <p><strong>Type:</strong> Typhoon</p>
             <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
+            <p><em>Click marker for route options</em></p>
           </div>
         `);
 
@@ -515,6 +585,13 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
       });
       this.nearestMarkers = [];
     }
+
+    // Restore regular evacuation markers if they were hidden
+    this.evacuationMarkers.forEach(marker => {
+      if (!this.map.hasLayer(marker)) {
+        marker.addTo(this.map);
+      }
+    });
 
     // Clear any remaining route layers by checking all map layers
     this.map.eachLayer((layer: any) => {

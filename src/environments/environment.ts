@@ -15,27 +15,27 @@ export const environment = {
   // - ngrok tunnel: 'https://your-ngrok-url.ngrok-free.app/api'
 
   // TODO: Replace with ngrok URL or production domain for external access
-  apiUrl: 'http://192.168.112.210:8000/api', // ⚠️ Only works on local network
+  apiUrl: 'http://192.168.110.198:8000/api', // ⚠️ Only works on local network
 
   // For external access, use one of these:
   // apiUrl: 'https://your-ngrok-url.ngrok-free.app/api', // ngrok tunnel
   // apiUrl: 'https://yourdomain.com/api', // production domain
 
   // Health check endpoint (automatically derived if not specified)
-  healthCheckUrl: 'http://192.168.112.210:8000/up', // ⚠️ Only works on local network
+  healthCheckUrl: 'http://192.168.110.198:8000/up', // ⚠️ Only works on local network
 
-  // External APIs
+  // External APIs - Synchronized with WebAlerto backend
   orsApiKey: '5b3ce3597851110001cf62485d16190c4e8d4358bf96e7207454806f', // Updated OpenRouteService API key
-  mapboxAccessToken: 'pk.eyJ1IjoibGFzZXJleDA3IiwiYSI6ImNtYzVuY21pejBia3IyanFzN29hbHFvamYifQ.GNxvfI8uqs7G398AtzuMtw',
+  mapboxAccessToken: 'pk.eyJ1IjoiamluY2VudC0xMjM0IiwiYSI6ImNtYzI1bWowNzA0dnYyaXByMHNkZjl5ZTgifQ.bD_y9vt5k4nDV_06PdbUMg', // Synchronized with WebAlerto
 
-  // Firebase configuration - synchronized with Laravel backend
+  // Firebase configuration - synchronized with WebAlerto backend
   firebase: {
-    projectId: 'last-5acaf',
+    projectId: 'alerto-ef503',
     messagingSenderId: '660101685392',
     appId: '1:660101685392:android:c7c81cb0ccca4f30cb7815',
     apiKey: 'AIzaSyA5H6_NGbhDlVZ4l67qEC_JNRmcXPQ-GAo',
-    databaseURL: 'https://last-5acaf-default-rtdb.firebaseio.com',
-    storageBucket: 'last-5acaf.firebasestorage.app'
+    databaseURL: 'https://alerto-ef503-default-rtdb.firebaseio.com', // Synchronized with WebAlerto
+    storageBucket: 'alerto-ef503.appspot.com' // Synchronized with WebAlerto
   },
 
   // Communication settings

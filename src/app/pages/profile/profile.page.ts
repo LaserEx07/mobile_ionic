@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { EmergencyOverlayService } from '../../services/emergency-overlay.service';
 
 @Component({
   selector: 'app-profile',
@@ -21,7 +22,8 @@ export class ProfilePage {
     private alertCtrl: AlertController,
     private toastCtrl: ToastController,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private emergencyOverlay: EmergencyOverlayService
   ) {
     this.loadUserData();
   }
@@ -317,6 +319,60 @@ export class ProfilePage {
         }).then(alert => alert.present());
       }
     });
+  }
+
+  /**
+   * Test emergency sound only
+   */
+  async testEmergencySound() {
+    console.log('🔊 Testing emergency sound from profile page...');
+
+    const toast = await this.toastCtrl.create({
+      message: 'Testing emergency sound... Check console for details.',
+      duration: 3000,
+      color: 'primary'
+    });
+    await toast.present();
+
+    try {
+      await this.emergencyOverlay.testEmergencySound();
+    } catch (error) {
+      console.error('Error testing emergency sound:', error);
+
+      const errorToast = await this.toastCtrl.create({
+        message: 'Error testing sound. Check console for details.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await errorToast.present();
+    }
+  }
+
+  /**
+   * Test full emergency overlay
+   */
+  async testEmergencyOverlay() {
+    console.log('🚨 Testing emergency overlay from profile page...');
+
+    const toast = await this.toastCtrl.create({
+      message: 'Testing emergency overlay with sound...',
+      duration: 2000,
+      color: 'warning'
+    });
+    await toast.present();
+
+    try {
+      await this.emergencyOverlay.testEmergencyOverlay('Typhoon', 'high');
+    } catch (error) {
+      console.error('Error testing emergency overlay:', error);
+
+      const errorToast = await this.toastCtrl.create({
+        message: 'Error testing emergency overlay. Check console for details.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await errorToast.present();
+    }
   }
 }
 

@@ -28,6 +28,7 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   private userMarker: L.Marker<any> | null = null;
   private routeLayer: L.LayerGroup | null = null;
   private nearestMarkers: L.Marker[] = [];
+  private evacuationMarkers: L.Marker[] = [];
   public evacuationCenters: EvacuationCenter[] = [];
   public userLocation: { lat: number; lng: number } | null = null;
 
@@ -261,6 +262,10 @@ export class FloodMapPage implements OnInit, AfterViewInit {
 
       // Online-only mode
 
+      // Clear existing evacuation markers to prevent duplicates
+      this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
+      this.evacuationMarkers = [];
+
       // Add flood markers (blue)
       this.evacuationCenters.forEach(center => {
         const lat = Number(center.latitude);
@@ -313,13 +318,21 @@ export class FloodMapPage implements OnInit, AfterViewInit {
           }
 
           marker.addTo(this.map);
+          this.evacuationMarkers.push(marker);
           console.log(`🔵 Added flood marker: ${center.name}`);
         }
       });
 
-      // Don't auto-route - just show simple markers like "See Whole Map"
-      console.log('🔵 Showing simple markers without auto-routing...');
-      // await this.routeToTwoNearestCenters();
+      // Handle emergency auto-routing
+      if (this.shouldAutoRouteEmergency) {
+        console.log('🚨 Performing emergency auto-routing to nearest flood evacuation centers');
+        await this.performEmergencyRouting();
+        this.shouldAutoRouteEmergency = false; // Reset flag
+      } else {
+        // Don't auto-route - just show simple markers like "See Whole Map"
+        console.log('🔵 Showing simple markers without auto-routing...');
+        // await this.routeToTwoNearestCenters();
+      }
 
       // Fit map to show all flood centers
       if (this.evacuationCenters.length > 0) {
@@ -342,6 +355,51 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         color: 'danger'
       });
       await toast.present();
+    }
+  }
+
+  // Emergency auto-routing with enhanced notifications
+  async performEmergencyRouting() {
+    if (!this.userLocation || this.evacuationCenters.length === 0) {
+      console.warn('Cannot perform emergency routing: missing user location or evacuation centers');
+      return;
+    }
+
+    try {
+      console.log('🚨 Starting emergency routing to nearest flood evacuation centers');
+
+      // Show emergency routing toast
+      const emergencyToast = await this.toastCtrl.create({
+        message: '🚨 EMERGENCY: Routing to nearest flood evacuation centers',
+        duration: 5000,
+        color: 'danger',
+        position: 'top',
+        cssClass: 'emergency-toast'
+      });
+      await emergencyToast.present();
+
+      // Perform the same routing as normal but with emergency styling
+      await this.routeToTwoNearestCenters();
+
+      // Show completion message
+      const completionToast = await this.toastCtrl.create({
+        message: '✅ Emergency routes calculated. Follow the highlighted paths to safety.',
+        duration: 7000,
+        color: 'success',
+        position: 'bottom'
+      });
+      await completionToast.present();
+
+    } catch (error) {
+      console.error('Error in emergency routing:', error);
+
+      const errorToast = await this.toastCtrl.create({
+        message: '⚠️ Emergency routing failed. Please manually navigate to nearest evacuation center.',
+        duration: 5000,
+        color: 'warning',
+        position: 'top'
+      });
+      await errorToast.present();
     }
   }
 
@@ -420,6 +478,9 @@ export class FloodMapPage implements OnInit, AfterViewInit {
     this.nearestMarkers.forEach(marker => this.map.removeLayer(marker));
     this.nearestMarkers = [];
 
+    // Hide regular evacuation markers to avoid duplication
+    this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
+
     centers.forEach((center, index) => {
       const lat = Number(center.latitude);
       const lng = Number(center.longitude);
@@ -427,19 +488,25 @@ export class FloodMapPage implements OnInit, AfterViewInit {
       if (!isNaN(lat) && !isNaN(lng)) {
         // Create pulsing marker with flood styling
         const pulsingIcon = L.divIcon({
-          className: 'pulsing-marker',
+          className: '', // Leave empty to avoid default leaflet styles
           html: `
-            <div class="pulse-container">
-              <div class="pulse" style="background-color: #0066CC"></div>
-              <img src="assets/forFlood.png" class="marker-icon" />
-              <div class="marker-label">${index + 1}</div>
+            <div class="pulse-marker">
+              <div class="pulse-circle flood smooth"></div>
+              <img src="assets/forFlood.png" />
+              <div class="marker-label flood">${index + 1}</div>
             </div>
           `,
-          iconSize: [50, 50],
-          iconAnchor: [25, 50]
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
         });
 
         const marker = L.marker([lat, lng], { icon: pulsingIcon });
+
+        // Add click handler for navigation panel
+        marker.on('click', () => {
+          console.log('🌊 FLOOD: Pulsing marker clicked for center:', center.name);
+          this.showNavigationPanel(center);
+        });
 
         marker.bindPopup(`
           <div class="evacuation-popup nearest-popup">
@@ -448,6 +515,7 @@ export class FloodMapPage implements OnInit, AfterViewInit {
             <p><strong>Type:</strong> Flood</p>
             <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
+            <p><em>Click marker for route options</em></p>
           </div>
         `);
 
@@ -471,6 +539,13 @@ export class FloodMapPage implements OnInit, AfterViewInit {
       });
       this.nearestMarkers = [];
     }
+
+    // Restore regular evacuation markers if they were hidden
+    this.evacuationMarkers.forEach(marker => {
+      if (!this.map.hasLayer(marker)) {
+        marker.addTo(this.map);
+      }
+    });
 
     // Clear any remaining route layers by checking all map layers
     this.map.eachLayer((layer: any) => {
@@ -648,18 +723,17 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   }
 
   // Show navigation panel when marker is clicked
-  async showNavigationPanel(center: EvacuationCenter) {
+  showNavigationPanel(center: EvacuationCenter) {
     console.log('🌊 FLOOD: showNavigationPanel called for:', center.name);
     console.log('🌊 FLOOD: Setting selectedCenter to:', center);
 
     this.selectedCenter = center;
-    this.selectedTransportMode = null;
-    this.routeInfo = {};
+    this.showRouteFooter = true;
 
     console.log('🌊 FLOOD: selectedCenter is now:', this.selectedCenter);
+    console.log('🌊 FLOOD: showRouteFooter is now:', this.showRouteFooter);
 
-    // Calculate routes for all transport modes
-    await this.calculateAllRoutes(center);
+    this.calculateRouteInfo(center);
   }
 
   // Close navigation panel
@@ -671,12 +745,56 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   }
 
   // Select transport mode and show route
-  selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
+  async selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
     this.selectedTransportMode = mode;
     if (this.selectedCenter) {
-      this.showRouteOnMap(this.selectedCenter, mode);
+      await this.showRouteOnMap(this.selectedCenter, mode);
     }
   }
+
+  // Calculate route info for all transport modes
+  async calculateRouteInfo(center: EvacuationCenter) {
+    if (!this.userLocation) return;
+
+    console.log('🌊 FLOOD: Calculating route info for center:', center.name);
+    const modes: ('walking' | 'cycling' | 'driving')[] = ['walking', 'cycling', 'driving'];
+
+    for (const mode of modes) {
+      try {
+        // Use Mapbox for route calculation
+        const mapboxProfile = this.mapboxRouting.convertTravelModeToProfile(mode);
+
+        const response = await this.mapboxRouting.getDirections(
+          this.userLocation.lng, this.userLocation.lat,
+          Number(center.longitude), Number(center.latitude),
+          mapboxProfile
+        );
+
+        if (response.routes && response.routes.length > 0) {
+          const route = response.routes[0];
+          this.routeInfo[mode] = {
+            duration: route.duration,
+            distance: route.distance
+          };
+          console.log(`🌊 FLOOD: ${mode} route info calculated - ${(route.distance/1000).toFixed(2)}km, ${Math.round(route.duration/60)}min`);
+        }
+      } catch (error) {
+        console.error(`🌊 FLOOD: Error calculating ${mode} route info:`, error);
+        // Fallback to straight-line distance
+        const distance = this.calculateDistance(
+          this.userLocation.lat, this.userLocation.lng,
+          Number(center.latitude), Number(center.longitude)
+        );
+        this.routeInfo[mode] = {
+          duration: distance / (mode === 'walking' ? 5000 : mode === 'cycling' ? 15000 : 50000) * 3600,
+          distance: distance
+        };
+      }
+    }
+    console.log('🌊 FLOOD: Route calculation completed. RouteInfo:', this.routeInfo);
+  }
+
+
 
   // Calculate routes for all transport modes
   async calculateAllRoutes(center: EvacuationCenter) {

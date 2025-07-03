@@ -14,7 +14,7 @@ import { EmergencyNotification } from '../../services/emergency-overlay.service'
 export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   @Input() notification!: EmergencyNotification;
   
-  public timeRemaining = 30; // Auto-dismiss countdown
+  public timeRemaining = 15; // Auto-dismiss countdown
   private countdownInterval: any;
   private pulseAnimation: any;
 
@@ -97,7 +97,7 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
       'Fire': 'assets/icon/fire.jpg',
       'Landslide': 'assets/icon/lanslide.jpg',
       'Others': 'assets/otherdisasterIcon.png',
-      'General': 'assets/emergency-icon.png'
+      'General': 'assets/otherdisasterIcon.png' // Use others icon for general disasters too
     };
 
     return iconMap[this.notification.category] || iconMap['General'];
@@ -125,23 +125,7 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Handle view map button click
-   */
-  async viewMap() {
-    console.log('🚨 Emergency Overlay: View Map button clicked for', this.notification.category);
-    await this.dismissModal('view_map');
-  }
-
-  /**
-   * Handle dismiss button click
-   */
-  async dismiss() {
-    console.log('🚨 Emergency Overlay: Dismiss button clicked');
-    await this.dismissModal('dismiss');
-  }
-
-  /**
-   * Dismiss modal with action data
+   * Dismiss modal with action data (auto-dismiss only)
    */
   private async dismissModal(action: string) {
     console.log(`🚨 Emergency Overlay: Dismissing modal with action: ${action}`);
@@ -178,12 +162,7 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
     return severityMap[this.notification.severity] || 'Alert';
   }
 
-  /**
-   * Get action button text based on disaster type
-   */
-  getActionButtonText(): string {
-    return `View ${this.notification.category} Map & Routes`;
-  }
+
 
   /**
    * Check if this is a critical emergency
@@ -199,12 +178,58 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
     const instructions = {
       'Earthquake': 'Drop, Cover, and Hold On. Stay away from windows and heavy objects.',
       'Flood': 'Move to higher ground immediately. Avoid walking or driving through flood waters.',
-      'Typhoon': 'Stay indoors. Secure loose objects and avoid windows.',
+      'Typhoon': 'Store clean water and food that won\'t spoil. Prepare a small emergency kit with essentials. Wait for the official all-clear before going out.',
       'Fire': 'Evacuate immediately. Stay low to avoid smoke. Do not use elevators.',
       'Landslide': 'Move away from the slide area. Get to higher, stable ground.',
       'General': 'Follow emergency procedures and stay alert for further instructions.'
     };
-    
+
+    // For General category, try to get specific instructions based on disaster type from title
+    if (this.notification.category === 'General' && this.notification.title) {
+      const titleUpper = this.notification.title.toUpperCase();
+      if (titleUpper.includes('TSUNAMI')) {
+        return 'Move to higher ground immediately. Stay away from the coast and low-lying areas. Listen for official evacuation orders.';
+      } else if (titleUpper.includes('VOLCANIC')) {
+        return 'Stay indoors, close windows and doors. Avoid areas downwind from the volcano. Wear masks to protect from ash.';
+      } else if (titleUpper.includes('STORM')) {
+        return 'Stay indoors and away from windows. Avoid flooded roads and downed power lines. Have emergency supplies ready.';
+      }
+    }
+
     return instructions[this.notification.category] || instructions['General'];
+  }
+
+  /**
+   * Get priority text based on severity level
+   */
+  getPriorityText(): string {
+    const priorityMap = {
+      'critical': 'Critical - Immediate Action Required',
+      'high': 'High - Immediate Action Required',
+      'medium': 'Medium - Take Precautions',
+      'low': 'Low - Stay Alert'
+    };
+
+    return priorityMap[this.notification.severity] || 'Medium - Take Precautions';
+  }
+
+  /**
+   * Get the display disaster type - extract from title if it's a General category
+   */
+  getDisplayDisasterType(): string {
+    // If it's General category, try to extract disaster type from title
+    if (this.notification.category === 'General' && this.notification.title) {
+      // Extract disaster type from title (e.g., "TSUNAMI EMERGENCY" -> "TSUNAMI")
+      const titleParts = this.notification.title.toUpperCase().split(' ');
+      if (titleParts.length > 0 && titleParts[0] !== 'EMERGENCY') {
+        // Return the first word if it's not "EMERGENCY"
+        const disasterType = titleParts[0];
+        if (disasterType && disasterType !== 'ALERT' && disasterType !== 'NOTIFICATION') {
+          return disasterType;
+        }
+      }
+    }
+
+    return this.notification.category.toUpperCase();
   }
 }

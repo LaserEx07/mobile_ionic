@@ -1,6 +1,9 @@
 /* Emergency notification styles - must be first */
 @use "app/styles/emergency-notifications.scss";
 
+/* Global pulsing marker styles for all disaster maps */
+@import "global-pulsing-markers.scss";
+
 /* Emergency Alert Styles for Deep Linking */
 .emergency-alert {
   --background: #ff4444;

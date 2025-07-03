@@ -97,4 +97,42 @@ ion-segment-button {
   --padding-end: 4px;
   min-height: 48px;
 }
+
+/* Directional user marker styles */
+.custom-directional-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.directional-user-marker {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  transition: transform 0.3s ease;
+}
+
+.user-location-base {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.direction-indicator {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.direction-arrow {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 12px solid #3B82F6;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
 </style>

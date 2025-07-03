@@ -182,7 +182,7 @@ export class FCMService {
       // Create emergency notification object
       const emergencyNotification: EmergencyNotification = {
         id: data.notification_id || `emergency_${Date.now()}`,
-        title: notification.title || 'Emergency Alert',
+        title: this.cleanNotificationTitle(notification.title || 'Emergency Alert'),
         message: notification.body || 'Emergency notification received',
         category: this.mapToEmergencyCategory(data.category || 'General'),
         severity: this.mapToEmergencySeverity(data.severity || 'medium'),
@@ -204,17 +204,39 @@ export class FCMService {
    * Map category to emergency category type
    */
   private mapToEmergencyCategory(category: string): 'Earthquake' | 'Flood' | 'Typhoon' | 'Fire' | 'Landslide' | 'General' {
+    const categoryLower = category.toLowerCase();
+
+    // Handle "others:" prefix and extract the actual disaster type
+    let actualCategory = categoryLower;
+    if (categoryLower.startsWith('others:')) {
+      actualCategory = categoryLower.replace('others:', '').trim();
+    }
+
     const categoryMap: { [key: string]: 'Earthquake' | 'Flood' | 'Typhoon' | 'Fire' | 'Landslide' | 'General' } = {
       'earthquake': 'Earthquake',
       'flood': 'Flood',
       'typhoon': 'Typhoon',
       'fire': 'Fire',
       'landslide': 'Landslide',
+      'tsunami': 'General', // Map tsunami to General since we don't have a specific tsunami category
       'general': 'General',
-      'emergency': 'General'
+      'emergency': 'General',
+      'others': 'General'
     };
 
-    return categoryMap[category.toLowerCase()] || 'General';
+    return categoryMap[actualCategory] || 'General';
+  }
+
+  /**
+   * Clean notification title by removing "OTHERS:" prefix
+   */
+  private cleanNotificationTitle(title: string): string {
+    if (!title) return title;
+
+    // Remove "OTHERS:" prefix (case insensitive)
+    const cleanedTitle = title.replace(/^OTHERS:\s*/i, '');
+
+    return cleanedTitle;
   }
 
   /**
@@ -550,6 +572,13 @@ export class FCMService {
     // Extract notification data
     const notificationData = action.notification?.extra || action.notification?.data || {};
 
+    console.log('🔍 Full notification action data:', {
+      action: action,
+      notificationData: notificationData,
+      hasExtra: !!action.notification?.extra,
+      hasData: !!action.notification?.data
+    });
+
     if (notificationData) {
       const category = notificationData.category?.toLowerCase() || '';
       const severity = notificationData.severity?.toLowerCase() || '';
@@ -558,16 +587,21 @@ export class FCMService {
         category,
         severity,
         title: notificationData.title || notificationData.original_title,
-        emergency: this.isEmergencyNotification({ data: notificationData })
+        emergency: this.isEmergencyNotification({ data: notificationData }),
+        shouldRoute: this.shouldRouteToDisasterMap(category, severity)
       });
 
       // Check if this is a disaster notification that should route to specific map
       if (this.shouldRouteToDisasterMap(category, severity)) {
+        console.log('🚨 Routing to disaster map for category:', category);
         await this.routeToDisasterMap(category, notificationData);
       } else {
+        console.log('ℹ️ Showing notification detail modal');
         // Show detailed notification modal for non-disaster notifications
         await this.showNotificationDetail(notificationData);
       }
+    } else {
+      console.warn('⚠️ No notification data found in action');
     }
   }
 
@@ -575,7 +609,7 @@ export class FCMService {
    * Check if notification should route to disaster map
    */
   private shouldRouteToDisasterMap(category: string, severity: string): boolean {
-    const disasterCategories = ['earthquake', 'flood', 'typhoon', 'fire', 'landslide'];
+    const disasterCategories = ['earthquake', 'flood', 'typhoon', 'fire', 'landslide', 'others'];
     const emergencySeverities = ['high', 'critical', 'emergency'];
 
     return disasterCategories.includes(category) || emergencySeverities.includes(severity);
@@ -611,18 +645,24 @@ export class FCMService {
       }
 
       // Navigate to the appropriate map with emergency parameters
+      const queryParams = {
+        emergency: true,
+        autoRoute: true,
+        notification: true,
+        category: category,
+        severity: notificationData.severity || 'medium',
+        timestamp: Date.now(),
+        title: notificationData.title || notificationData.original_title,
+        message: notificationData.message || notificationData.body
+      };
+
+      console.log(`🧭 Navigating to ${route} with params:`, queryParams);
+
       await this.router.navigate([route], {
-        queryParams: {
-          emergency: true,
-          autoRoute: true,
-          notification: true,
-          category: category,
-          severity: notificationData.severity || 'medium',
-          timestamp: Date.now(),
-          title: notificationData.title || notificationData.original_title,
-          message: notificationData.message || notificationData.body
-        }
+        queryParams: queryParams
       });
+
+      console.log(`✅ Navigation to ${route} completed successfully`);
 
       // Show emergency toast with appropriate message
       const toast = await this.toastController.create({

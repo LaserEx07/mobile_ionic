@@ -1,0 +1,132 @@
+/* Global Pulsing Marker Styles for Leaflet Maps */
+/* This file provides consistent pulsing marker animations across all disaster maps */
+
+.pulse-marker {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+
+.pulse-marker img {
+  width: 100%;
+  height: auto;
+  z-index: 2;
+  position: relative;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.pulse-circle {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 124, 191, 0.4);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+/* Disaster-specific pulse colors */
+.pulse-circle.earthquake {
+  background: rgba(255, 149, 0, 0.4); /* Orange for earthquake */
+}
+
+.pulse-circle.typhoon {
+  background: rgba(45, 211, 111, 0.4); /* Green for typhoon */
+}
+
+.pulse-circle.flood {
+  background: rgba(0, 102, 204, 0.4); /* Blue for flood */
+}
+
+.pulse-circle.fire {
+  background: rgba(220, 53, 69, 0.4); /* Red for fire */
+}
+
+.pulse-circle.landslide {
+  background: rgba(139, 69, 19, 0.4); /* Brown for landslide */
+}
+
+.pulse-circle.general {
+  background: rgba(0, 124, 191, 0.4); /* Default blue */
+}
+
+/* Marker label for numbering (1, 2) */
+.pulse-marker .marker-label {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #333;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 3;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Disaster-specific label colors */
+.pulse-marker .marker-label.earthquake {
+  background: #ff9500;
+}
+
+.pulse-marker .marker-label.typhoon {
+  background: #2dd36f;
+}
+
+.pulse-marker .marker-label.flood {
+  background: #0066CC;
+}
+
+.pulse-marker .marker-label.fire {
+  background: #dc3545;
+}
+
+.pulse-marker .marker-label.landslide {
+  background: #8b4513;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(7.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* Alternative pulse animation (smoother) - 5x larger */
+@keyframes pulse-smooth {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(6.0);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+/* Use smooth animation for better visibility */
+.pulse-circle.smooth {
+  animation: pulse-smooth 2s infinite;
+}

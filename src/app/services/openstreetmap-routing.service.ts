@@ -215,8 +215,11 @@ export class OpenStreetMapRoutingService {
   /**
    * Convert travel mode to OpenRouteService profile
    */
-  convertTravelModeToProfile(travelMode: string): 'foot-walking' | 'cycling-regular' | 'driving-car' {
-    switch (travelMode.toLowerCase()) {
+  convertTravelModeToProfile(travelMode: string | any): 'foot-walking' | 'cycling-regular' | 'driving-car' {
+    // Ensure travelMode is a string and handle null/undefined cases
+    const mode = (travelMode || 'walking').toString().toLowerCase();
+
+    switch (mode) {
       case 'walking':
       case 'foot':
         return 'foot-walking';
@@ -228,6 +231,7 @@ export class OpenStreetMapRoutingService {
       case 'car':
         return 'driving-car';
       default:
+        console.warn(`Unknown travel mode: ${travelMode}, defaulting to foot-walking`);
         return 'foot-walking';
     }
   }

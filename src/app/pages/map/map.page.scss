@@ -172,67 +172,7 @@ ion-fab-button[activated] {
   --color: white;
 }
 
-/* GPS status indicator */
-.gps-status {
-  position: absolute;
-  top: 10px;
-  left: 70px; /* Moved to the right to make room for the download button */
-  background: var(--ion-color-medium);
-  border-radius: 20px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
 
-  &:hover {
-    background: var(--ion-color-medium-shade);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  &.active {
-    color: white;
-    background: var(--ion-color-success);
-
-    &:hover {
-      background: var(--ion-color-success-shade);
-    }
-
-    ion-icon {
-      animation: pulse 1.5s infinite;
-      color: white;
-    }
-  }
-
-  ion-icon {
-    font-size: 18px;
-  }
-
-  &::after {
-    content: "?";
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    line-height: 16px;
-    text-align: center;
-    background: var(--ion-color-medium);
-    color: white;
-    border-radius: 50%;
-    font-size: 12px;
-    margin-left: 6px;
-    opacity: 0.7;
-  }
-}
 
 /* Disaster type indicator */
 .disaster-type-indicator {
@@ -417,8 +357,236 @@ ion-fab-button[activated] {
   }
 }
 
+/* Enhanced directional user marker styles for driving/movement tracking */
+.custom-directional-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.directional-user-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  transition: transform 0.3s ease;
+}
+
+.user-location-base {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.direction-indicator {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.direction-arrow {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 16px solid #3B82F6;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  transition: transform 0.3s ease;
+}
+
+/* Enhanced pulse animation for better visibility while moving */
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(0.8);
+  }
+}
+
+/* Movement indicator pulse - faster when moving */
+@keyframes movementPulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.3);
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(0.9);
+  }
+}
+
+/* Compass ring styling */
+.compass-ring {
+  border: 2px solid rgba(59, 130, 246, 0.6);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+/* Moving state - faster pulse */
+.directional-user-marker.moving {
+  .compass-ring {
+    animation: movementPulse 1s infinite;
+  }
+}
+
 /* Modal styles */
 .evacuation-details-modal {
   --border-radius: 16px 16px 0 0;
   --backdrop-opacity: 0.4;
+}
+
+// Navigation Panel (slides from right)
+.navigation-panel {
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 320px;
+  height: 100vh;
+  background: white;
+  z-index: 2000;
+  transition: right 0.3s ease-in-out;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+
+  &.show {
+    right: 0;
+  }
+
+  .panel-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    padding-top: 60px; // Account for status bar
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+
+    .center-info {
+      flex: 1;
+
+      h3 {
+        margin: 0 0 5px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      p {
+        margin: 0;
+        font-size: 14px;
+        color: #666;
+        line-height: 1.4;
+      }
+    }
+
+    ion-button {
+      --padding-start: 8px;
+      --padding-end: 8px;
+      margin: 0;
+    }
+  }
+
+  .transport-options {
+    .option-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+
+      ion-icon {
+        margin-right: 8px;
+        color: #3880ff;
+      }
+
+      span {
+        font-weight: 600;
+        color: #333;
+      }
+    }
+
+    .transport-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+
+      .transport-btn {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+
+        &:hover {
+          border-color: #3880ff;
+          background: #f8f9ff;
+        }
+
+        &.active {
+          border-color: #3880ff;
+          background: #3880ff;
+          color: white;
+
+          ion-icon {
+            color: white;
+          }
+
+          .route-info {
+            .time, .distance {
+              color: rgba(255, 255, 255, 0.9);
+            }
+          }
+        }
+
+        ion-icon {
+          font-size: 24px;
+          margin-right: 12px;
+          color: #3880ff;
+        }
+
+        span {
+          font-weight: 600;
+          flex: 1;
+        }
+
+        .route-info {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          font-size: 12px;
+
+          .time {
+            font-weight: 600;
+            color: #333;
+          }
+
+          .distance {
+            color: #666;
+            margin-top: 2px;
+          }
+        }
+      }
+    }
+  }
 }

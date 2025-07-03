@@ -5,7 +5,7 @@ This directory contains sound files used for notifications in the WebAlerto app.
 ## Required Files
 
 - `notification.mp3`: Default notification sound
-- `emergency.mp3`: Sound for emergency/high severity notifications
+- `NewAlarmForAll.mp3`: Universal emergency alarm sound for all disaster types
 
 ## Usage
 

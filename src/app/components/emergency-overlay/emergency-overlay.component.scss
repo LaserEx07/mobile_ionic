@@ -29,64 +29,46 @@
 
 // Emergency Header
 .emergency-header {
-  padding: 24px 20px 16px;
+  padding: 20px;
   text-align: center;
   position: relative;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .disaster-icon-container {
   position: relative;
-  display: inline-block;
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .disaster-icon {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   object-fit: cover;
 }
 
-.severity-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 .emergency-title-container {
-  margin-bottom: 12px;
+  flex: 1;
+  text-align: center;
 }
 
 .emergency-title {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
   color: white;
   margin: 0 0 4px 0;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.warning-icon {
-  font-size: 20px;
-  animation: warningPulse 1s infinite;
+  letter-spacing: 0.5px;
 }
 
 .disaster-type {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 900;
   color: white;
   margin: 0;
@@ -94,14 +76,12 @@
 }
 
 .countdown-container {
-  position: absolute;
-  top: 16px;
-  right: 16px;
+  flex-shrink: 0;
 }
 
 .countdown-circle {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   display: flex;
@@ -116,162 +96,71 @@
   color: white;
 }
 
-// Emergency Message
-.emergency-message-container {
-  padding: 20px;
+// Emergency Content
+.emergency-content {
+  padding: 0;
   background: white;
 }
 
-.emergency-message {
-  margin-bottom: 16px;
+.content-row {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
-.message-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 8px 0;
+.title-row {
+  .row-label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 8px;
+  }
+
+  .urgent-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  .urgent-message {
+    font-size: 16px;
+    line-height: 1.4;
+    color: #555;
+  }
 }
 
-.message-content {
-  font-size: 16px;
-  line-height: 1.5;
-  color: #555;
-  margin: 0;
-}
-
-.emergency-instructions {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 16px;
-}
-
-.instructions-header {
+.priority-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  color: #856404;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.info-icon {
-  font-size: 16px;
-}
-
-.instructions-text {
-  font-size: 14px;
-  color: #856404;
-  margin: 0;
-  line-height: 1.4;
-}
-
-// Action Buttons
-.emergency-actions {
-  padding: 0 20px 20px;
-  background: white;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
-  position: relative;
-  z-index: 999;
-  pointer-events: auto;
+
+  .row-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    min-width: 70px;
+  }
+
+  .priority-content {
+    font-size: 16px;
+    font-weight: 600;
+    color: #dc3545;
+  }
 }
 
-.emergency-button {
-  width: 100%;
-  padding: 16px 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  z-index: 1000;
-  pointer-events: auto;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
+.tips-row {
+  background: #f8f9fa;
 
-.primary-action {
-  background: #28a745;
-  color: white;
-  box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
-}
-
-.primary-action:hover {
-  background: #218838;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-}
-
-.secondary-action {
-  background: #6c757d;
-  color: white;
-  box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
-}
-
-.secondary-action:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
-}
-
-.button-icon {
-  font-size: 20px;
-}
-
-.button-text {
-  flex: 1;
-  text-align: center;
-  margin: 0 12px;
-}
-
-.button-arrow {
-  font-size: 18px;
-}
-
-// Emergency Footer
-.emergency-footer {
-  padding: 16px 20px;
-  background: rgba(0, 0, 0, 0.05);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.timestamp {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #666;
-  justify-content: center;
-}
-
-.time-icon {
-  font-size: 14px;
-}
-
-.critical-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 8px 16px;
-  background: #dc3545;
-  color: white;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  .safety-tips {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #495057;
+    font-weight: 500;
+  }
 }
 
 .critical-pulse {

@@ -161,19 +161,51 @@ export class AllMapsPage implements OnInit {
       this.map.remove();
     }
 
-    this.map = L.map('all-maps').setView([lat, lng], 12);
+    this.map = L.map('all-maps', {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: false,
+      keyboard: true,
+      dragging: true,
+      touchZoom: true,
+      zoomAnimation: true,
+      zoomAnimationThreshold: 4,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
+      transform3DLimit: 2^23,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      trackResize: true,
+      inertia: true,
+      inertiaDeceleration: 3000,
+      inertiaMaxSpeed: Infinity,
+      easeLinearity: 0.2,
+      worldCopyJump: false,
+      maxBoundsViscosity: 0.0
+    }).setView([lat, lng], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OpenStreetMap contributors'
     }).addTo(this.map);
 
-    // Add user marker (use same icon as individual disaster maps)
-    this.userMarker = L.marker([lat, lng], {
+    // Add user marker with stability options
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    this.userMarker = L.marker([preciseLat, preciseLng], {
       icon: L.icon({
         iconUrl: 'assets/myLocation.png',
         iconSize: [32, 32],
         iconAnchor: [16, 32]
-      })
+      }),
+      // Add marker stability options
+      riseOnHover: false,
+      riseOffset: 0,
+      zIndexOffset: 1000,
+      opacity: 1,
+      interactive: true,
+      bubblingMouseEvents: true
     }).addTo(this.map);
 
     this.userMarker.bindPopup('📍 You are here!').openPopup();
@@ -345,6 +377,7 @@ export class AllMapsPage implements OnInit {
           // Store disaster type and center data on marker for filtering
           (marker as any).disasterType = markerDisasterType;
           (marker as any).centerData = center;
+          (marker as any).supportedDisasterTypes = disasterTypes; // Store all supported disaster types
 
           const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
@@ -1027,9 +1060,13 @@ export class AllMapsPage implements OnInit {
     });
     await loading.present();
 
+    // Update marker appearances based on filter
+    this.updateMarkerAppearances(filterType);
+
     // Filter markers based on type
     this.allMarkers.forEach(marker => {
       const markerType = (marker as any).disasterType;
+      const supportedTypes = (marker as any).supportedDisasterTypes || [];
 
       if (filterType === 'all') {
         // Show all markers
@@ -1037,8 +1074,19 @@ export class AllMapsPage implements OnInit {
           marker.addTo(this.map);
         }
       } else {
-        // Show only markers of the selected type
-        if (markerType === filterType) {
+        // Check if marker supports the selected disaster type
+        let shouldShow = false;
+
+        if (filterType === 'Multiple') {
+          // Show only markers that support multiple disaster types
+          shouldShow = markerType === 'Multiple';
+        } else {
+          // Show markers that support the selected disaster type
+          // This includes both single-type markers and multi-type markers that support this type
+          shouldShow = markerType === filterType || supportedTypes.includes(filterType);
+        }
+
+        if (shouldShow) {
           if (!this.map.hasLayer(marker)) {
             marker.addTo(this.map);
           }
@@ -1057,7 +1105,15 @@ export class AllMapsPage implements OnInit {
     // Show success message
     const visibleCount = this.allMarkers.filter(marker => {
       if (filterType === 'all') return true;
-      return (marker as any).disasterType === filterType;
+
+      const markerType = (marker as any).disasterType;
+      const supportedTypes = (marker as any).supportedDisasterTypes || [];
+
+      if (filterType === 'Multiple') {
+        return markerType === 'Multiple';
+      } else {
+        return markerType === filterType || supportedTypes.includes(filterType);
+      }
     }).length;
 
     let message = `🎯 Showing ${visibleCount} ${filterType === 'all' ? 'evacuation centers' : filterType + ' centers'}`;
@@ -1075,5 +1131,93 @@ export class AllMapsPage implements OnInit {
       position: 'top'
     });
     await toast.present();
+  }
+
+  private updateMarkerAppearances(filterType: string) {
+    this.allMarkers.forEach(marker => {
+      const centerData = (marker as any).centerData;
+      const supportedTypes = (marker as any).supportedDisasterTypes || [];
+      const isMultipleTypes = supportedTypes.length > 1;
+
+      // Only update appearance for multi-disaster centers when filtering for specific types
+      if (isMultipleTypes && filterType !== 'all' && filterType !== 'Multiple' && supportedTypes.includes(filterType)) {
+        // Change the marker icon to match the filtered disaster type
+        let iconUrl = 'assets/Location.png';
+
+        switch (filterType) {
+          case 'Earthquake':
+            iconUrl = 'assets/forEarthquake.png';
+            break;
+          case 'Typhoon':
+            iconUrl = 'assets/forTyphoon.png';
+            break;
+          case 'Flood':
+            iconUrl = 'assets/forFlood.png';
+            break;
+          case 'Fire':
+            iconUrl = 'assets/forFire.png';
+            break;
+          case 'Landslide':
+            iconUrl = 'assets/forLandslide.png';
+            break;
+          case 'Others':
+            iconUrl = 'assets/forOthers.png';
+            break;
+          default:
+            iconUrl = 'assets/forMultiple.png';
+            break;
+        }
+
+        // Update the marker icon
+        const newIcon = L.icon({
+          iconUrl: iconUrl,
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
+          popupAnchor: [0, -40]
+        });
+
+        marker.setIcon(newIcon);
+        console.log(`🎨 Updated ${centerData.name} marker to ${filterType} appearance`);
+      } else if (filterType === 'all' || filterType === 'Multiple') {
+        // Reset to original appearance when showing all or filtering for multiple
+        const originalIconUrl = isMultipleTypes ? 'assets/forMultiple.png' : this.getOriginalIconUrl(centerData);
+
+        const resetIcon = L.icon({
+          iconUrl: originalIconUrl,
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
+          popupAnchor: [0, -40]
+        });
+
+        marker.setIcon(resetIcon);
+      }
+    });
+  }
+
+  private getOriginalIconUrl(centerData: any): string {
+    const disasterTypes = Array.isArray(centerData.disaster_type) ? centerData.disaster_type : [centerData.disaster_type];
+
+    if (disasterTypes.length > 1) {
+      return 'assets/forMultiple.png';
+    }
+
+    const primaryType = disasterTypes[0];
+    switch (primaryType) {
+      case 'Earthquake':
+        return 'assets/forEarthquake.png';
+      case 'Typhoon':
+        return 'assets/forTyphoon.png';
+      case 'Flood':
+      case 'Flash Flood':
+        return 'assets/forFlood.png';
+      case 'Fire':
+        return 'assets/forFire.png';
+      case 'Landslide':
+        return 'assets/forLandslide.png';
+      case 'Others':
+        return 'assets/forOthers.png';
+      default:
+        return 'assets/forOthers.png';
+    }
   }
 }
