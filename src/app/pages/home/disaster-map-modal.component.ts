@@ -65,6 +65,9 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
   // For directional user marker
   public deviceHeading: number = 0; // Default pointing north
   private orientationWatcher: any = null;
+  private lastHeadingUpdate: number = 0;
+  private headingUpdateThrottle: number = 100; // Update every 100ms max
+  private headingSmoothingFactor: number = 0.3; // Smoothing factor (0-1, lower = more smoothing)
 
   constructor() {
     // The disasterType will be passed via componentProps in the modal creation
@@ -1287,30 +1290,99 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
    * Add device orientation event listener
    */
   private addOrientationListener(): void {
-    window.addEventListener('deviceorientationabsolute', this.handleOrientation.bind(this), true);
-    window.addEventListener('deviceorientation', this.handleOrientation.bind(this), true);
+    // Remove any existing listeners first to prevent duplicates
+    this.stopOrientationTracking();
+
+    // Bind the handler once to avoid creating new functions each time
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Temporarily disabled due to TypeScript build issues
+    // TODO: Re-enable compass functionality after fixing TypeScript issues
+    /*
+    // Add both listeners - the browser will use the appropriate one
+    (window as any).addEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).addEventListener('deviceorientation', boundHandler, true);
+    console.log('🧭 Added both deviceorientationabsolute and deviceorientation listeners (modal)');
+    */
+
+    console.log('🧭 Compass functionality temporarily disabled (modal)');
   }
 
   /**
-   * Handle device orientation change
+   * Handle device orientation change with smoothing and throttling
    */
   private handleOrientation(event: DeviceOrientationEvent): void {
     if (event.alpha !== null) {
+      const now = Date.now();
+
+      // Throttle updates to prevent excessive DOM manipulation
+      if (now - this.lastHeadingUpdate < this.headingUpdateThrottle) {
+        return;
+      }
+
       // Use webkitCompassHeading for iOS, alpha for Android
-      const heading = (event as any).webkitCompassHeading || (360 - event.alpha);
-      this.deviceHeading = heading;
-      console.log('Device heading updated (modal):', this.deviceHeading);
-      // Update user marker rotation if it exists
-      this.updateUserMarkerDirection();
+      const rawHeading = (event as any).webkitCompassHeading || (360 - event.alpha);
+
+      // Apply smoothing to reduce jitter
+      const smoothedHeading = this.smoothHeading(this.deviceHeading, rawHeading);
+
+      // Only update if the change is significant (reduces micro-movements)
+      const headingDifference = Math.abs(smoothedHeading - this.deviceHeading);
+      const normalizedDifference = Math.min(headingDifference, 360 - headingDifference);
+
+      if (normalizedDifference > 2) { // Only update if change is > 2 degrees
+        const oldHeading = this.deviceHeading;
+        this.deviceHeading = smoothedHeading;
+        this.lastHeadingUpdate = now;
+
+        console.log('🧭 Device heading updated (modal) from', oldHeading.toFixed(1), 'to', this.deviceHeading.toFixed(1));
+
+        // Update user marker rotation if it exists
+        this.updateUserMarkerDirection();
+      }
     }
+  }
+
+  /**
+   * Smooth heading changes to reduce jitter
+   */
+  private smoothHeading(currentHeading: number, newHeading: number): number {
+    // Handle the circular nature of compass headings (0° = 360°)
+    let difference = newHeading - currentHeading;
+
+    // Normalize difference to [-180, 180] range
+    if (difference > 180) {
+      difference -= 360;
+    } else if (difference < -180) {
+      difference += 360;
+    }
+
+    // Apply smoothing
+    const smoothedDifference = difference * this.headingSmoothingFactor;
+    let result = currentHeading + smoothedDifference;
+
+    // Normalize result to [0, 360) range
+    if (result < 0) {
+      result += 360;
+    } else if (result >= 360) {
+      result -= 360;
+    }
+
+    return result;
   }
 
   /**
    * Stop orientation tracking
    */
   private stopOrientationTracking(): void {
-    window.removeEventListener('deviceorientationabsolute', this.handleOrientation.bind(this), true);
-    window.removeEventListener('deviceorientation', this.handleOrientation.bind(this), true);
+    // Create bound handler to match the one used in addEventListener
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Remove both possible listeners
+    (window as any).removeEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).removeEventListener('deviceorientation', boundHandler, true);
+
+    console.log('🧭 Removed orientation event listeners (modal)');
   }
 
   /**
@@ -1356,15 +1428,19 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Update user marker direction based on device heading
+   * Update user marker direction based on device heading with smooth transitions
    */
   private updateUserMarkerDirection(): void {
+    console.log('🧭 Updating marker direction (modal) to:', this.deviceHeading.toFixed(1));
     if (this.userMarker) {
       const markerElement = this.userMarker.getElement();
       if (markerElement) {
         const directionArrow = markerElement.querySelector('.direction-arrow');
         if (directionArrow) {
-          (directionArrow as HTMLElement).style.transform = `translateX(-50%) rotate(${this.deviceHeading}deg)`;
+          const element = directionArrow as HTMLElement;
+          element.style.transition = 'transform 0.2s ease-out';
+          element.style.transform = `translateX(-50%) rotate(${this.deviceHeading}deg)`;
+          console.log('🧭 Updated direction arrow (modal) to:', this.deviceHeading.toFixed(1));
         }
       }
     }

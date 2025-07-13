@@ -120,6 +120,7 @@ export class FCMService {
 
       // Check if this is an emergency notification
       if (this.isEmergencyNotification(event.notification)) {
+        // For emergency notifications: show BOTH modal AND system notification
         this.handleEmergencyNotification(event.notification);
       } else {
         // For regular foreground messages, show local notification
@@ -190,8 +191,12 @@ export class FCMService {
         data: data
       };
 
-      // Show emergency overlay
-      await this.emergencyOverlay.showEmergencyNotification(emergencyNotification);
+      // Show both emergency overlay AND local notification simultaneously
+      // This ensures users see both the modal and the system notification
+      await Promise.all([
+        this.emergencyOverlay.showEmergencyNotification(emergencyNotification),
+        this.showForegroundNotification(notification)
+      ]);
 
     } catch (error) {
       console.error('Error handling emergency notification:', error);
@@ -255,6 +260,118 @@ export class FCMService {
   }
 
   /**
+   * Show notification specifically when app is in foreground (active use)
+   */
+  private async showForegroundNotification(notification: any): Promise<void> {
+    console.log('🔥 [FOREGROUND] Forcing notification to appear while app is active');
+
+    try {
+      // Check notification permissions and settings first
+      await this.debugNotificationSettings();
+
+      // First try the regular local notification method
+      await this.showLocalNotification(notification);
+
+      // Additionally, create a more aggressive notification approach for foreground
+      setTimeout(async () => {
+        try {
+          const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
+
+          console.log('🔥 [FOREGROUND] Creating immediate notification with ID:', uniqueId);
+
+          // Create a simple, immediate notification
+          const result = await LocalNotifications.schedule({
+            notifications: [{
+              title: notification.title || 'Emergency Alert',
+              body: notification.body || 'You have received an emergency notification',
+              id: uniqueId,
+              // No schedule = immediate delivery
+              sound: 'default',
+              extra: notification.data || {}
+            }]
+          });
+
+          console.log('🔥 [FOREGROUND] Immediate notification result:', result);
+
+          // Check if it was actually scheduled
+          setTimeout(async () => {
+            const pending = await LocalNotifications.getPending();
+            const delivered = await LocalNotifications.getDeliveredNotifications();
+            console.log('🔥 [FOREGROUND] After immediate - Pending:', pending.notifications.length, 'Delivered:', delivered.notifications.length);
+          }, 500);
+
+        } catch (immediateError) {
+          console.error('❌ [FOREGROUND] Immediate notification failed:', immediateError);
+        }
+      }, 200); // Very short delay
+
+    } catch (error) {
+      console.error('❌ [FOREGROUND] Foreground notification failed:', error);
+      // Fallback to regular method
+      await this.showLocalNotification(notification);
+    }
+  }
+
+  /**
+   * Debug notification settings and permissions
+   */
+  private async debugNotificationSettings(): Promise<void> {
+    try {
+      const permissions = await LocalNotifications.checkPermissions();
+      console.log('🔍 [DEBUG] Notification permissions:', JSON.stringify(permissions, null, 2));
+
+      const pending = await LocalNotifications.getPending();
+      console.log('🔍 [DEBUG] Pending notifications:', pending.notifications.length);
+
+      const delivered = await LocalNotifications.getDeliveredNotifications();
+      console.log('🔍 [DEBUG] Delivered notifications:', delivered.notifications.length);
+
+      // Check if we're on Android and if notifications are enabled
+      if (this.platform.is('android')) {
+        console.log('🔍 [DEBUG] Running on Android - checking system notification settings');
+        // Note: We can't directly check if notifications are disabled in Android settings
+        // but we can check our app permissions
+      }
+
+    } catch (error) {
+      console.error('❌ [DEBUG] Error checking notification settings:', error);
+    }
+  }
+
+  /**
+   * Test method to verify local notifications work (for debugging)
+   * Call this from browser console: window.fcmService.testLocalNotification()
+   */
+  public async testLocalNotification(): Promise<void> {
+    console.log('🧪 [TEST] Testing local notification...');
+
+    try {
+      const testId = Date.now();
+
+      await LocalNotifications.schedule({
+        notifications: [{
+          title: 'Test Notification',
+          body: 'This is a test notification to verify local notifications work',
+          id: testId,
+          sound: 'default'
+        }]
+      });
+
+      console.log('🧪 [TEST] Test notification scheduled with ID:', testId);
+
+      // Check status after a moment
+      setTimeout(async () => {
+        const pending = await LocalNotifications.getPending();
+        const delivered = await LocalNotifications.getDeliveredNotifications();
+        console.log('🧪 [TEST] After test - Pending:', pending.notifications.length, 'Delivered:', delivered.notifications.length);
+      }, 1000);
+
+    } catch (error) {
+      console.error('❌ [TEST] Test notification failed:', error);
+    }
+  }
+
+  /**
    * Show local notification for foreground messages
    */
   private async showLocalNotification(notification: any): Promise<void> {
@@ -315,7 +432,7 @@ export class FCMService {
         title: displayTitle,
         body: displayBody,
         id: uniqueId,
-        schedule: { at: new Date(Date.now() + 500) }, // 500ms delay for Android
+        schedule: { at: new Date(Date.now() + 100) }, // Reduced delay for faster display
         sound: this.getNotificationSound(severity),
         attachments: [],
         actionTypeId: '',
@@ -334,10 +451,41 @@ export class FCMService {
 
       console.log('📤 [SCHEDULING] Full notification payload:', JSON.stringify(notificationPayload, null, 2));
 
-      // Schedule the notification
+      // Schedule the notification - this should show even when app is in foreground
       await LocalNotifications.schedule({
         notifications: [notificationPayload]
       });
+
+      // Force notification to appear by also trying immediate delivery
+      setTimeout(async () => {
+        try {
+          // Check if notification was delivered
+          const pending = await LocalNotifications.getPending();
+          const delivered = await LocalNotifications.getDeliveredNotifications();
+
+          console.log('📋 [CHECK] Pending notifications:', pending.notifications.length);
+          console.log('📋 [CHECK] Delivered notifications:', delivered.notifications.length);
+
+          // If notification is still pending, try to trigger it immediately
+          const stillPending = pending.notifications.find(n => n.id === uniqueId);
+          if (stillPending) {
+            console.log('⚠️ [RETRY] Notification still pending, attempting immediate delivery...');
+
+            // Cancel the scheduled one and create immediate one
+            await LocalNotifications.cancel({ notifications: [{ id: uniqueId }] });
+
+            // Create immediate notification
+            await LocalNotifications.schedule({
+              notifications: [{
+                ...notificationPayload,
+                schedule: { at: new Date(Date.now() + 50) } // Almost immediate
+              }]
+            });
+          }
+        } catch (checkError) {
+          console.error('❌ [CHECK] Error checking notification status:', checkError);
+        }
+      }, 1000); // Check after 1 second
 
       console.log('✅ [SUCCESS] Local notification scheduled successfully with ID:', uniqueId);
       console.log('✅ [SUCCESS] Notification should appear in Android notification panel');

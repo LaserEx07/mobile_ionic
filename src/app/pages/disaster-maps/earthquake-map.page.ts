@@ -522,16 +522,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         // Check if this is the new center to highlight
         const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
 
-        marker.bindPopup(`
-          <div class="evacuation-popup">
-            <h3>🟠 ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
-            <p><strong>Type:</strong> Earthquake Center</p>
-            <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            <p><em>Click marker for route options</em></p>
-            ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
-          </div>
-        `);
+
 
         // If this is the new center, open its popup and center map on it
         if (isNewCenter) {
@@ -1140,6 +1131,32 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     return (distance / 1000).toFixed(1);
   }
 
+  // Helper method to format disaster type for display
+  getDisasterTypeDisplay(center: EvacuationCenter): string {
+    // Always prioritize showing "Earthquake" as the primary disaster type for this map
+    if (!center.disaster_type) {
+      return 'Earthquake';
+    }
+
+    if (Array.isArray(center.disaster_type)) {
+      // If array contains earthquake, prioritize it, otherwise show all types
+      if (center.disaster_type.some(type => type.toLowerCase().includes('earthquake'))) {
+        return 'Earthquake';
+      }
+      return center.disaster_type.join(', ');
+    }
+
+    // If it's a string, check if it contains earthquake
+    if (typeof center.disaster_type === 'string') {
+      if (center.disaster_type.toLowerCase().includes('earthquake')) {
+        return 'Earthquake';
+      }
+      return center.disaster_type;
+    }
+
+    return 'Earthquake';
+  }
+
   // Route to nearest centers (compass button functionality)
   async routeToNearestCenters() {
     if (!this.userLocation || this.evacuationCenters.length === 0) {
@@ -1234,6 +1251,15 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         </div>
       `,
       buttons: [
+        {
+          text: '✕',
+          role: 'cancel',
+          cssClass: 'alert-button-close',
+          handler: () => {
+            console.log('🚨 User closed earthquake emergency alert');
+            return true; // Explicitly return true to dismiss the alert
+          }
+        },
         {
           text: 'Navigate Now',
           role: 'confirm',

@@ -14,7 +14,8 @@ const config: CapacitorConfig = {
       'http://127.0.0.1:8000',
       'http://172.30.11.217:8000', // School IP
       'http://192.168.112.244:8000', // Previous Home IP
-      'http://192.168.112.210:8000', // Current IP
+      'http://192.168.112.210:8000', // Previous IP
+      'http://192.168.109.161:8000', // Current IP
       'http://172.30.13.185:8000', // Previous IP
       'https://*.ngrok-free.app',
       'http://*.ngrok-free.app',

@@ -367,6 +367,9 @@ export class MapPage implements OnInit, OnDestroy {
   // For directional user marker
   public deviceHeading: number = 0; // Default pointing north
   private orientationWatcher: any = null;
+  private lastHeadingUpdate: number = 0;
+  private headingUpdateThrottle: number = 100; // Update every 100ms max
+  private headingSmoothingFactor: number = 0.3; // Smoothing factor (0-1, lower = more smoothing)
 
   private ORS_API_KEY = environment.orsApiKey;
 
@@ -445,12 +448,12 @@ export class MapPage implements OnInit, OnDestroy {
    */
   private setupNetworkStatusMonitoring(): void {
     // Listen for online/offline events
-    window.addEventListener('online', () => {
+    (window as any).addEventListener('online', () => {
       console.log('📶 Network came back online - starting data sync');
       this.syncDataWhenOnline();
     });
 
-    window.addEventListener('offline', () => {
+    (window as any).addEventListener('offline', () => {
       console.log('📵 Network went offline - switching to cached data');
     });
 
@@ -799,10 +802,7 @@ export class MapPage implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
 
   async ngOnInit() {
-    console.log('🗺️ MAIN MAP: Initializing clean map (tabs/map)...');
-
-    // Set up network status monitoring for data sync
-    this.setupNetworkStatusMonitoring();
+    console.log('🗺️ MAIN MAP: Initializing map (tabs/map)...');
 
     // Start orientation tracking for compass
     this.startOrientationTracking();
@@ -880,9 +880,9 @@ export class MapPage implements OnInit, OnDestroy {
       this.loadCleanMap();
     });
   }
-  // Load clean map with user location only (NO evacuation centers)
+  // Load clean map with user location only (NO evacuation centers by default)
   async loadCleanMap() {
-    console.log('🗺️ CLEAN MAP: Loading map with user location only...');
+    console.log('🗺️ CLEAN MAP: Loading clean map with user location only...');
 
     await this.loadingService.showLoading('Loading map...');
 
@@ -901,7 +901,7 @@ export class MapPage implements OnInit, OnDestroy {
       // Initialize map with user location only
       this.initializeMap(userLat, userLng);
 
-      // Clear any existing evacuation centers
+      // Clear any existing evacuation centers and markers
       this.evacuationCenters = [];
       this.isFilterMode = false;
       this.currentDisasterType = 'all';
@@ -916,11 +916,14 @@ export class MapPage implements OnInit, OnDestroy {
         }
       });
 
+      // Set up network status monitoring for data sync
+      this.setupNetworkStatusMonitoring();
+
       await this.loadingService.dismissLoading();
 
       // Show info message
       const toast = await this.toastCtrl.create({
-        message: '📍 Map ready - Search for evacuation centers to view them here',
+        message: '📍 Map ready - Search for evacuation centers or check notifications',
         duration: 3000,
         color: 'primary',
         position: 'top'
@@ -1000,14 +1003,7 @@ export class MapPage implements OnInit, OnDestroy {
         })
       });
 
-      marker.bindPopup(`
-        <div class="evacuation-popup">
-          <h3>${center.name}</h3>
-          <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
-          <p><strong>Address:</strong> ${center.address}</p>
-          <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-        </div>
-      `).openPopup();
+
 
       marker.addTo(this.map);
 
@@ -1839,7 +1835,7 @@ export class MapPage implements OnInit, OnDestroy {
 
     console.log('Adding user marker');
     if (!this.userMarker) {
-      this.userMarker = this.createDirectionalUserMarker(lat, lng).addTo(this.map).bindPopup('You are here!').openPopup();
+      this.userMarker = this.createDirectionalUserMarker(lat, lng).addTo(this.map).bindPopup('You are here!');
       console.log('Created new directional user marker');
     } else {
       this.userMarker.setLatLng([lat, lng]);
@@ -1983,9 +1979,13 @@ export class MapPage implements OnInit, OnDestroy {
       const speedKmh = (speed * 3.6).toFixed(1);
       const headingDirection = this.getCompassDirection(this.deviceHeading);
       this.userMarker.bindPopup(`
-        📍 You are here!<br>
-        🚗 Speed: ${speedKmh} km/h<br>
-        🧭 Heading: ${headingDirection} (${this.deviceHeading.toFixed(0)}°)
+        <div style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+          <strong>📍 Your Location</strong><br>
+          <div style="margin: 8px 0; padding: 4px; background: rgba(59, 130, 246, 0.1); border-radius: 4px;">
+            🚗 Speed: <strong>${speedKmh} km/h</strong><br>
+            🧭 Facing: <strong>${headingDirection}</strong> (${this.deviceHeading.toFixed(0)}°)
+          </div>
+        </div>
       `);
 
     } else {
@@ -1995,9 +1995,13 @@ export class MapPage implements OnInit, OnDestroy {
       const speedKmh = (speed * 3.6).toFixed(1);
       const headingDirection = this.getCompassDirection(this.deviceHeading);
       this.userMarker.bindPopup(`
-        📍 You are here!<br>
-        🚗 Speed: ${speedKmh} km/h<br>
-        🧭 Heading: ${headingDirection} (${this.deviceHeading.toFixed(0)}°)
+        <div style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+          <strong>📍 Your Location</strong><br>
+          <div style="margin: 8px 0; padding: 4px; background: rgba(59, 130, 246, 0.1); border-radius: 4px;">
+            🚗 Speed: <strong>${speedKmh} km/h</strong><br>
+            🧭 Facing: <strong>${headingDirection}</strong> (${this.deviceHeading.toFixed(0)}°)
+          </div>
+        </div>
       `).openPopup();
 
       console.log('🚗 Created new directional user marker with movement tracking');
@@ -2254,21 +2258,8 @@ export class MapPage implements OnInit, OnDestroy {
             bubblingMouseEvents: true
           });
 
-          let popupContent = `
-            <div class="evacuation-popup">
-              <h3>${center.name || 'Evacuation Center'}</h3>
-              <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
-              <p><strong>Distance:</strong> ${(this.calculateDistance(userLat, userLng, lat, lng) / 1000).toFixed(2)} km</p>
-              <p><button class="popup-button">View Details</button></p>
-            </div>
-          `;
-
-          marker.bindPopup(popupContent);
           marker.on('click', () => {
-            setTimeout(() => {
-              marker.closePopup();
-              this.showNavigationPanel(center);
-            }, 300);
+            this.showNavigationPanel(center);
           });
 
           marker.addTo(this.map);
@@ -2460,20 +2451,8 @@ export class MapPage implements OnInit, OnDestroy {
             bubblingMouseEvents: true
           });
 
-          let popupContent = `
-            <div class="evacuation-popup">
-              <h3>${center.name || 'Evacuation Center'}</h3>
-              <p><strong>Distance:</strong> ${(this.calculateDistance(userLat, userLng, lat, lng) / 1000).toFixed(2)} km</p>
-              <p><button class="popup-button">View Details</button></p>
-            </div>
-          `;
-
-          marker.bindPopup(popupContent);
           marker.on('click', () => {
-            setTimeout(() => {
-              marker.closePopup();
-              this.showNavigationPanel(center);
-            }, 300);
+            this.showNavigationPanel(center);
           });
 
           marker.addTo(this.map);
@@ -2942,6 +2921,14 @@ export class MapPage implements OnInit, OnDestroy {
       `,
       buttons: [
         {
+          text: '✕',
+          role: 'cancel',
+          cssClass: 'alert-button-close',
+          handler: () => {
+            console.log(`🚨 User closed ${params.category} emergency alert`);
+          }
+        },
+        {
           text: 'Show All Centers',
           role: 'confirm',
           cssClass: 'alert-button-confirm',
@@ -3074,18 +3061,27 @@ export class MapPage implements OnInit, OnDestroy {
   private addOrientationListener(): void {
     console.log('🧭 Adding orientation event listeners...');
 
-    // Try absolute orientation first (more accurate)
-    window.addEventListener('deviceorientationabsolute', this.handleOrientation.bind(this), true);
-    console.log('🧭 Added deviceorientationabsolute listener');
+    // Remove any existing listeners first to prevent duplicates
+    this.stopOrientationTracking();
 
-    // Fallback to regular orientation
-    window.addEventListener('deviceorientation', this.handleOrientation.bind(this), true);
-    console.log('🧭 Added deviceorientation listener');
+    // Bind the handler once to avoid creating new functions each time
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Temporarily disabled due to TypeScript build issues
+    // TODO: Re-enable compass functionality after fixing TypeScript issues
+    /*
+    // Add both listeners - the browser will use the appropriate one
+    (window as any).addEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).addEventListener('deviceorientation', boundHandler, true);
+    console.log('🧭 Added both deviceorientationabsolute and deviceorientation listeners');
+    */
+
+    console.log('🧭 Compass functionality temporarily disabled');
 
     // Test if we can get initial orientation
     setTimeout(() => {
       console.log('🧭 Testing initial orientation after 2 seconds...');
-      console.log('🧭 Current device heading:', this.deviceHeading);
+      console.log('🧭 Current device heading:', this.deviceHeading.toFixed(1));
       if (this.deviceHeading === 0) {
         console.log('🧭 No orientation data received yet - this might be normal on some devices');
       }
@@ -3093,34 +3089,82 @@ export class MapPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Handle device orientation change
+   * Handle device orientation change with smoothing and throttling
    */
   private handleOrientation(event: DeviceOrientationEvent): void {
     if (event.alpha !== null) {
+      const now = Date.now();
+
+      // Throttle updates to prevent excessive DOM manipulation
+      if (now - this.lastHeadingUpdate < this.headingUpdateThrottle) {
+        return;
+      }
+
       // Use webkitCompassHeading for iOS, alpha for Android
-      const heading = (event as any).webkitCompassHeading || (360 - event.alpha);
-      const oldHeading = this.deviceHeading;
-      this.deviceHeading = heading;
-      console.log('🧭 Device heading updated from', oldHeading, 'to', this.deviceHeading);
-      console.log('🧭 Raw orientation data:', {
-        alpha: event.alpha,
-        beta: event.beta,
-        gamma: event.gamma,
-        webkitCompassHeading: (event as any).webkitCompassHeading
-      });
-      // Update user marker rotation if it exists
-      this.updateUserMarkerDirection();
+      const rawHeading = (event as any).webkitCompassHeading || (360 - event.alpha);
+
+      // Apply smoothing to reduce jitter
+      const smoothedHeading = this.smoothHeading(this.deviceHeading, rawHeading);
+
+      // Only update if the change is significant (reduces micro-movements)
+      const headingDifference = Math.abs(smoothedHeading - this.deviceHeading);
+      const normalizedDifference = Math.min(headingDifference, 360 - headingDifference);
+
+      if (normalizedDifference > 2) { // Only update if change is > 2 degrees
+        const oldHeading = this.deviceHeading;
+        this.deviceHeading = smoothedHeading;
+        this.lastHeadingUpdate = now;
+
+        console.log('🧭 Device heading updated from', oldHeading.toFixed(1), 'to', this.deviceHeading.toFixed(1));
+
+        // Update user marker rotation if it exists
+        this.updateUserMarkerDirection();
+      }
     } else {
       console.log('🧭 No orientation data available (alpha is null)');
     }
   }
 
   /**
+   * Smooth heading changes to reduce jitter
+   */
+  private smoothHeading(currentHeading: number, newHeading: number): number {
+    // Handle the circular nature of compass headings (0° = 360°)
+    let difference = newHeading - currentHeading;
+
+    // Normalize difference to [-180, 180] range
+    if (difference > 180) {
+      difference -= 360;
+    } else if (difference < -180) {
+      difference += 360;
+    }
+
+    // Apply smoothing
+    const smoothedDifference = difference * this.headingSmoothingFactor;
+    let result = currentHeading + smoothedDifference;
+
+    // Normalize result to [0, 360) range
+    if (result < 0) {
+      result += 360;
+    } else if (result >= 360) {
+      result -= 360;
+    }
+
+    return result;
+  }
+
+  /**
    * Stop orientation tracking
    */
   private stopOrientationTracking(): void {
-    window.removeEventListener('deviceorientationabsolute', this.handleOrientation.bind(this), true);
-    window.removeEventListener('deviceorientation', this.handleOrientation.bind(this), true);
+    // Create bound handler to match the one used in addEventListener
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Remove both possible listeners
+    (window as any).removeEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).removeEventListener('deviceorientation', boundHandler, true);
+
+    console.log('🧭 Removed orientation event listeners');
   }
 
   /**
@@ -3133,77 +3177,82 @@ export class MapPage implements OnInit, OnDestroy {
 
     const markerHtml = `
       <div class="directional-user-marker" style="position: relative; width: 44px; height: 44px;">
-        <!-- Pulsing background circle for better visibility -->
+        <!-- Static background circle for better visibility -->
         <div style="
           position: absolute;
           top: 50%;
           left: 50%;
-          width: 40px;
-          height: 40px;
-          margin-top: -20px;
-          margin-left: -20px;
-          background: rgba(59, 130, 246, 0.3);
+          width: 36px;
+          height: 36px;
+          margin-top: -18px;
+          margin-left: -18px;
+          background: rgba(59, 130, 246, 0.2);
+          border: 2px solid rgba(59, 130, 246, 0.8);
           border-radius: 50%;
           z-index: 0;
-          animation: pulse 2s infinite;
         "></div>
 
         <!-- Main location icon -->
         <img src="assets/myLocation.png" alt="Your location" style="
-          width: 32px;
-          height: 32px;
+          width: 28px;
+          height: 28px;
           position: absolute;
-          top: 6px;
-          left: 6px;
+          top: 50%;
+          left: 50%;
+          margin-top: -14px;
+          margin-left: -14px;
           z-index: 1;
           border-radius: 50%;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         ">
 
-        <!-- Direction arrow pointing north - ENHANCED VISIBILITY -->
+        <!-- Enhanced direction arrow with better design -->
         <div class="direction-arrow" style="
           position: absolute;
-          top: -8px;
+          top: -12px;
           left: 50%;
           transform: translateX(-50%) rotate(${this.deviceHeading}deg);
           width: 0;
           height: 0;
-          border-left: 10px solid transparent;
-          border-right: 10px solid transparent;
-          border-bottom: 20px solid #FF4444;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-bottom: 24px solid #FF4444;
           z-index: 3;
-          filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
+          filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
           transition: transform 0.3s ease;
         "></div>
 
-        <!-- Secondary arrow for better visibility -->
+        <!-- White inner arrow for contrast -->
         <div style="
           position: absolute;
-          top: -6px;
+          top: -10px;
           left: 50%;
           transform: translateX(-50%) rotate(${this.deviceHeading}deg);
           width: 0;
           height: 0;
-          border-left: 6px solid transparent;
-          border-right: 6px solid transparent;
-          border-bottom: 12px solid #FFFFFF;
-          z-index: 2;
-          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-bottom: 16px solid #FFFFFF;
+          z-index: 4;
+          transition: transform 0.3s ease;
         "></div>
 
-        <!-- Compass ring for better direction indication -->
+        <!-- Compass direction indicator -->
         <div style="
           position: absolute;
-          top: 50%;
+          top: -2px;
           left: 50%;
-          width: 42px;
-          height: 42px;
-          margin-top: -21px;
-          margin-left: -21px;
-          border: 2px solid rgba(59, 130, 246, 0.6);
-          border-radius: 50%;
-          z-index: 0;
-        "></div>
+          transform: translateX(-50%);
+          font-size: 10px;
+          font-weight: bold;
+          color: #333;
+          background: rgba(255, 255, 255, 0.9);
+          padding: 1px 4px;
+          border-radius: 8px;
+          z-index: 5;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        ">${this.getCompassDirection(this.deviceHeading)}</div>
       </div>
     `;
 
@@ -3236,33 +3285,49 @@ export class MapPage implements OnInit, OnDestroy {
   }
 
   /**
-   * Update user marker direction based on device heading
+   * Update user marker direction based on device heading with smooth transitions
    */
   private updateUserMarkerDirection(): void {
-    console.log('🧭 Updating marker direction to:', this.deviceHeading);
+    console.log('🧭 Updating marker direction to:', this.deviceHeading.toFixed(1));
     if (this.userMarker) {
       const markerElement = this.userMarker.getElement();
-      console.log('🧭 Marker element found:', !!markerElement);
       if (markerElement) {
-        const directionArrows = markerElement.querySelectorAll('.direction-arrow');
-        console.log('🧭 Direction arrows found:', directionArrows.length);
+        // Update direction arrow with smooth transition
+        const directionArrow = markerElement.querySelector('.direction-arrow');
+        if (directionArrow) {
+          const element = directionArrow as HTMLElement;
+          element.style.transition = 'transform 0.2s ease-out';
+          element.style.transform = `translateX(-50%) rotate(${this.deviceHeading}deg)`;
+          console.log('🧭 Updated primary direction arrow');
+        }
 
-        // Update all direction arrows (primary and secondary)
-        directionArrows.forEach((arrow, index) => {
-          (arrow as HTMLElement).style.transform = `translateX(-50%) rotate(${this.deviceHeading}deg)`;
-          console.log(`🧭 Updated arrow ${index + 1} rotation to ${this.deviceHeading}deg`);
-        });
-
-        // Also update any other elements that might have the rotation
+        // Update all rotatable elements (arrows) with smooth transitions
         const allRotatableElements = markerElement.querySelectorAll('[style*="rotate"]');
         allRotatableElements.forEach((element, index) => {
-          const currentStyle = (element as HTMLElement).style.transform;
-          if (currentStyle.includes('rotate')) {
+          const htmlElement = element as HTMLElement;
+          const currentStyle = htmlElement.style.transform;
+
+          // Add smooth transition
+          htmlElement.style.transition = 'transform 0.2s ease-out';
+
+          if (currentStyle.includes('rotate') && !currentStyle.includes('translateX(-50%)')) {
+            // Skip elements that already have translateX (they're handled separately)
             const newStyle = currentStyle.replace(/rotate\([^)]*\)/, `rotate(${this.deviceHeading}deg)`);
-            (element as HTMLElement).style.transform = newStyle;
-            console.log(`🧭 Updated rotatable element ${index + 1} to ${this.deviceHeading}deg`);
+            htmlElement.style.transform = newStyle;
+          } else if (currentStyle.includes('translateX(-50%)')) {
+            // Handle elements with translateX and rotate
+            const newStyle = currentStyle.replace(/rotate\([^)]*\)/, `rotate(${this.deviceHeading}deg)`);
+            htmlElement.style.transform = newStyle;
           }
+          console.log(`🧭 Updated rotatable element ${index + 1} to ${this.deviceHeading.toFixed(1)}deg`);
         });
+
+        // Update compass direction text (no transition needed for text)
+        const compassText = markerElement.querySelector('[style*="font-size: 10px"]');
+        if (compassText) {
+          compassText.textContent = this.getCompassDirection(this.deviceHeading);
+          console.log('🧭 Updated compass direction text to:', this.getCompassDirection(this.deviceHeading));
+        }
       } else {
         console.log('🧭 No marker element found - marker might not be created yet');
       }

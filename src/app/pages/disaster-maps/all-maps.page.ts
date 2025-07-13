@@ -391,15 +391,7 @@ export class AllMapsPage implements OnInit {
             ? center.disaster_type.join(', ')
             : center.disaster_type || 'General';
 
-          marker.bindPopup(`
-            <div class="evacuation-popup">
-              <h3>${colorEmoji} ${center.name}</h3>
-              <p><strong>Type:</strong> ${disasterTypeDisplay}</p>
-              <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-              <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              <p><em>Click marker for route options</em></p>
-            </div>
-          `);
+
 
           marker.addTo(this.map);
           this.allMarkers.push(marker);
@@ -571,15 +563,7 @@ export class AllMapsPage implements OnInit {
 
         const marker = L.marker([lat, lng], { icon: pulsingIcon });
 
-        marker.bindPopup(`
-          <div class="evacuation-popup nearest-popup">
-            <h3>🎯 Nearest Center #${index + 1}</h3>
-            <h4>${center.name}</h4>
-            <p><strong>Type:</strong> ${center.disaster_type}</p>
-            <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
-            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-          </div>
-        `);
+
 
         marker.addTo(this.map);
         this.nearestMarkers.push(marker);
@@ -918,6 +902,26 @@ export class AllMapsPage implements OnInit {
     );
 
     return (distance / 1000).toFixed(1);
+  }
+
+  // Helper method to format disaster type for display
+  getDisasterTypeDisplay(center: EvacuationCenter): string {
+    // For all-maps page, show the actual disaster type or a descriptive fallback
+    if (!center.disaster_type) {
+      return 'Multi-Disaster Center';
+    }
+
+    if (Array.isArray(center.disaster_type)) {
+      // Show all disaster types this center supports
+      return center.disaster_type.join(', ');
+    }
+
+    // If it's a string, return it as is
+    if (typeof center.disaster_type === 'string') {
+      return center.disaster_type;
+    }
+
+    return 'Multi-Disaster Center';
   }
 
 

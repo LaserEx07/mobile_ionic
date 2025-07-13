@@ -92,6 +92,26 @@
 
   <!-- Transportation Mode Selection (shows when marker is clicked) -->
   <div class="transport-selection" [class.show]="showRouteFooter && selectedCenter">
+    <!-- Disaster Details Section -->
+    <div class="disaster-details" *ngIf="selectedCenter">
+      <div class="disaster-header">
+        <ion-icon name="water-outline" color="primary"></ion-icon>
+        <span>Disaster Information</span>
+      </div>
+      <div class="disaster-info">
+        <div class="disaster-type">
+          <strong>Type:</strong>
+          <span>{{ getDisasterTypeDisplay(selectedCenter) }}</span>
+        </div>
+        <div class="disaster-distance" *ngIf="userLocation">
+          <strong>Distance:</strong> {{ calculateDistanceInKm(selectedCenter) }} km
+        </div>
+        <div class="disaster-capacity" *ngIf="selectedCenter.capacity">
+          <strong>Capacity:</strong> {{ selectedCenter.capacity }}
+        </div>
+      </div>
+    </div>
+
     <div class="transport-header">
       <h4>Choose Transportation Mode</h4>
       <ion-button fill="clear" size="small" (click)="closeNavigationPanel()">

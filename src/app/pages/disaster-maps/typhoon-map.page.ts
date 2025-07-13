@@ -330,20 +330,8 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
           // Check if this is the new center to highlight
           const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
 
-          marker.bindPopup(`
-            <div class="evacuation-popup">
-              <h3>🟢 ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
-              <p><strong>Type:</strong> Typhoon Center</p>
-              <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-              <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              <p><em>Click marker for route options</em></p>
-              ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
-            </div>
-          `);
-
-          // If this is the new center, open its popup and center map on it
+          // If this is the new center, center map on it and show toast
           if (isNewCenter) {
-            marker.openPopup();
             this.map.setView([lat, lng], 15); // Zoom in on the new center
 
             // Show a toast notification
@@ -554,16 +542,7 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
           this.showNavigationPanel(center);
         });
 
-        marker.bindPopup(`
-          <div class="evacuation-popup nearest-popup">
-            <h3>🎯 Nearest Center #${index + 1}</h3>
-            <h4>${center.name}</h4>
-            <p><strong>Type:</strong> Typhoon</p>
-            <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
-            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            <p><em>Click marker for route options</em></p>
-          </div>
-        `);
+
 
         marker.addTo(this.map);
         this.nearestMarkers.push(marker);
@@ -987,6 +966,32 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
     return (distance / 1000).toFixed(1);
   }
 
+  // Helper method to format disaster type for display
+  getDisasterTypeDisplay(center: EvacuationCenter): string {
+    // Always prioritize showing "Typhoon" as the primary disaster type for this map
+    if (!center.disaster_type) {
+      return 'Typhoon';
+    }
+
+    if (Array.isArray(center.disaster_type)) {
+      // If array contains typhoon, prioritize it, otherwise show all types
+      if (center.disaster_type.some(type => type.toLowerCase().includes('typhoon'))) {
+        return 'Typhoon';
+      }
+      return center.disaster_type.join(', ');
+    }
+
+    // If it's a string, check if it contains typhoon
+    if (typeof center.disaster_type === 'string') {
+      if (center.disaster_type.toLowerCase().includes('typhoon')) {
+        return 'Typhoon';
+      }
+      return center.disaster_type;
+    }
+
+    return 'Typhoon';
+  }
+
   // Show navigation panel when marker is clicked
   showNavigationPanel(center: EvacuationCenter) {
     console.log('🌀 TYPHOON: showNavigationPanel called for:', center.name);
@@ -1233,6 +1238,15 @@ export class TyphoonMapPage implements OnInit, AfterViewInit {
         </div>
       `,
       buttons: [
+        {
+          text: '✕',
+          role: 'cancel',
+          cssClass: 'alert-button-close',
+          handler: () => {
+            console.log('🚨 User closed typhoon emergency alert');
+            return true; // Explicitly return true to dismiss the alert
+          }
+        },
         {
           text: 'Navigate Now',
           role: 'confirm',

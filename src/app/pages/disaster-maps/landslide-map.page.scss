@@ -225,6 +225,48 @@ ion-header {
     }
   }
 
+  .disaster-details {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(139, 90, 43, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(139, 90, 43, 0.3);
+
+    .disaster-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: #8b5a2b;
+      font-weight: 600;
+      font-size: 16px;
+
+      ion-icon {
+        font-size: 20px;
+      }
+    }
+
+    .disaster-info {
+      .disaster-type,
+      .disaster-distance,
+      .disaster-capacity {
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: var(--ion-color-dark);
+
+        strong {
+          color: #8b5a2b;
+          margin-right: 4px;
+        }
+      }
+
+      .disaster-type span {
+        color: #8b5a2b;
+        font-weight: 500;
+      }
+    }
+  }
+
   .transport-options {
     flex: 1;
     display: flex;

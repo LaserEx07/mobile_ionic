@@ -306,6 +306,48 @@ ion-header {
     }
   }
 
+  .disaster-details {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(220, 53, 69, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+
+    .disaster-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: var(--ion-color-danger);
+      font-weight: 600;
+      font-size: 16px;
+
+      ion-icon {
+        font-size: 20px;
+      }
+    }
+
+    .disaster-info {
+      .disaster-type,
+      .disaster-distance,
+      .disaster-capacity {
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: var(--ion-color-dark);
+
+        strong {
+          color: var(--ion-color-danger);
+          margin-right: 4px;
+        }
+      }
+
+      .disaster-type span {
+        color: var(--ion-color-danger);
+        font-weight: 500;
+      }
+    }
+  }
+
   .transport-options {
     flex: 1;
     display: flex;

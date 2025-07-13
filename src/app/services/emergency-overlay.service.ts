@@ -109,22 +109,20 @@ export class EmergencyOverlayService {
         keyboardClose: false,
         showBackdrop: true,
         animated: true,
-        mode: 'ios' // Force iOS mode for consistent appearance
+        mode: 'ios', // Force iOS mode for consistent appearance
+        canDismiss: true // Allow programmatic dismissal
       });
 
       // Handle modal dismissal
       this.currentModal.onDidDismiss().then((result) => {
+        console.log('🚨 Emergency Service: Modal dismissed with result:', result);
         this.handleEmergencyDismissal(notification, result.data);
+      }).catch((error) => {
+        console.error('🚨 Emergency Service: Error in modal dismissal handler:', error);
+        this.handleEmergencyDismissal(notification, { action: 'error_dismissed' });
       });
 
       await this.currentModal.present();
-
-      // Auto-dismiss after 15 seconds if not interacted with (safety measure)
-      setTimeout(() => {
-        if (this.currentModal && this.isShowingEmergency) {
-          this.dismissCurrentEmergency();
-        }
-      }, 15000);
 
     } catch (error) {
       console.error('Error showing emergency notification:', error);
@@ -347,13 +345,18 @@ export class EmergencyOverlayService {
    * Handle emergency notification dismissal
    */
   private async handleEmergencyDismissal(notification: EmergencyNotification, actionData?: any): Promise<void> {
+    console.log('🚨 Emergency Service: Handling dismissal with action:', actionData?.action);
+
     this.isShowingEmergency = false;
     this.stopAllEmergencySounds();
+    this.currentModal = null;
 
     // Navigate to appropriate disaster map if user clicked "View Map"
     if (actionData?.action === 'view_map') {
       await this.navigateToDisasterMap(notification.category);
     }
+
+    console.log('✅ Emergency Service: Dismissal handled successfully');
   }
 
   /**
@@ -404,16 +407,24 @@ export class EmergencyOverlayService {
    * Dismiss current emergency overlay
    */
   async dismissCurrentEmergency(): Promise<void> {
+    console.log('🚨 Emergency Service: Dismissing current emergency overlay');
+
     if (this.currentModal) {
       this.isShowingEmergency = false;
       this.stopAllEmergencySounds();
 
       try {
-        await this.currentModal.dismiss();
+        await this.currentModal.dismiss({ action: 'service_dismissed' });
         this.currentModal = null;
+        console.log('✅ Emergency Service: Modal dismissed successfully');
       } catch (error) {
-        console.warn('Error dismissing emergency modal:', error);
+        console.error('❌ Emergency Service: Error dismissing emergency modal:', error);
+        this.currentModal = null; // Clean up even if dismiss failed
       }
+    } else {
+      console.log('🚨 Emergency Service: No current modal to dismiss');
+      this.isShowingEmergency = false;
+      this.stopAllEmergencySounds();
     }
   }
 

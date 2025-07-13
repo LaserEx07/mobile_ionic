@@ -357,7 +357,7 @@ ion-fab-button[activated] {
   }
 }
 
-/* Enhanced directional user marker styles for driving/movement tracking */
+/* Enhanced directional user marker styles for clean navigation */
 .custom-directional-marker {
   background: transparent !important;
   border: none !important;
@@ -367,7 +367,7 @@ ion-fab-button[activated] {
   position: relative;
   width: 44px;
   height: 44px;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .user-location-base {
@@ -396,50 +396,32 @@ ion-fab-button[activated] {
   transition: transform 0.3s ease;
 }
 
-/* Enhanced pulse animation for better visibility while moving */
-@keyframes pulse {
-  0% {
-    opacity: 0.6;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 0.3;
-    transform: scale(1.2);
-  }
-  100% {
-    opacity: 0.6;
-    transform: scale(0.8);
-  }
+/* Enhanced directional arrow styling */
+.direction-arrow {
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
 
-/* Movement indicator pulse - faster when moving */
-@keyframes movementPulse {
-  0% {
-    opacity: 0.8;
-    transform: scale(0.9);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(1.3);
-  }
-  100% {
-    opacity: 0.8;
-    transform: scale(0.9);
-  }
+/* Compass direction text styling */
+.compass-direction-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-align: center;
+  white-space: nowrap;
 }
 
-/* Compass ring styling */
-.compass-ring {
-  border: 2px solid rgba(59, 130, 246, 0.6);
-  border-radius: 50%;
-  animation: pulse 2s infinite;
+/* Static background circle styling */
+.marker-background {
+  background: rgba(59, 130, 246, 0.2);
+  border: 2px solid rgba(59, 130, 246, 0.8);
+  transition: all 0.3s ease;
 }
 
-/* Moving state - faster pulse */
-.directional-user-marker.moving {
-  .compass-ring {
-    animation: movementPulse 1s infinite;
-  }
+/* Enhanced visibility for location icon */
+.location-icon {
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 /* Modal styles */
