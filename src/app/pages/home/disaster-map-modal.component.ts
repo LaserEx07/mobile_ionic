@@ -53,6 +53,13 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
   routeDistance: number | null = null;
   disasterType: string = 'all'; // Default to 'all', will be set via input property
 
+  // For directional user marker
+  public deviceHeading: number = 0; // Default pointing north
+  private orientationWatcher: any = null;
+  private lastHeadingUpdate: number = 0;
+  private headingUpdateThrottle: number = 100; // Update every 100ms max
+  private headingSmoothingFactor: number = 0.3; // Smoothing factor (0-1, lower = more smoothing)
+
   constructor() {
     // The disasterType will be passed via componentProps in the modal creation
   }
@@ -67,6 +74,9 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
       this.disasterType = this.disasterType.toLowerCase();
       console.log(`Initializing map for disaster type: ${this.disasterType}`);
     }
+
+    // Start orientation tracking for compass
+    this.startOrientationTracking();
 
     await this.loadMapWithUserLocation();
   }
@@ -204,6 +214,7 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
       }
       this.watchId = null;
     }
+    this.stopOrientationTracking();
     if (this.map) {
       this.map.remove();
     }
@@ -618,19 +629,51 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
     }
 
     console.log(`Initializing map with real GPS coordinates: [${lat}, ${lng}]`);
-    this.map = L.map('map').setView([lat, lng], 15);
+    this.map = L.map('map', {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: false,
+      keyboard: true,
+      dragging: true,
+      touchZoom: true,
+      zoomAnimation: true,
+      zoomAnimationThreshold: 4,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
+      transform3DLimit: 2^23,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      trackResize: true,
+      inertia: true,
+      inertiaDeceleration: 3000,
+      inertiaMaxSpeed: Infinity,
+      easeLinearity: 0.2,
+      worldCopyJump: false,
+      maxBoundsViscosity: 0.0
+    }).setView([lat, lng], 15);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OpenStreetMap contributors'
     }).addTo(this.map);
 
-    // Create a real user marker with GPS data
-    this.userMarker = L.marker([lat, lng], {
+    // Create a real user marker with GPS data and stability options
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    this.userMarker = L.marker([preciseLat, preciseLng], {
       icon: L.icon({
         iconUrl: 'assets/Location.png',
         iconSize: [32, 32],
         iconAnchor: [16, 32]
-      })
+      }),
+      // Add marker stability options
+      riseOnHover: false,
+      riseOffset: 0,
+      zIndexOffset: 1000,
+      opacity: 1,
+      interactive: true,
+      bubblingMouseEvents: true
     }).addTo(this.map).bindPopup('You are here (Real GPS location)').openPopup();
 
     // Load evacuation centers and calculate routes
@@ -691,14 +734,8 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
         }
       }
     } else {
-      // Create a new user marker with real GPS data
-      this.userMarker = L.marker([lat, lng], {
-        icon: L.icon({
-          iconUrl: 'assets/myLocation.png',
-          iconSize: [32, 32],
-          iconAnchor: [16, 32]
-        })
-      }).addTo(this.map).bindPopup('You are here (Real GPS location)').openPopup();
+      // Create a new directional user marker with real GPS data
+      this.userMarker = this.createDirectionalUserMarker(lat, lng).addTo(this.map).bindPopup('You are here (Real GPS location)').openPopup();
 
       console.log('Created new user marker with real GPS data');
 
@@ -919,14 +956,8 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
           this.userMarker.setLatLng([freshLat, freshLng]);
           this.map.setView([freshLat, freshLng], 15);
         } else {
-          // Create user marker if it doesn't exist
-          this.userMarker = L.marker([freshLat, freshLng], {
-            icon: L.icon({
-              iconUrl: 'assets/myLocation.png',
-              iconSize: [32, 32],
-              iconAnchor: [16, 32]
-            })
-          }).addTo(this.map);
+          // Create directional user marker if it doesn't exist
+          this.userMarker = this.createDirectionalUserMarker(freshLat, freshLng).addTo(this.map);
         }
 
         // Use these fresh coordinates for routing
@@ -1228,5 +1259,192 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
     }
 
     return type; // Return as-is if no match
+  }
+
+  /**
+   * Start device orientation tracking for directional marker
+   */
+  private startOrientationTracking(): void {
+    if (typeof DeviceOrientationEvent !== 'undefined') {
+      // Check if we need to request permission (iOS 13+)
+      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        (DeviceOrientationEvent as any).requestPermission()
+          .then((response: string) => {
+            if (response === 'granted') {
+              this.addOrientationListener();
+            } else {
+              console.log('Device orientation permission denied');
+            }
+          })
+          .catch((error: any) => {
+            console.error('Error requesting device orientation permission:', error);
+          });
+      } else {
+        // Permission not required, add listener directly
+        this.addOrientationListener();
+      }
+    } else {
+      console.log('Device orientation not supported');
+    }
+  }
+
+  /**
+   * Add device orientation event listener
+   */
+  private addOrientationListener(): void {
+    // Remove any existing listeners first to prevent duplicates
+    this.stopOrientationTracking();
+
+    // Bind the handler once to avoid creating new functions each time
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Temporarily disabled due to TypeScript build issues
+    // TODO: Re-enable compass functionality after fixing TypeScript issues
+    /*
+    // Add both listeners - the browser will use the appropriate one
+    (window as any).addEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).addEventListener('deviceorientation', boundHandler, true);
+    console.log('🧭 Added both deviceorientationabsolute and deviceorientation listeners (modal)');
+    */
+
+    console.log('🧭 Compass functionality temporarily disabled (modal)');
+  }
+
+  /**
+   * Handle device orientation change with smoothing and throttling
+   */
+  private handleOrientation(event: DeviceOrientationEvent): void {
+    if (event.alpha !== null) {
+      const now = Date.now();
+
+      // Throttle updates to prevent excessive DOM manipulation
+      if (now - this.lastHeadingUpdate < this.headingUpdateThrottle) {
+        return;
+      }
+
+      // Use webkitCompassHeading for iOS, alpha for Android
+      const rawHeading = (event as any).webkitCompassHeading || (360 - event.alpha);
+
+      // Apply smoothing to reduce jitter
+      const smoothedHeading = this.smoothHeading(this.deviceHeading, rawHeading);
+
+      // Only update if the change is significant (reduces micro-movements)
+      const headingDifference = Math.abs(smoothedHeading - this.deviceHeading);
+      const normalizedDifference = Math.min(headingDifference, 360 - headingDifference);
+
+      if (normalizedDifference > 2) { // Only update if change is > 2 degrees
+        const oldHeading = this.deviceHeading;
+        this.deviceHeading = smoothedHeading;
+        this.lastHeadingUpdate = now;
+
+        console.log('🧭 Device heading updated (modal) from', oldHeading.toFixed(1), 'to', this.deviceHeading.toFixed(1));
+
+        // Update user marker rotation if it exists
+        this.updateUserMarkerDirection();
+      }
+    }
+  }
+
+  /**
+   * Smooth heading changes to reduce jitter
+   */
+  private smoothHeading(currentHeading: number, newHeading: number): number {
+    // Handle the circular nature of compass headings (0° = 360°)
+    let difference = newHeading - currentHeading;
+
+    // Normalize difference to [-180, 180] range
+    if (difference > 180) {
+      difference -= 360;
+    } else if (difference < -180) {
+      difference += 360;
+    }
+
+    // Apply smoothing
+    const smoothedDifference = difference * this.headingSmoothingFactor;
+    let result = currentHeading + smoothedDifference;
+
+    // Normalize result to [0, 360) range
+    if (result < 0) {
+      result += 360;
+    } else if (result >= 360) {
+      result -= 360;
+    }
+
+    return result;
+  }
+
+  /**
+   * Stop orientation tracking
+   */
+  private stopOrientationTracking(): void {
+    // Create bound handler to match the one used in addEventListener
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Remove both possible listeners
+    (window as any).removeEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).removeEventListener('deviceorientation', boundHandler, true);
+
+    console.log('🧭 Removed orientation event listeners (modal)');
+  }
+
+  /**
+   * Create directional user marker with heading indicator
+   */
+  private createDirectionalUserMarker(lat: number, lng: number): L.Marker {
+    console.log('Creating directional marker (modal) with heading:', this.deviceHeading);
+
+    const markerHtml = `
+      <div class="directional-user-marker" style="position: relative; width: 40px; height: 40px;">
+        <img src="assets/myLocation.png" alt="Your location" style="
+          width: 32px;
+          height: 32px;
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          z-index: 1;
+        ">
+        <div class="direction-arrow" style="
+          position: absolute;
+          top: -4px;
+          left: 50%;
+          transform: translateX(-50%) rotate(${this.deviceHeading}deg);
+          width: 0;
+          height: 0;
+          border-left: 6px solid transparent;
+          border-right: 6px solid transparent;
+          border-bottom: 12px solid #FF4444;
+          z-index: 2;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+        "></div>
+      </div>
+    `;
+
+    const directionalIcon = L.divIcon({
+      html: markerHtml,
+      className: 'custom-directional-marker',
+      iconSize: [40, 40],
+      iconAnchor: [20, 36]
+    });
+
+    return L.marker([lat, lng], { icon: directionalIcon });
+  }
+
+  /**
+   * Update user marker direction based on device heading with smooth transitions
+   */
+  private updateUserMarkerDirection(): void {
+    console.log('🧭 Updating marker direction (modal) to:', this.deviceHeading.toFixed(1));
+    if (this.userMarker) {
+      const markerElement = this.userMarker.getElement();
+      if (markerElement) {
+        const directionArrow = markerElement.querySelector('.direction-arrow');
+        if (directionArrow) {
+          const element = directionArrow as HTMLElement;
+          element.style.transition = 'transform 0.2s ease-out';
+          element.style.transform = `translateX(-50%) rotate(${this.deviceHeading}deg)`;
+          console.log('🧭 Updated direction arrow (modal) to:', this.deviceHeading.toFixed(1));
+        }
+      }
+    }
   }
 }

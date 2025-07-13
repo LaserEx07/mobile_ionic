@@ -148,11 +148,7 @@ export class NotificationsPage implements OnInit, OnDestroy {
         break;
       case 'emergency_alert':
         const disasterType = this.extractDisasterType(notification);
-        this.router.navigate(['/tabs/map'], {
-          queryParams: {
-            disasterType: disasterType
-          }
-        });
+        await this.routeToDisasterMap(disasterType, notification);
         break;
       default:
         // Handle other notification types
@@ -162,10 +158,72 @@ export class NotificationsPage implements OnInit, OnDestroy {
 
   extractDisasterType(notification: AppNotification): string {
     const message = notification.message.toLowerCase();
-    if (message.includes('earthquake')) return 'Earthquake';
-    if (message.includes('typhoon')) return 'Typhoon';
-    if (message.includes('flood')) return 'Flood';
+    const title = notification.title.toLowerCase();
+    const combinedText = `${message} ${title}`;
+
+    if (combinedText.includes('earthquake')) return 'earthquake';
+    if (combinedText.includes('typhoon')) return 'typhoon';
+    if (combinedText.includes('flood')) return 'flood';
+    if (combinedText.includes('fire')) return 'fire';
+    if (combinedText.includes('landslide')) return 'landslide';
+    if (combinedText.includes('others:') || combinedText.includes('other')) return 'others';
+
     return 'all';
+  }
+
+  /**
+   * Route to appropriate disaster map based on disaster type
+   */
+  private async routeToDisasterMap(disasterType: string, notification: AppNotification): Promise<void> {
+    try {
+      console.log(`🗺️ Routing to ${disasterType} disaster map from notification...`);
+
+      // Map specific disaster types to their dedicated maps
+      const disasterRoutes: { [key: string]: string } = {
+        'earthquake': '/tabs/earthquake-map',
+        'flood': '/tabs/flood-map',
+        'typhoon': '/tabs/typhoon-map',
+        'landslide': '/tabs/landslide-map',
+        'fire': '/tabs/fire-map'
+      };
+
+      let route: string;
+
+      // Check if this disaster has a specific map, otherwise use general map
+      if (disasterRoutes[disasterType]) {
+        route = disasterRoutes[disasterType];
+      } else {
+        // "others" category and unknown disasters go to general map
+        route = '/tabs/map';
+      }
+
+      // Navigate to the appropriate map with emergency parameters
+      await this.router.navigate([route], {
+        queryParams: {
+          emergency: true,
+          autoRoute: true,
+          notification: true,
+          category: disasterType,
+          severity: 'high', // Default to high for emergency alerts
+          timestamp: Date.now(),
+          title: notification.title,
+          message: notification.message
+        }
+      });
+
+      console.log(`✅ Successfully routed to ${route} for ${disasterType} disaster`);
+    } catch (error) {
+      console.error('Error routing to disaster map:', error);
+
+      // Fallback to general map if specific routing fails
+      await this.router.navigate(['/tabs/map'], {
+        queryParams: {
+          disasterType: disasterType,
+          emergency: true,
+          notification: true
+        }
+      });
+    }
   }
 
   async markAsRead(notification: AppNotification) {

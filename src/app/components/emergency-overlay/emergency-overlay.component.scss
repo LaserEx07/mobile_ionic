@@ -29,249 +29,173 @@
 
 // Emergency Header
 .emergency-header {
-  padding: 24px 20px 16px;
+  padding: 20px;
   text-align: center;
   position: relative;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// Exit Button - Enhanced visibility and styling, positioned relative to container
+.emergency-exit-button {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  border: 3px solid #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  z-index: 99999 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  outline: none !important;
+
+  &:hover, &:focus {
+    background: #f8f9fa !important;
+    border-color: #f8f9fa !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.9) !important;
+  }
+
+  &:active {
+    transform: scale(0.95) !important;
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .exit-icon {
+    font-size: 26px !important;
+    color: #333333 !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    pointer-events: none !important;
+  }
+
+  .exit-x-icon {
+    font-size: 28px !important;
+    color: #333333 !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    font-family: Arial, sans-serif !important;
+  }
 }
 
 .disaster-icon-container {
   position: relative;
-  display: inline-block;
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .disaster-icon {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   object-fit: cover;
 }
 
-.severity-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 .emergency-title-container {
-  margin-bottom: 12px;
+  flex: 1;
+  text-align: center;
 }
 
 .emergency-title {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
   color: white;
   margin: 0 0 4px 0;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.warning-icon {
-  font-size: 20px;
-  animation: warningPulse 1s infinite;
+  letter-spacing: 0.5px;
 }
 
 .disaster-type {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 900;
   color: white;
   margin: 0;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.countdown-container {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-}
 
-.countdown-circle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-}
 
-.countdown-text {
-  font-size: 12px;
-  font-weight: 700;
-  color: white;
-}
-
-// Emergency Message
-.emergency-message-container {
-  padding: 20px;
+// Emergency Content
+.emergency-content {
+  padding: 0;
   background: white;
 }
 
-.emergency-message {
-  margin-bottom: 16px;
+.content-row {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
-.message-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 8px 0;
+.title-row {
+  .row-label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 8px;
+  }
+
+  .urgent-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  .urgent-message {
+    font-size: 16px;
+    line-height: 1.4;
+    color: #555;
+  }
 }
 
-.message-content {
-  font-size: 16px;
-  line-height: 1.5;
-  color: #555;
-  margin: 0;
-}
-
-.emergency-instructions {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 16px;
-}
-
-.instructions-header {
+.priority-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  color: #856404;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.info-icon {
-  font-size: 16px;
-}
-
-.instructions-text {
-  font-size: 14px;
-  color: #856404;
-  margin: 0;
-  line-height: 1.4;
-}
-
-// Action Buttons
-.emergency-actions {
-  padding: 0 20px 20px;
-  background: white;
-  display: flex;
-  flex-direction: column;
   gap: 12px;
-  position: relative;
-  z-index: 999;
-  pointer-events: auto;
+
+  .row-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    min-width: 70px;
+  }
+
+  .priority-content {
+    font-size: 16px;
+    font-weight: 600;
+    color: #dc3545;
+  }
 }
 
-.emergency-button {
-  width: 100%;
-  padding: 16px 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  z-index: 1000;
-  pointer-events: auto;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
+.tips-row {
+  background: #f8f9fa;
 
-.primary-action {
-  background: #28a745;
-  color: white;
-  box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
-}
-
-.primary-action:hover {
-  background: #218838;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-}
-
-.secondary-action {
-  background: #6c757d;
-  color: white;
-  box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
-}
-
-.secondary-action:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
-}
-
-.button-icon {
-  font-size: 20px;
-}
-
-.button-text {
-  flex: 1;
-  text-align: center;
-  margin: 0 12px;
-}
-
-.button-arrow {
-  font-size: 18px;
-}
-
-// Emergency Footer
-.emergency-footer {
-  padding: 16px 20px;
-  background: rgba(0, 0, 0, 0.05);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.timestamp {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #666;
-  justify-content: center;
-}
-
-.time-icon {
-  font-size: 14px;
-}
-
-.critical-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 8px 16px;
-  background: #dc3545;
-  color: white;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  .safety-tips {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #495057;
+    font-weight: 500;
+  }
 }
 
 .critical-pulse {
@@ -315,6 +239,12 @@
   .primary-action:hover {
     background: #FF7700;
   }
+  // Ensure exit button is visible on earthquake background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
 }
 
 .disaster-flood {
@@ -331,6 +261,12 @@
   }
   .primary-action:hover {
     background: #0052A3;
+  }
+  // Ensure exit button is visible on flood background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
   }
 }
 
@@ -349,6 +285,12 @@
   .primary-action:hover {
     background: #1F7A1F;
   }
+  // Ensure exit button is visible on typhoon background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
 }
 
 .disaster-fire {
@@ -365,6 +307,12 @@
   }
   .primary-action:hover {
     background: #B91C3C;
+  }
+  // Ensure exit button is visible on fire background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
   }
 }
 
@@ -383,6 +331,12 @@
   .primary-action:hover {
     background: #654321;
   }
+  // Ensure exit button is visible on landslide background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
 }
 
 .disaster-general {
@@ -399,6 +353,90 @@
   }
   .primary-action:hover {
     background: #555555;
+  }
+  // Ensure exit button is visible on general background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
+}
+
+// Universal exit button visibility override for all disaster types
+.emergency-alert-container {
+  .emergency-exit-button {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 44px !important;
+    height: 44px !important;
+    background: #ffffff !important;
+    border: 3px solid #ffffff !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+    z-index: 999999 !important; // Increased z-index
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation !important;
+    align-items: center !important;
+    justify-content: center !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+
+    // Ensure button is always on top and clickable
+    &:before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      z-index: -1;
+      pointer-events: auto;
+    }
+
+    .exit-icon {
+      color: #333333 !important;
+      font-size: 26px !important;
+      font-weight: 900 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
+
+    .exit-x-icon {
+      color: #333333 !important;
+      font-size: 28px !important;
+      font-weight: 900 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      font-family: Arial, sans-serif !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    // Enhanced hover and active states
+    &:hover {
+      background: #f0f0f0 !important;
+      transform: scale(1.05) !important;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.9) !important;
+    }
+
+    &:active {
+      background: #e0e0e0 !important;
+      transform: scale(0.98) !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6) !important;
+    }
   }
 }
 

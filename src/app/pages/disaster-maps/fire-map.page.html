@@ -93,7 +93,7 @@
   </div>
 
   <!-- Navigation Panel (slides from right) -->
-  <div class="navigation-panel" [class.show]="selectedCenter">
+  <div class="navigation-panel" [class.show]="showRouteFooter && selectedCenter">
     <div class="panel-content">
       <!-- Panel Header -->
       <div class="panel-header">
@@ -104,6 +104,26 @@
         <ion-button fill="clear" size="small" (click)="closeNavigationPanel()">
           <ion-icon name="close-outline"></ion-icon>
         </ion-button>
+      </div>
+
+      <!-- Disaster Details Section -->
+      <div class="disaster-details" *ngIf="selectedCenter">
+        <div class="disaster-header">
+          <ion-icon name="flame-outline" color="danger"></ion-icon>
+          <span>Disaster Information</span>
+        </div>
+        <div class="disaster-info">
+          <div class="disaster-type">
+            <strong>Type:</strong>
+            <span>{{ getDisasterTypeDisplay(selectedCenter) }}</span>
+          </div>
+          <div class="disaster-distance" *ngIf="userLocation">
+            <strong>Distance:</strong> {{ calculateDistanceInKm(selectedCenter) }} km
+          </div>
+          <div class="disaster-capacity" *ngIf="selectedCenter.capacity">
+            <strong>Capacity:</strong> {{ selectedCenter.capacity }}
+          </div>
+        </div>
       </div>
 
       <!-- Transportation Options -->

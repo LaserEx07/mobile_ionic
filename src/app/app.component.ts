@@ -28,6 +28,9 @@ export class AppComponent {
       console.log('Error registering icons:', error);
     }
 
+    // Make FCM service available globally for debugging
+    (window as any).fcmService = this.fcmService;
+
     this.initializeApp();
   }
 

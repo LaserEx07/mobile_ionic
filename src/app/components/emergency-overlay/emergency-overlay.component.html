@@ -1,88 +1,59 @@
-<div class="emergency-overlay-container">
+<div class="emergency-overlay-container" (dblclick)="onExitButtonClick($event)">
   <!-- Emergency Alert Container -->
-  <div class="emergency-alert-container" 
+  <div class="emergency-alert-container"
        [ngClass]="[getSeverityClass(), getDisasterClass()]">
-    
-    <!-- Emergency Header -->
+
+    <!-- Exit Button - Positioned absolutely at top right of container -->
+    <button class="emergency-exit-button"
+            (click)="onExitButtonClick($event)"
+            (touchstart)="onExitButtonClick($event)"
+            aria-label="Close emergency alert"
+            type="button"
+            id="emergency-exit-btn"
+            tabindex="0">
+      <span class="exit-x-icon">✕</span>
+    </button>
+
+    <!-- Emergency Header with Icon and Timer -->
     <div class="emergency-header">
       <!-- Disaster Icon -->
       <div class="disaster-icon-container">
-        <img [src]="getDisasterIcon()" 
+        <img [src]="getDisasterIcon()"
              [alt]="notification.category + ' icon'"
              class="disaster-icon">
-        <div class="severity-badge" [ngClass]="getSeverityClass()">
-          {{ getSeverityText() }}
-        </div>
       </div>
-      
+
       <!-- Emergency Title -->
       <div class="emergency-title-container">
-        <h1 class="emergency-title">
-          <ion-icon name="warning" class="warning-icon"></ion-icon>
-          EMERGENCY ALERT
-        </h1>
-        <h2 class="disaster-type">{{ notification.category.toUpperCase() }}</h2>
+        <h2 class="emergency-title">EMERGENCY ALERT</h2>
+        <h1 class="disaster-type">{{ getDisplayDisasterType() }}</h1>
       </div>
-      
-      <!-- Countdown Timer -->
-      <div class="countdown-container" *ngIf="timeRemaining > 0">
-        <div class="countdown-circle">
-          <span class="countdown-text">{{ getFormattedTimeRemaining() }}</span>
+    </div>
+
+    <!-- Emergency Content -->
+    <div class="emergency-content">
+      <!-- 1st Row: Title -->
+      <div class="content-row title-row">
+        <div class="row-label">ALERT NOTIFICATION!:</div>
+        <div class="row-content">
+          <div class="urgent-title">{{ notification.title }}</div>
+          <div class="urgent-message">{{ getFormattedMessage() }}</div>
         </div>
       </div>
-    </div>
 
-    <!-- Emergency Message -->
-    <div class="emergency-message-container">
-      <div class="emergency-message">
-        <h3 class="message-title">{{ notification.title }}</h3>
-        <p class="message-content">{{ getFormattedMessage() }}</p>
-      </div>
-      
-      <!-- Emergency Instructions -->
-      <div class="emergency-instructions" *ngIf="isCritical()">
-        <div class="instructions-header">
-          <ion-icon name="information-circle" class="info-icon"></ion-icon>
-          <span>IMMEDIATE ACTION REQUIRED</span>
+      <!-- 2nd Row: Priority Level -->
+      <div class="content-row priority-row">
+        <div class="row-label">Priority:</div>
+        <div class="row-content priority-content">
+          {{ getPriorityText() }}
         </div>
-        <p class="instructions-text">{{ getEmergencyInstructions() }}</p>
       </div>
-    </div>
 
-    <!-- Action Buttons -->
-    <div class="emergency-actions">
-      <!-- Primary Action - View Map -->
-      <button class="emergency-button primary-action"
-              (click)="viewMap()"
-              (touchstart)="viewMap()"
-              [ngClass]="getDisasterClass()"
-              type="button">
-        <ion-icon name="map" class="button-icon"></ion-icon>
-        <span class="button-text">{{ getActionButtonText() }}</span>
-        <ion-icon name="chevron-forward" class="button-arrow"></ion-icon>
-      </button>
-
-      <!-- Secondary Action - Dismiss -->
-      <button class="emergency-button secondary-action"
-              (click)="dismiss()"
-              (touchstart)="dismiss()"
-              type="button">
-        <ion-icon name="checkmark-circle" class="button-icon"></ion-icon>
-        <span class="button-text">I'm Safe - Dismiss</span>
-      </button>
-    </div>
-
-    <!-- Emergency Footer -->
-    <div class="emergency-footer">
-      <div class="timestamp">
-        <ion-icon name="time" class="time-icon"></ion-icon>
-        <span>Alert issued: {{ notification.timestamp | date:'short' }}</span>
-      </div>
-      
-      <!-- Critical Emergency Indicator -->
-      <div class="critical-indicator" *ngIf="isCritical()">
-        <div class="critical-pulse"></div>
-        <span class="critical-text">CRITICAL EMERGENCY</span>
+      <!-- 3rd Row: Safety Tips -->
+      <div class="content-row tips-row">
+        <div class="safety-tips">
+          {{ getEmergencyInstructions() }}
+        </div>
       </div>
     </div>
   </div>

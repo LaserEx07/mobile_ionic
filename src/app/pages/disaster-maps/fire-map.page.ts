@@ -28,6 +28,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
   private userMarker: L.Marker<any> | null = null;
   private routeLayer: L.LayerGroup | null = null;
   private nearestMarkers: L.Marker[] = [];
+  private evacuationMarkers: L.Marker[] = [];
 
   public evacuationCenters: EvacuationCenter[] = [];
   public userLocation: { lat: number, lng: number } | null = null;
@@ -194,19 +195,51 @@ export class FireMapPage implements OnInit, AfterViewInit {
       this.map.remove();
     }
 
-    this.map = L.map('fire-map').setView([lat, lng], 13);
+    this.map = L.map('fire-map', {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: false,
+      keyboard: true,
+      dragging: true,
+      touchZoom: true,
+      zoomAnimation: true,
+      zoomAnimationThreshold: 4,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
+      transform3DLimit: 2^23,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      trackResize: true,
+      inertia: true,
+      inertiaDeceleration: 3000,
+      inertiaMaxSpeed: Infinity,
+      easeLinearity: 0.2,
+      worldCopyJump: false,
+      maxBoundsViscosity: 0.0
+    }).setView([lat, lng], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OpenStreetMap contributors'
     }).addTo(this.map);
 
-    // Add user marker
-    this.userMarker = L.marker([lat, lng], {
+    // Add user marker with stability options
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    this.userMarker = L.marker([preciseLat, preciseLng], {
       icon: L.icon({
         iconUrl: 'assets/myLocation.png',
         iconSize: [32, 32],
         iconAnchor: [16, 32]
-      })
+      }),
+      // Add marker stability options
+      riseOnHover: false,
+      riseOffset: 0,
+      zIndexOffset: 1000,
+      opacity: 1,
+      interactive: true,
+      bubblingMouseEvents: true
     }).addTo(this.map);
 
     this.userMarker.bindPopup('📍 You are here!').openPopup();
@@ -277,6 +310,10 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
   // Add markers and routes to map
   async addMarkersAndRoutes(userLat: number, userLng: number) {
+    // Clear existing evacuation markers to prevent duplicates
+    this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
+    this.evacuationMarkers = [];
+
     // Add fire markers (red)
     this.evacuationCenters.forEach(center => {
       const lat = Number(center.latitude);
@@ -298,40 +335,13 @@ export class FireMapPage implements OnInit, AfterViewInit {
         // Make marker clickable with navigation panel
         marker.on('click', () => {
           console.log('🔥 FIRE: Marker clicked for center:', center.name);
-          if (center.routing_available === false) {
-            // Show alert for full centers
-            this.alertCtrl.create({
-              header: 'Center Full',
-              message: `${center.name} is currently full. Routing is not available.`,
-              buttons: ['OK']
-            }).then(alert => alert.present());
-          } else {
-            this.showNavigationPanel(center);
-          }
+          this.showNavigationPanel(center);
         });
 
         // Check if this is the new center to highlight
         const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
 
-        // Determine status display and routing availability
-        const statusDisplay = center.status || 'Active';
-        const isFullCenter = center.routing_available === false;
-        const statusIcon = isFullCenter ? '🔴' : '🔥';
-        const routingText = isFullCenter ?
-          '<p><em>⚠️ Center is Full - No routing available</em></p>' :
-          '<p><em>Click marker for route options</em></p>';
 
-        marker.bindPopup(`
-          <div class="evacuation-popup">
-            <h3>${statusIcon} ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
-            <p><strong>Type:</strong> Fire Center</p>
-            <p><strong>Status:</strong> ${statusDisplay}</p>
-            <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            ${routingText}
-            ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
-          </div>
-        `);
 
         // If this is the new center, open its popup and center map on it
         if (isNewCenter) {
@@ -348,13 +358,21 @@ export class FireMapPage implements OnInit, AfterViewInit {
         }
 
         marker.addTo(this.map);
+        this.evacuationMarkers.push(marker);
         console.log(`🔥 Added fire marker: ${center.name}`);
       }
     });
 
-    // Don't auto-route - just show simple markers like "See Whole Map"
-    console.log('🔥 Showing simple markers without auto-routing...');
-    // await this.routeToTwoNearestCenters();
+    // Handle emergency auto-routing
+    if (this.shouldAutoRouteEmergency) {
+      console.log('🚨 Performing emergency auto-routing to nearest fire evacuation centers');
+      await this.performEmergencyRouting();
+      this.shouldAutoRouteEmergency = false; // Reset flag
+    } else {
+      // Don't auto-route - just show simple markers like "See Whole Map"
+      console.log('🔥 Showing simple markers without auto-routing...');
+      // await this.routeToTwoNearestCenters();
+    }
 
     // Fit map to show all fire centers
     if (this.evacuationCenters.length > 0) {
@@ -382,6 +400,51 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  }
+
+  // Emergency auto-routing with enhanced notifications
+  async performEmergencyRouting() {
+    if (!this.userLocation || this.evacuationCenters.length === 0) {
+      console.warn('Cannot perform emergency routing: missing user location or evacuation centers');
+      return;
+    }
+
+    try {
+      console.log('🚨 Starting emergency routing to nearest fire evacuation centers');
+
+      // Show emergency routing toast
+      const emergencyToast = await this.toastCtrl.create({
+        message: '🚨 EMERGENCY: Routing to nearest fire evacuation centers',
+        duration: 5000,
+        color: 'danger',
+        position: 'top',
+        cssClass: 'emergency-toast'
+      });
+      await emergencyToast.present();
+
+      // Perform the same routing as normal but with emergency styling
+      await this.routeToTwoNearestCenters();
+
+      // Show completion message
+      const completionToast = await this.toastCtrl.create({
+        message: '✅ Emergency routes calculated. Follow the highlighted paths to safety.',
+        duration: 7000,
+        color: 'success',
+        position: 'bottom'
+      });
+      await completionToast.present();
+
+    } catch (error) {
+      console.error('Error in emergency routing:', error);
+
+      const errorToast = await this.toastCtrl.create({
+        message: '⚠️ Emergency routing failed. Please manually navigate to nearest evacuation center.',
+        duration: 5000,
+        color: 'warning',
+        position: 'top'
+      });
+      await errorToast.present();
+    }
   }
 
   // Auto-route to 2 nearest fire centers
@@ -460,6 +523,9 @@ export class FireMapPage implements OnInit, AfterViewInit {
     this.nearestMarkers.forEach(marker => this.map.removeLayer(marker));
     this.nearestMarkers = [];
 
+    // Hide regular evacuation markers to avoid duplication
+    this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
+
     centers.forEach((center, index) => {
       const lat = Number(center.latitude);
       const lng = Number(center.longitude);
@@ -467,29 +533,27 @@ export class FireMapPage implements OnInit, AfterViewInit {
       if (!isNaN(lat) && !isNaN(lng)) {
         // Create pulsing marker with fire styling
         const pulsingIcon = L.divIcon({
-          className: 'pulsing-marker',
+          className: '', // Leave empty to avoid default leaflet styles
           html: `
-            <div class="pulse-container">
-              <div class="pulse" style="background-color: #dc3545"></div>
-              <img src="assets/forFire.png" class="marker-icon" />
-              <div class="marker-label">${index + 1}</div>
+            <div class="pulse-marker">
+              <div class="pulse-circle fire smooth"></div>
+              <img src="assets/forFire.png" />
+              <div class="marker-label fire">${index + 1}</div>
             </div>
           `,
-          iconSize: [50, 50],
-          iconAnchor: [25, 50]
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
         });
 
         const marker = L.marker([lat, lng], { icon: pulsingIcon });
 
-        marker.bindPopup(`
-          <div class="evacuation-popup nearest-popup">
-            <h3>🎯 Nearest Center #${index + 1}</h3>
-            <h4>${center.name}</h4>
-            <p><strong>Type:</strong> Fire</p>
-            <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
-            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-          </div>
-        `);
+        // Add click handler for navigation panel
+        marker.on('click', () => {
+          console.log('🔥 FIRE: Pulsing marker clicked for center:', center.name);
+          this.showNavigationPanel(center);
+        });
+
+
 
         marker.addTo(this.map);
         this.nearestMarkers.push(marker);
@@ -567,6 +631,13 @@ export class FireMapPage implements OnInit, AfterViewInit {
     });
     this.nearestMarkers = [];
 
+    // Restore regular evacuation markers if they were hidden
+    this.evacuationMarkers.forEach(marker => {
+      if (!this.map.hasLayer(marker)) {
+        marker.addTo(this.map);
+      }
+    });
+
     // Clear any remaining route layers by checking all map layers
     this.map.eachLayer((layer: any) => {
       if (layer instanceof L.GeoJSON ||
@@ -605,6 +676,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
   async calculateAllRoutes(center: EvacuationCenter) {
     if (!this.userLocation) return;
 
+    console.log('🔥 FIRE: Calculating routes for center:', center.name);
     const modes: ('walking' | 'cycling' | 'driving')[] = ['walking', 'cycling', 'driving'];
 
     for (const mode of modes) {
@@ -627,6 +699,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
         console.error(`🔥 Error calculating ${mode} route:`, error);
       }
     }
+    console.log('🔥 FIRE: Route calculation completed. RouteInfo:', this.routeInfo);
   }
 
   // Navigate with selected transport mode
@@ -694,6 +767,7 @@ export class FireMapPage implements OnInit, AfterViewInit {
     this.selectedCenter = null;
     this.selectedTransportMode = null;
     this.routeInfo = {};
+    this.showRouteFooter = false;
     this.clearRoutes();
   }
 
@@ -819,6 +893,32 @@ export class FireMapPage implements OnInit, AfterViewInit {
     return (distance / 1000).toFixed(1);
   }
 
+  // Helper method to format disaster type for display
+  getDisasterTypeDisplay(center: EvacuationCenter): string {
+    // Always prioritize showing "Fire" as the primary disaster type for this map
+    if (!center.disaster_type) {
+      return 'Fire';
+    }
+
+    if (Array.isArray(center.disaster_type)) {
+      // If array contains fire, prioritize it, otherwise show all types
+      if (center.disaster_type.some(type => type.toLowerCase().includes('fire'))) {
+        return 'Fire';
+      }
+      return center.disaster_type.join(', ');
+    }
+
+    // If it's a string, check if it contains fire
+    if (typeof center.disaster_type === 'string') {
+      if (center.disaster_type.toLowerCase().includes('fire')) {
+        return 'Fire';
+      }
+      return center.disaster_type;
+    }
+
+    return 'Fire';
+  }
+
   // Select center from all centers list
   selectCenterFromList(center: EvacuationCenter) {
     this.closeAllCentersPanel();
@@ -864,14 +964,6 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
 
 
-
-  ionViewWillEnter() {
-    console.log('🔥 FIRE MAP: View will enter - refreshing data...');
-    // Refresh evacuation centers data when entering the page
-    if (this.map && this.userLocation) {
-      this.loadFireCenters(this.userLocation.lat, this.userLocation.lng);
-    }
-  }
 
   ionViewWillLeave() {
     this.clearRoutes();
@@ -1060,6 +1152,14 @@ export class FireMapPage implements OnInit, AfterViewInit {
         </div>
       `,
       buttons: [
+        {
+          text: '✕',
+          role: 'cancel',
+          cssClass: 'alert-button-close',
+          handler: () => {
+            console.log('🚨 User closed fire emergency alert');
+          }
+        },
         {
           text: 'Navigate Now',
           role: 'confirm',

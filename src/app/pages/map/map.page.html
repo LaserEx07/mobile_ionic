@@ -55,24 +55,7 @@
     (close)="showDirectionsPanel = false">
   </app-directions-panel>
 
-  <!-- GPS Toggle Button -->
-  <ion-fab vertical="top" horizontal="end" slot="fixed">
-    <ion-fab-button size="small" (click)="toggleGps({detail: {checked: !gpsEnabled}})" [color]="gpsEnabled ? 'success' : 'medium'">
-      <ion-icon [name]="gpsEnabled ? 'locate' : 'locate-outline'"></ion-icon>
-    </ion-fab-button>
-  </ion-fab>
 
-
-
-
-
-
-
-  <!-- GPS Status Indicator -->
-  <div class="gps-status" [class.active]="gpsEnabled" (click)="showLocationHelp()">
-    <ion-icon [name]="gpsEnabled ? 'location' : 'location-outline'"></ion-icon>
-    <span>GPS {{ gpsEnabled ? 'Active' : 'Inactive' }}</span>
-  </div>
 
   <!-- Disaster Type Indicator -->
   <div *ngIf="isFilterMode && currentDisasterType !== 'all'" class="disaster-type-indicator">
@@ -99,5 +82,71 @@
     <ion-label class="fab-label">Show Directions</ion-label>
   </ion-fab>
 
+  <!-- Test Directional Marker Button - For debugging -->
+  <ion-fab vertical="top" horizontal="start" slot="fixed" style="top: 60px;">
+    <ion-fab-button color="warning" size="small" (click)="forceRecreateDirectionalMarker()">
+      <ion-icon name="compass-outline"></ion-icon>
+    </ion-fab-button>
+    <ion-label class="fab-label" style="right: 60px; bottom: 10px; top: auto;">Test Direction</ion-label>
+  </ion-fab>
+
+  <!-- Navigation Panel (slides from right) -->
+  <div class="navigation-panel" [class.show]="selectedCenter">
+    <div class="panel-content">
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <div class="center-info" *ngIf="selectedCenter">
+          <h3>{{ selectedCenter.name }}</h3>
+          <p>{{ selectedCenter.address }}</p>
+        </div>
+        <ion-button fill="clear" size="small" (click)="closeNavigationPanel()">
+          <ion-icon name="close-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <!-- Transportation Options -->
+      <div class="transport-options" *ngIf="selectedCenter">
+        <div class="option-header">
+          <ion-icon name="navigate-outline"></ion-icon>
+          <span>Choose Transportation</span>
+        </div>
+
+        <div class="transport-buttons">
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'walking'"
+                  (click)="selectTransportMode('walking')">
+            <ion-icon name="walk-outline"></ion-icon>
+            <span>Walk</span>
+            <div class="route-info" *ngIf="routeInfo.walking">
+              <span class="time">{{ formatTime(routeInfo.walking?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.walking?.distance) }}</span>
+            </div>
+          </button>
+
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'cycling'"
+                  (click)="selectTransportMode('cycling')">
+            <ion-icon name="bicycle-outline"></ion-icon>
+            <span>Cycle</span>
+            <div class="route-info" *ngIf="routeInfo.cycling">
+              <span class="time">{{ formatTime(routeInfo.cycling?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.cycling?.distance) }}</span>
+            </div>
+          </button>
+
+          <button class="transport-btn"
+                  [class.active]="selectedTransportMode === 'driving'"
+                  (click)="selectTransportMode('driving')">
+            <ion-icon name="car-outline"></ion-icon>
+            <span>Drive</span>
+            <div class="route-info" *ngIf="routeInfo.driving">
+              <span class="time">{{ formatTime(routeInfo.driving?.duration) }}</span>
+              <span class="distance">{{ formatDistance(routeInfo.driving?.distance) }}</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
 </ion-content>

@@ -306,86 +306,153 @@ ion-header {
     }
   }
 
-  .transport-options {
-    flex: 1;
-    overflow-y: auto;
+  .disaster-details {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(220, 53, 69, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(220, 53, 69, 0.3);
 
-    h4 {
-      margin: 0 0 16px 0;
-      font-size: 16px;
+    .disaster-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: var(--ion-color-danger);
       font-weight: 600;
-      color: var(--ion-color-dark);
+      font-size: 16px;
+
+      ion-icon {
+        font-size: 20px;
+      }
     }
 
-    .transport-option {
+    .disaster-info {
+      .disaster-type,
+      .disaster-distance,
+      .disaster-capacity {
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: var(--ion-color-dark);
+
+        strong {
+          color: var(--ion-color-danger);
+          margin-right: 4px;
+        }
+      }
+
+      .disaster-type span {
+        color: var(--ion-color-danger);
+        font-weight: 500;
+      }
+    }
+  }
+
+  .transport-options {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    .option-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-weight: 600;
+      color: var(--ion-color-danger);
+
+      ion-icon {
+        font-size: 20px;
+      }
+    }
+
+    .transport-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .transport-btn {
       display: flex;
       align-items: center;
       padding: 16px;
-      margin-bottom: 12px;
-      background: white;
       border: 2px solid var(--ion-color-light);
       border-radius: 12px;
+      background: white;
       cursor: pointer;
       transition: all 0.2s ease;
+      position: relative;
 
       &:hover {
         border-color: var(--ion-color-danger-tint);
-        background: rgba(220, 53, 69, 0.05);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      }
-
-      &.selected {
-        border-color: var(--ion-color-danger);
-        background: rgba(220, 53, 69, 0.1);
-        box-shadow: 0 4px 16px rgba(220, 53, 69, 0.2);
-      }
-
-      .transport-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
         background: var(--ion-color-danger-tint);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 16px;
+      }
+
+      &.active {
+        border-color: var(--ion-color-danger);
+        background: var(--ion-color-danger-tint);
 
         ion-icon {
-          font-size: 20px;
           color: var(--ion-color-danger);
         }
       }
 
-      .transport-info {
-        flex: 1;
+      ion-icon {
+        font-size: 24px;
+        margin-right: 12px;
+        color: var(--ion-color-medium);
+        transition: color 0.2s ease;
+      }
 
-        .mode {
+      > span {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--ion-color-dark);
+        flex: 1;
+      }
+
+      .route-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+
+        .time {
           font-size: 16px;
           font-weight: 600;
-          color: var(--ion-color-dark);
-          margin-bottom: 4px;
-          line-height: 1.2;
+          color: var(--ion-color-danger);
         }
 
-        .details {
-          font-size: 13px;
-          color: var(--ion-color-medium);
-          font-weight: 500;
-        }
-      }
-
-      .transport-action {
-        margin-left: 12px;
-
-        ion-icon {
-          font-size: 18px;
+        .distance {
+          font-size: 12px;
           color: var(--ion-color-medium);
         }
       }
+    }
 
-      &.selected .transport-action ion-icon {
-        color: var(--ion-color-danger);
+    .start-navigation-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--ion-color-danger);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: var(--ion-color-danger-shade);
+      }
+
+      ion-icon {
+        font-size: 20px;
       }
     }
   }
@@ -669,7 +736,7 @@ ion-header {
       opacity: 0.8;
     }
     50% {
-      transform: scale(1.2);
+      transform: scale(6.0);
       opacity: 0.4;
     }
     100% {
@@ -709,3 +776,5 @@ ion-header {
     }
   }
 }
+
+// Remove duplicate - using the global one above

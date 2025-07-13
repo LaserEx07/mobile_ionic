@@ -8,6 +8,8 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     border: 3px solid;
     animation: emergencyPulse 2s infinite;
+    position: relative !important; // Ensure relative positioning for absolute children
+    overflow: visible !important; // Allow exit button to be visible outside wrapper
   }
 
   .alert-head {
@@ -61,6 +63,59 @@
     background: rgba(0, 0, 0, 0.1);
     color: white;
     border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .alert-button-close {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    color: #333 !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    font-size: 20px !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+    min-width: 40px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+
+    &:hover {
+      background: rgba(255, 255, 255, 1) !important;
+      border-color: rgba(255, 255, 255, 1) !important;
+      transform: scale(1.1) !important;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.9) !important;
+    }
+
+    &:active {
+      background: rgba(240, 240, 240, 1) !important;
+      transform: scale(0.95) !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    // Ensure button is always clickable with expanded touch area
+    &:before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      z-index: -1;
+      pointer-events: auto;
+    }
   }
 }
 

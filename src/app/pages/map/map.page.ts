@@ -179,8 +179,7 @@ export class MapPage implements OnInit, OnDestroy {
         color: 'success'
       }).then(toast => toast.present());
 
-      // Enable GPS tracking
-      this.gpsEnabled = true;
+
 
       // Update the map
       if (this.map) {
@@ -209,14 +208,8 @@ export class MapPage implements OnInit, OnDestroy {
       // Show error message with help option
       const alert = await this.alertCtrl.create({
         header: 'Location Access Failed',
-        message: 'We couldn\'t access your location. Would you like to see help on enabling location access?',
+        message: 'We couldn\'t access your location. Please enable location access in your browser settings and try again.',
         buttons: [
-          {
-            text: 'Show Help',
-            handler: () => {
-              this.showLocationHelp();
-            }
-          },
           {
             text: 'Try Again',
             handler: () => {
@@ -233,67 +226,12 @@ export class MapPage implements OnInit, OnDestroy {
     }
   }
 
-  async showLocationHelp() {
-    // Create a help message based on the browser
-    let helpMessage = 'To use location services:';
 
-    if (navigator.userAgent.includes('Chrome')) {
-      helpMessage += '<br><br><b>Chrome:</b><br>' +
-                    '1. Click the lock/info icon in the address bar<br>' +
-                    '2. Select "Site settings"<br>' +
-                    '3. Change Location permission to "Allow"<br>';
-    } else if (navigator.userAgent.includes('Firefox')) {
-      helpMessage += '<br><br><b>Firefox:</b><br>' +
-                    '1. Click the lock icon in the address bar<br>' +
-                    '2. Select "Site Permissions"<br>' +
-                    '3. Change "Access Your Location" to "Allow"<br>';
-    } else if (navigator.userAgent.includes('Safari')) {
-      helpMessage += '<br><br><b>Safari:</b><br>' +
-                    '1. Open Safari settings<br>' +
-                    '2. Go to Websites > Location<br>' +
-                    '3. Ensure this website is set to "Allow"<br>';
-    } else {
-      helpMessage += '<br><br>Please enable location access for this website in your browser settings.';
-    }
-
-    helpMessage += '<br><br>On mobile devices, also ensure that:<br>' +
-                  '1. Your device location/GPS is turned on<br>' +
-                  '2. The app has permission to access your location';
-
-    const alert = await this.alertCtrl.create({
-      header: 'Location Services Help',
-      message: helpMessage,
-      buttons: [
-        {
-          text: 'Try Again',
-          handler: () => {
-            this.requestLocationExplicitly();
-          }
-        },
-        {
-          text: 'OK',
-          role: 'cancel'
-        }
-      ]
-    });
-
-    await alert.present();
-  }
 
   // Route to the two nearest centers
   async routeToTwoNearestCenters() {
     try {
-      // Only proceed if GPS is enabled
-      if (!this.gpsEnabled) {
-        console.log('GPS is disabled, not calculating routes');
-        const toast = await this.toastCtrl.create({
-          message: 'Please enable GPS to see evacuation routes',
-          duration: 3000,
-          color: 'warning'
-        });
-        toast.present();
-        return;
-      }
+
 
       // FORCE a fresh GPS position check instead of using potentially stale marker position
       console.log('Forcing fresh GPS position check for routing...');
@@ -311,14 +249,8 @@ export class MapPage implements OnInit, OnDestroy {
           this.userMarker.setLatLng([freshLat, freshLng]);
           this.map.setView([freshLat, freshLng], 15);
         } else {
-          // Create user marker if it doesn't exist
-          this.userMarker = L.marker([freshLat, freshLng], {
-            icon: L.icon({
-              iconUrl: 'assets/myLocation.png',
-              iconSize: [32, 32],
-              iconAnchor: [16, 32]
-            })
-          }).addTo(this.map);
+          // Create directional user marker if it doesn't exist
+          this.userMarker = this.createDirectionalUserMarker(freshLat, freshLng).addTo(this.map);
         }
 
         // Use these fresh coordinates for routing
@@ -416,7 +348,6 @@ export class MapPage implements OnInit, OnDestroy {
   private map!: L.Map;
   private userMarker: L.Marker<any> | null = null;
   public evacuationCenters: EvacuationCenter[] = []; // Changed to public for template access
-  public gpsEnabled = true;
   private loadingService = inject(LoadingService);
   private osmRouting = inject(OpenStreetMapRoutingService);
   private mapboxRouting = inject(MapboxRoutingService);
@@ -439,12 +370,24 @@ export class MapPage implements OnInit, OnDestroy {
   // For location request button
   public showLocationRequestButton: boolean = false;
 
+  // For directional user marker
+  public deviceHeading: number = 0; // Default pointing north
+  private orientationWatcher: any = null;
+  private lastHeadingUpdate: number = 0;
+  private headingUpdateThrottle: number = 100; // Update every 100ms max
+  private headingSmoothingFactor: number = 0.3; // Smoothing factor (0-1, lower = more smoothing)
+
   private ORS_API_KEY = environment.orsApiKey;
 
   // Add request management to prevent duplicate API calls
   private isLoadingCenters = false;
   private lastErrorToast: number = 0;
   private readonly ERROR_TOAST_DEBOUNCE = 5000; // 5 seconds between error toasts
+
+  // Navigation panel properties
+  public selectedCenter: EvacuationCenter | null = null;
+  public selectedTransportMode: 'walking' | 'cycling' | 'driving' | null = null;
+  public routeInfo: any = {};
 
   constructor() {
     // Initialize offline storage and clean expired cache
@@ -511,12 +454,12 @@ export class MapPage implements OnInit, OnDestroy {
    */
   private setupNetworkStatusMonitoring(): void {
     // Listen for online/offline events
-    window.addEventListener('online', () => {
+    (window as any).addEventListener('online', () => {
       console.log('📶 Network came back online - starting data sync');
       this.syncDataWhenOnline();
     });
 
-    window.addEventListener('offline', () => {
+    (window as any).addEventListener('offline', () => {
       console.log('📵 Network went offline - switching to cached data');
     });
 
@@ -686,53 +629,7 @@ export class MapPage implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Clear all existing pulse circles from the map
-   */
-  clearPulseCircles() {
-    this.map.eachLayer(layer => {
-      if (layer instanceof L.Circle && layer.options.className === 'marker-pulse') {
-        this.map.removeLayer(layer);
-      }
-    });
-  }
 
-  /**
-   * Add pulsing animation to the nearest evacuation center
-   */
-  addPulsingAnimationToNearest(nearestCenter: any) {
-    if (!nearestCenter) return;
-
-    // Clear any existing pulse circles first
-    this.clearPulseCircles();
-
-    const centerLat = Number(nearestCenter.latitude);
-    const centerLng = Number(nearestCenter.longitude);
-
-    if (isNaN(centerLat) || isNaN(centerLng)) {
-      console.error('Invalid coordinates for nearest center:', nearestCenter);
-      return;
-    }
-
-    // Get the color based on disaster type
-    const pulseColor = this.getDisasterColor(nearestCenter.disaster_type);
-
-    // Create pulsing circle
-    const pulseCircle = L.circle([centerLat, centerLng], {
-      radius: 100, // 100 meters radius
-      fillColor: pulseColor,
-      color: pulseColor,
-      weight: 2,
-      opacity: 0.8,
-      fillOpacity: 0.3,
-      className: 'marker-pulse'
-    });
-
-    // Add to map
-    pulseCircle.addTo(this.map);
-
-    console.log(`Added pulsing animation to nearest center: ${nearestCenter.name} with color: ${pulseColor}`);
-  }
 
   // Helper methods for error management
   private hasRecentErrorToast(): boolean {
@@ -743,80 +640,178 @@ export class MapPage implements OnInit, OnDestroy {
     this.lastErrorToast = Date.now();
   }
 
-  async toggleGps(event: any) {
-    console.log('GPS toggle:', event.detail.checked);
-    this.gpsEnabled = event.detail.checked;
+  // Navigation panel methods
+  async showNavigationPanel(center: EvacuationCenter) {
+    console.log('🗺️ MAP: showNavigationPanel called for:', center.name);
 
-    if (!this.gpsEnabled) {
-      console.log('Disabling GPS tracking...');
-      if (this.userMarker) {
-        this.userMarker.remove();
-      }
-      if (this.watchId) {
-        // Clear the appropriate watch based on type
-        if (typeof this.watchId === 'string') {
-          try {
-            // We know watchId is a string here, so it's safe to pass to Capacitor
-            const capWatchId: string = this.watchId;
-            Geolocation.clearWatch({ id: capWatchId });
-          } catch (error) {
-            console.log('Error clearing Capacitor watch:', error);
-          }
-        } else if (typeof this.watchId === 'number') {
-          try {
-            navigator.geolocation.clearWatch(this.watchId);
-          } catch (error) {
-            console.log('Error clearing browser watch:', error);
-          }
-        }
-        this.watchId = null;
-      }
-    } else {
-      console.log('Enabling GPS tracking...');
+    this.selectedCenter = center;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
 
+    // Calculate routes for all transport modes
+    await this.calculateAllRoutes(center);
+  }
+
+  closeNavigationPanel() {
+    this.selectedCenter = null;
+    this.selectedTransportMode = null;
+    this.routeInfo = {};
+    this.clearRoutes();
+  }
+
+  async selectTransportMode(mode: 'walking' | 'cycling' | 'driving') {
+    this.selectedTransportMode = mode;
+
+    if (this.selectedCenter && this.routeInfo[mode]) {
+      // Show route on map
+      await this.routeToCenter(this.selectedCenter, mode);
+    }
+  }
+
+  // Calculate routes for all transport modes
+  async calculateAllRoutes(center: EvacuationCenter) {
+    if (!this.userMarker) return;
+
+    const userPos = this.userMarker.getLatLng();
+    const lat = Number(center.latitude);
+    const lng = Number(center.longitude);
+
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    const modes: ('walking' | 'cycling' | 'driving')[] = ['walking', 'cycling', 'driving'];
+
+    for (const mode of modes) {
       try {
-        // Get current position using our fallback method
-        const position = await this.getCurrentPositionWithFallback();
+        // Convert mode to profile format
+        const profile = mode === 'walking' ? 'foot-walking' :
+                       mode === 'cycling' ? 'cycling-regular' : 'driving-car';
 
-        console.log('Position on toggle:', position);
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
+        const routeData = await this.osmRouting.getDirections(
+          userPos.lng, userPos.lat, lng, lat, profile
+        );
 
-        // Update user marker
-        if (this.userMarker) {
-          this.userMarker.setLatLng([lat, lng]);
-          this.userMarker.addTo(this.map);
-        } else {
-          this.updateUserMarker(lat, lng);
+        if (routeData && routeData.routes && routeData.routes.length > 0) {
+          const route = routeData.routes[0];
+          this.routeInfo[mode] = {
+            distance: route.distance,
+            duration: route.duration
+          };
         }
-
-        // Center map on user
-        this.map.setView([lat, lng], 15);
-
-        // Start watching position
-        this.startWatchingPosition();
       } catch (error) {
-        console.error('Error enabling GPS:', error);
-        this.gpsEnabled = false;
-
-        // Show error toast
-        const toast = await this.toastCtrl.create({
-          message: 'Failed to enable GPS. Please check your location settings.',
-          duration: 3000,
-          color: 'danger'
-        });
-        toast.present();
+        console.error(`Error calculating ${mode} route:`, error);
       }
     }
   }
 
+  // Route to specific center with chosen transportation mode
+  async routeToCenter(center: EvacuationCenter, travelMode: 'walking' | 'cycling' | 'driving') {
+    if (!this.userMarker) return;
+
+    const userPos = this.userMarker.getLatLng();
+    const lat = Number(center.latitude);
+    const lng = Number(center.longitude);
+
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    try {
+      await this.loadingService.showLoading('Calculating route...');
+
+      // Convert mode to profile format
+      const profile = travelMode === 'walking' ? 'foot-walking' :
+                     travelMode === 'cycling' ? 'cycling-regular' : 'driving-car';
+
+      const routeData = await this.osmRouting.getDirections(
+        userPos.lng, userPos.lat, lng, lat, profile
+      );
+
+      if (routeData && routeData.routes && routeData.routes.length > 0) {
+        this.clearRoutes();
+
+        const route = routeData.routes[0];
+        const routeCoords = route.geometry.coordinates.map((coord: number[]) => [coord[1], coord[0]] as [number, number]);
+
+        // Get color based on disaster type
+        let routeColor = '#3880ff';
+        if (center.disaster_type === 'Fire') routeColor = '#dc3545';
+        else if (center.disaster_type === 'Typhoon') routeColor = '#28a745';
+        else if (center.disaster_type === 'Earthquake') routeColor = '#fd7e14';
+        else if (center.disaster_type === 'Flood') routeColor = '#007bff';
+        else if (center.disaster_type === 'Landslide') routeColor = '#8b5a2b';
+
+        const routeLine = L.polyline(routeCoords, {
+          color: routeColor,
+          weight: 4,
+          opacity: 0.8
+        }).addTo(this.map);
+
+        // Store route for cleanup
+        if (!this.map.hasLayer(routeLine)) {
+          this.map.addLayer(routeLine);
+        }
+
+        // Show success message
+        const toast = await this.toastCtrl.create({
+          message: `🧭 Route calculated to ${center.name}`,
+          duration: 3000,
+          color: 'success',
+          position: 'top'
+        });
+        await toast.present();
+      }
+    } catch (error) {
+      console.error('Error calculating route:', error);
+      const toast = await this.toastCtrl.create({
+        message: 'Error calculating route. Please try again.',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    } finally {
+      await this.loadingService.dismissLoading();
+    }
+  }
+
+  // Clear all routes from map
+  clearRoutes() {
+    this.map.eachLayer(layer => {
+      if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+        this.map.removeLayer(layer);
+      }
+    });
+  }
+
+  // Format time for display
+  formatTime(seconds: number): string {
+    if (!seconds) return '';
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) {
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return `${hours}h ${remainingMinutes}m`;
+    }
+  }
+
+  // Format distance for display
+  formatDistance(meters: number): string {
+    if (!meters) return '';
+    if (meters < 1000) {
+      return `${Math.round(meters)} m`;
+    } else {
+      return `${(meters / 1000).toFixed(1)} km`;
+    }
+  }
+
+
+
   private route = inject(ActivatedRoute);
 
   async ngOnInit() {
-    console.log('🗺️ MAIN MAP: Initializing clean map (tabs/map)...');
+    console.log('🗺️ MAIN MAP: Initializing map (tabs/map)...');
 
-    // Set up network status monitoring for data sync
-    this.setupNetworkStatusMonitoring();
+    // Start orientation tracking for compass
+    this.startOrientationTracking();
 
     // Check if we have query parameters from search page
     this.route.queryParams.subscribe((params: any) => {
@@ -891,9 +886,9 @@ export class MapPage implements OnInit, OnDestroy {
       this.loadCleanMap();
     });
   }
-  // Load clean map with user location only (NO evacuation centers)
+  // Load clean map with user location only (NO evacuation centers by default)
   async loadCleanMap() {
-    console.log('🗺️ CLEAN MAP: Loading map with user location only...');
+    console.log('🗺️ CLEAN MAP: Loading clean map with user location only...');
 
     await this.loadingService.showLoading('Loading map...');
 
@@ -912,7 +907,7 @@ export class MapPage implements OnInit, OnDestroy {
       // Initialize map with user location only
       this.initializeMap(userLat, userLng);
 
-      // Clear any existing evacuation centers
+      // Clear any existing evacuation centers and markers
       this.evacuationCenters = [];
       this.isFilterMode = false;
       this.currentDisasterType = 'all';
@@ -927,11 +922,14 @@ export class MapPage implements OnInit, OnDestroy {
         }
       });
 
+      // Set up network status monitoring for data sync
+      this.setupNetworkStatusMonitoring();
+
       await this.loadingService.dismissLoading();
 
       // Show info message
       const toast = await this.toastCtrl.create({
-        message: '📍 Map ready - Search for evacuation centers to view them here',
+        message: '📍 Map ready - Search for evacuation centers or check notifications',
         duration: 3000,
         color: 'primary',
         position: 'top'
@@ -1011,14 +1009,7 @@ export class MapPage implements OnInit, OnDestroy {
         })
       });
 
-      marker.bindPopup(`
-        <div class="evacuation-popup">
-          <h3>${center.name}</h3>
-          <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
-          <p><strong>Address:</strong> ${center.address}</p>
-          <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-        </div>
-      `).openPopup();
+
 
       marker.addTo(this.map);
 
@@ -1161,57 +1152,49 @@ export class MapPage implements OnInit, OnDestroy {
       searchMarker.bindPopup(`<b>${name}</b><br>Selected evacuation center`).openPopup();
 
       // Try to get user location in background for routing
-      if (this.gpsEnabled) {
-        try {
-          const position = await this.getCurrentPositionWithFallback();
-          const userLat = position.coords.latitude;
-          const userLng = position.coords.longitude;
+      try {
+        const position = await this.getCurrentPositionWithFallback();
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
 
-          // Add user marker
-          this.updateUserMarker(userLat, userLng);
-          if (getDirections) {
+        // Add user marker
+        this.updateUserMarker(userLat, userLng);
+        if (getDirections) {
 
-            this.map.eachLayer(layer => {
-              if (layer instanceof L.GeoJSON) {
-                this.map.removeLayer(layer);
-              }
-            });
+          this.map.eachLayer(layer => {
+            if (layer instanceof L.GeoJSON) {
+              this.map.removeLayer(layer);
+            }
+          });
 
-            await this.getRealRoute(userLat, userLng, lat, lng, this.travelMode);
-            this.toastCtrl.create({
-              message: `Showing directions to ${name}`,
-              duration: 3000,
-              color: 'success'
-            }).then(toast => toast.present());
-            const bounds = L.latLngBounds([
-              [userLat, userLng],
-              [lat, lng]
-            ]);
-            this.map.fitBounds(bounds, { padding: [50, 50] });
-          } else {
-            this.toastCtrl.create({
-              message: `Showing ${name} on map`,
-              duration: 2000,
-              color: 'primary'
-            }).then(toast => toast.present());
-          }
-        } catch (error) {
-          console.error('Error getting user location for routing:', error);
-
-          if (getDirections) {
-            this.toastCtrl.create({
-              message: 'Could not get your location to calculate directions. Please check your GPS settings.',
-              duration: 3000,
-              color: 'warning'
-            }).then(toast => toast.present());
-          }
+          await this.getRealRoute(userLat, userLng, lat, lng, this.travelMode);
+          this.toastCtrl.create({
+            message: `Showing directions to ${name}`,
+            duration: 3000,
+            color: 'success'
+          }).then(toast => toast.present());
+          const bounds = L.latLngBounds([
+            [userLat, userLng],
+            [lat, lng]
+          ]);
+          this.map.fitBounds(bounds, { padding: [50, 50] });
+        } else {
+          this.toastCtrl.create({
+            message: `Showing ${name} on map`,
+            duration: 2000,
+            color: 'primary'
+          }).then(toast => toast.present());
         }
-      } else if (getDirections) {
-        this.toastCtrl.create({
-          message: 'Please enable GPS to get directions',
-          duration: 3000,
-          color: 'warning'
-        }).then(toast => toast.present());
+      } catch (error) {
+        console.error('Error getting user location for routing:', error);
+
+        if (getDirections) {
+          this.toastCtrl.create({
+            message: 'Could not get your location to calculate directions. Please check your GPS settings.',
+            duration: 3000,
+            color: 'warning'
+          }).then(toast => toast.present());
+        }
       }
 
       await this.loadingService.dismissLoading();
@@ -1260,15 +1243,8 @@ export class MapPage implements OnInit, OnDestroy {
         }
       });
 
-      // Add user marker
-      this.userMarker = L.marker([userLat, userLng], {
-        icon: L.icon({
-          iconUrl: 'assets/myLocation.png',
-          iconSize: [30, 30],
-          iconAnchor: [15, 30]
-        })
-      }).addTo(this.map);
-
+      // Add directional user marker
+      this.userMarker = this.createDirectionalUserMarker(userLat, userLng).addTo(this.map);
       this.userMarker.bindPopup('📍 You are here!');
 
       // Add destination marker
@@ -1400,6 +1376,7 @@ export class MapPage implements OnInit, OnDestroy {
   ngOnDestroy() {
     console.log('Map page destroyed, cleaning up resources');
     this.stopWatchingPosition();
+    this.stopOrientationTracking();
     if (this.map) {
       this.map.remove();
     }
@@ -1727,18 +1704,32 @@ export class MapPage implements OnInit, OnDestroy {
   startWatchingPosition() {
     this.stopWatchingPosition();
 
-    console.log('Starting position watch...');
+    console.log('🚗 Starting enhanced position watch for driving/movement tracking...');
 
     try {
       this.watchId = Geolocation.watchPosition(
         {
           enableHighAccuracy: true,
-          timeout: 10000
+          timeout: 5000,        // Reduced timeout for faster updates
+          maximumAge: 1000      // Accept cached position up to 1 second old
         },
         (position, err) => {
-          if (position && this.gpsEnabled) {
-            console.log('Capacitor watch position update:', position);
-            this.updateUserMarker(position.coords.latitude, position.coords.longitude);
+          if (position) {
+            console.log('🚗 Capacitor watch position update:', position);
+
+            // Extract heading from GPS if available (for driving direction)
+            const gpsHeading = position.coords.heading;
+            if (gpsHeading !== null && gpsHeading !== undefined) {
+              console.log('🧭 GPS heading detected:', gpsHeading);
+              this.deviceHeading = gpsHeading;
+            }
+
+            this.updateUserMarkerWithMovement(
+              position.coords.latitude,
+              position.coords.longitude,
+              position.coords.speed || 0,
+              gpsHeading
+            );
           }
           if (err) {
             console.error('Error watching position:', err);
@@ -1751,17 +1742,28 @@ export class MapPage implements OnInit, OnDestroy {
         }
       ) as unknown as string;
 
-      console.log('Capacitor watch started with ID:', this.watchId);
+      console.log('🚗 Capacitor watch started with ID:', this.watchId);
     } catch (error) {
-      console.log('Capacitor watch failed, trying browser fallback:', error);
+      console.log('Capacitor watch failed, trying enhanced browser fallback:', error);
 
       if (navigator.geolocation) {
         this.watchId = navigator.geolocation.watchPosition(
           (position) => {
-            if (this.gpsEnabled) {
-              console.log('Browser watch position update:', position);
-              this.updateUserMarker(position.coords.latitude, position.coords.longitude);
+            console.log('🚗 Browser watch position update:', position);
+
+            // Extract heading from GPS if available (for driving direction)
+            const gpsHeading = position.coords.heading;
+            if (gpsHeading !== null && gpsHeading !== undefined) {
+              console.log('🧭 GPS heading detected:', gpsHeading);
+              this.deviceHeading = gpsHeading;
             }
+
+            this.updateUserMarkerWithMovement(
+              position.coords.latitude,
+              position.coords.longitude,
+              position.coords.speed || 0,
+              gpsHeading
+            );
           },
           (error) => {
             console.error('Browser watch error:', error);
@@ -1773,11 +1775,12 @@ export class MapPage implements OnInit, OnDestroy {
           },
           {
             enableHighAccuracy: true,
-            timeout: 10000
+            timeout: 5000,        // Reduced timeout for faster updates
+            maximumAge: 1000      // Accept cached position up to 1 second old
           }
         );
 
-        console.log('Browser watch started with ID:', this.watchId);
+        console.log('🚗 Browser watch started with ID:', this.watchId);
       } else {
         console.error('Geolocation watching not available');
       }
@@ -1800,8 +1803,30 @@ export class MapPage implements OnInit, OnDestroy {
       this.map.remove();
     }
 
-    this.map = L.map('map').setView([lat, lng], 15);
-    console.log('Map initialized');
+    this.map = L.map('map', {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: false,
+      keyboard: true,
+      dragging: true,
+      touchZoom: true,
+      zoomAnimation: true,
+      zoomAnimationThreshold: 4,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
+      transform3DLimit: 2^23,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      trackResize: true,
+      inertia: true,
+      inertiaDeceleration: 3000,
+      inertiaMaxSpeed: Infinity,
+      easeLinearity: 0.2,
+      worldCopyJump: false,
+      maxBoundsViscosity: 0.0
+    }).setView([lat, lng], 15);
+    console.log('Map initialized with stable zoom options');
 
     // Cache map data for offline use
     this.cacheMapData(lat, lng);
@@ -1814,32 +1839,21 @@ export class MapPage implements OnInit, OnDestroy {
       minZoom: 8
     }).addTo(this.map);
 
-    if (this.gpsEnabled) {
-      console.log('GPS is enabled, adding user marker');
-      if (!this.userMarker) {
-        this.userMarker = L.marker([lat, lng], {
-          icon: L.icon({
-            iconUrl: 'assets/myLocation.png',
-            iconSize: [32, 32],
-            iconAnchor: [16, 32]
-          })
-        }).addTo(this.map).bindPopup('You are here!').openPopup();
-        console.log('Created new user marker');
-      } else {
-        this.userMarker.setLatLng([lat, lng]);
-        this.userMarker.addTo(this.map);
-        console.log('Updated existing user marker');
-      }
-
-
-      this.toastCtrl.create({
-        message: 'Using your real-time GPS location',
-        duration: 2000,
-        color: 'success'
-      }).then(toast => toast.present());
+    console.log('Adding user marker');
+    if (!this.userMarker) {
+      this.userMarker = this.createDirectionalUserMarker(lat, lng).addTo(this.map).bindPopup('You are here!');
+      console.log('Created new directional user marker');
     } else {
-      console.log('GPS is disabled, not adding user marker');
+      this.userMarker.setLatLng([lat, lng]);
+      this.userMarker.addTo(this.map);
+      console.log('Updated existing user marker');
     }
+
+    this.toastCtrl.create({
+      message: 'Using your real-time GPS location',
+      duration: 2000,
+      color: 'success'
+    }).then(toast => toast.present());
 
 
     // Only load evacuation centers if explicitly in filter mode or search mode
@@ -1856,17 +1870,13 @@ export class MapPage implements OnInit, OnDestroy {
   updateUserMarker(lat: number, lng: number) {
     console.log(`Updating user marker to: [${lat}, ${lng}]`);
 
-
     if (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
       console.error('Invalid coordinates for user marker update:', { lat, lng });
       return;
     }
 
     if (this.userMarker) {
-
       const oldPosition = this.userMarker.getLatLng();
-
-
       this.userMarker.setLatLng([lat, lng]);
       this.map.setView([lat, lng]);
       console.log('Updated existing user marker position');
@@ -1878,10 +1888,8 @@ export class MapPage implements OnInit, OnDestroy {
 
       console.log(`User moved ${distanceMoved.toFixed(2)} meters from previous position`);
 
-
       if (distanceMoved > 20) {
         console.log(`Significant movement detected (${distanceMoved.toFixed(2)}m), recalculating routes`);
-
 
         this.map.eachLayer(layer => {
           if (layer instanceof L.GeoJSON) {
@@ -1896,16 +1904,113 @@ export class MapPage implements OnInit, OnDestroy {
         }
       }
     } else {
+      // Always create directional marker for better navigation
+      this.userMarker = this.createDirectionalUserMarker(lat, lng).addTo(this.map);
+      this.userMarker.bindPopup('📍 You are here!<br>🧭 Heading: N (0°)').openPopup();
+      console.log('Created new directional user marker');
 
-      this.userMarker = L.marker([lat, lng], {
-        icon: L.icon({
-          iconUrl: 'assets/Location.png',
-          iconSize: [32, 32],
-          iconAnchor: [16, 32]
-        })
-      }).addTo(this.map).bindPopup('You are here!').openPopup();
-      console.log('Created new user marker');
+      if (this.evacuationCenters && this.evacuationCenters.length > 0) {
+        console.log('Calculating initial routes with real GPS data');
+        this.routeToTwoNearestCenters();
+      }
+    }
+  }
 
+  /**
+   * Enhanced user marker update with movement tracking and directional heading
+   * Perfect for driving/walking navigation with real-time direction indication
+   */
+  updateUserMarkerWithMovement(lat: number, lng: number, speed: number = 0, gpsHeading: number | null = null) {
+    console.log(`🚗 Updating user marker with movement: [${lat}, ${lng}], speed: ${speed?.toFixed(2)} m/s, heading: ${gpsHeading}°`);
+
+    if (isNaN(lat) || isNaN(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      console.error('Invalid coordinates for user marker update:', { lat, lng });
+      return;
+    }
+
+    // Use high precision coordinates for stability
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    // Update heading from GPS if available (more accurate when moving)
+    if (gpsHeading !== null && gpsHeading !== undefined && speed > 1) {
+      // Only use GPS heading when moving (speed > 1 m/s ≈ 3.6 km/h)
+      this.deviceHeading = gpsHeading;
+      console.log(`🧭 Using GPS heading for movement: ${gpsHeading}°`);
+    }
+
+    if (this.userMarker) {
+      const oldPosition = this.userMarker.getLatLng();
+
+      // Update marker position with smooth transition
+      this.userMarker.setLatLng([preciseLat, preciseLng]);
+
+      // Update directional arrow
+      this.updateUserMarkerDirection();
+
+      // Only center map if moving significantly (avoid constant map jumping)
+      const distanceMoved = this.calculateDistance(
+        oldPosition.lat, oldPosition.lng,
+        preciseLat, preciseLng
+      );
+
+      console.log(`🚗 User moved ${distanceMoved.toFixed(2)} meters, speed: ${(speed * 3.6).toFixed(1)} km/h`);
+
+      // Center map on user if moving significantly or if speed indicates driving
+      if (distanceMoved > 5 || speed > 2) {
+        this.map.setView([preciseLat, preciseLng], this.map.getZoom(), {
+          animate: true,
+          duration: 0.5 // Smooth animation
+        });
+      }
+
+      // Recalculate routes if moved significantly
+      if (distanceMoved > 20) {
+        console.log(`🚗 Significant movement detected (${distanceMoved.toFixed(2)}m), recalculating routes`);
+
+        this.map.eachLayer(layer => {
+          if (layer instanceof L.GeoJSON) {
+            console.log('Removing existing route layer');
+            this.map.removeLayer(layer);
+          }
+        });
+
+        if (this.evacuationCenters && this.evacuationCenters.length > 0) {
+          console.log('Recalculating routes to nearest evacuation centers');
+          this.routeToTwoNearestCenters();
+        }
+      }
+
+      // Update popup with movement info
+      const speedKmh = (speed * 3.6).toFixed(1);
+      const headingDirection = this.getCompassDirection(this.deviceHeading);
+      this.userMarker.bindPopup(`
+        <div style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+          <strong>📍 Your Location</strong><br>
+          <div style="margin: 8px 0; padding: 4px; background: rgba(59, 130, 246, 0.1); border-radius: 4px;">
+            🚗 Speed: <strong>${speedKmh} km/h</strong><br>
+            🧭 Facing: <strong>${headingDirection}</strong> (${this.deviceHeading.toFixed(0)}°)
+          </div>
+        </div>
+      `);
+
+    } else {
+      // Create new directional marker for first time
+      this.userMarker = this.createDirectionalUserMarker(preciseLat, preciseLng).addTo(this.map);
+
+      const speedKmh = (speed * 3.6).toFixed(1);
+      const headingDirection = this.getCompassDirection(this.deviceHeading);
+      this.userMarker.bindPopup(`
+        <div style="text-align: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+          <strong>📍 Your Location</strong><br>
+          <div style="margin: 8px 0; padding: 4px; background: rgba(59, 130, 246, 0.1); border-radius: 4px;">
+            🚗 Speed: <strong>${speedKmh} km/h</strong><br>
+            🧭 Facing: <strong>${headingDirection}</strong> (${this.deviceHeading.toFixed(0)}°)
+          </div>
+        </div>
+      `).openPopup();
+
+      console.log('🚗 Created new directional user marker with movement tracking');
 
       if (this.evacuationCenters && this.evacuationCenters.length > 0) {
         console.log('Calculating initial routes with real GPS data');
@@ -2128,8 +2233,9 @@ export class MapPage implements OnInit, OnDestroy {
       console.log(`🏢 Centers to display:`, this.evacuationCenters.map(c => `${c.name} (${c.disaster_type})`));
 
       this.evacuationCenters.forEach((center, index) => {
-        const lat = Number(center.latitude);
-        const lng = Number(center.longitude);
+        // Use high precision coordinates and round to 8 decimal places for stability
+        const lat = parseFloat(Number(center.latitude).toFixed(8));
+        const lng = parseFloat(Number(center.longitude).toFixed(8));
 
         console.log(`🏢 Processing center ${index + 1}/${this.evacuationCenters.length}: ${center.name}`);
         console.log(`   📍 Coordinates: [${lat}, ${lng}]`);
@@ -2147,24 +2253,19 @@ export class MapPage implements OnInit, OnDestroy {
               iconSize: [40, 40],
               iconAnchor: [20, 40],
               popupAnchor: [0, -40]
-            })
+            }),
+            // Add marker stability options
+            riseOnHover: false,
+            riseOffset: 0,
+            zIndexOffset: 0,
+            opacity: 1,
+            // Ensure marker stays fixed to coordinates during zoom
+            interactive: true,
+            bubblingMouseEvents: true
           });
 
-          let popupContent = `
-            <div class="evacuation-popup">
-              <h3>${center.name || 'Evacuation Center'}</h3>
-              <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
-              <p><strong>Distance:</strong> ${(this.calculateDistance(userLat, userLng, lat, lng) / 1000).toFixed(2)} km</p>
-              <p><button class="popup-button">View Details</button></p>
-            </div>
-          `;
-
-          marker.bindPopup(popupContent);
           marker.on('click', () => {
-            setTimeout(() => {
-              marker.closePopup();
-              this.showEvacuationCenterDetails(center, userLat, userLng);
-            }, 300);
+            this.showNavigationPanel(center);
           });
 
           marker.addTo(this.map);
@@ -2185,13 +2286,11 @@ export class MapPage implements OnInit, OnDestroy {
       });
       console.log(`🔍 VERIFICATION: ${markerCount} evacuation center markers currently on map`);
 
-      if (this.gpsEnabled && this.userMarker && this.evacuationCenters.length > 0) {
-        console.log('GPS enabled and user marker exists, finding nearest centers');
+      if (this.userMarker && this.evacuationCenters.length > 0) {
+        console.log('User marker exists, finding nearest centers');
         const nearestTwo = this.findTwoNearestCenters(userLat, userLng, this.evacuationCenters);
 
         if (nearestTwo.length > 0) {
-          // Add pulsing animation to the nearest (first) center
-          this.addPulsingAnimationToNearest(nearestTwo[0]);
 
           for (const center of nearestTwo) {
             // Check if routing is available for this center
@@ -2236,7 +2335,7 @@ export class MapPage implements OnInit, OnDestroy {
           this.map.setView([userLat, userLng], 15);
         }
       } else {
-        console.log('GPS disabled, no user marker, or no centers found, skipping route calculation');
+        console.log('No user marker or no centers found, skipping route calculation');
         this.map.setView([userLat, userLng], 15);
       }
     } catch (error) {
@@ -2337,8 +2436,9 @@ export class MapPage implements OnInit, OnDestroy {
       });
 
       this.evacuationCenters.forEach(center => {
-        const lat = Number(center.latitude);
-        const lng = Number(center.longitude);
+        // Use high precision coordinates and round to 8 decimal places for stability
+        const lat = parseFloat(Number(center.latitude).toFixed(8));
+        const lng = parseFloat(Number(center.longitude).toFixed(8));
 
         console.log(`Processing center: ${center.name}, coordinates: [${lat}, ${lng}]`);
 
@@ -2352,23 +2452,19 @@ export class MapPage implements OnInit, OnDestroy {
               iconSize: [40, 40],
               iconAnchor: [20, 40],
               popupAnchor: [0, -40]
-            })
+            }),
+            // Add marker stability options
+            riseOnHover: false,
+            riseOffset: 0,
+            zIndexOffset: 0,
+            opacity: 1,
+            // Ensure marker stays fixed to coordinates during zoom
+            interactive: true,
+            bubblingMouseEvents: true
           });
 
-          let popupContent = `
-            <div class="evacuation-popup">
-              <h3>${center.name || 'Evacuation Center'}</h3>
-              <p><strong>Distance:</strong> ${(this.calculateDistance(userLat, userLng, lat, lng) / 1000).toFixed(2)} km</p>
-              <p><button class="popup-button">View Details</button></p>
-            </div>
-          `;
-
-          marker.bindPopup(popupContent);
           marker.on('click', () => {
-            setTimeout(() => {
-              marker.closePopup();
-              this.showEvacuationCenterDetails(center, userLat, userLng);
-            }, 300);
+            this.showNavigationPanel(center);
           });
 
           marker.addTo(this.map);
@@ -2377,13 +2473,11 @@ export class MapPage implements OnInit, OnDestroy {
           console.error(`Invalid coordinates for center: ${center.name}`);
         }
       });
-      if (this.gpsEnabled && this.userMarker) {
-        console.log('GPS enabled and user marker exists, finding nearest centers');
+      if (this.userMarker) {
+        console.log('User marker exists, finding nearest centers');
         const nearestTwo = this.findTwoNearestCenters(userLat, userLng, this.evacuationCenters);
 
         if (nearestTwo.length > 0) {
-          // Add pulsing animation to the nearest (first) center
-          this.addPulsingAnimationToNearest(nearestTwo[0]);
 
           this.map.eachLayer(layer => {
             if (layer instanceof L.GeoJSON) {
@@ -2423,7 +2517,7 @@ export class MapPage implements OnInit, OnDestroy {
           this.map.setView([userLat, userLng], 15);
         }
       } else {
-        console.log('GPS disabled or no user marker, skipping route calculation');
+        console.log('No user marker, skipping route calculation');
         this.map.setView([userLat, userLng], 15);
       }
 
@@ -2845,6 +2939,14 @@ export class MapPage implements OnInit, OnDestroy {
       `,
       buttons: [
         {
+          text: '✕',
+          role: 'cancel',
+          cssClass: 'alert-button-close',
+          handler: () => {
+            console.log(`🚨 User closed ${params.category} emergency alert`);
+          }
+        },
+        {
           text: 'Show All Centers',
           role: 'confirm',
           cssClass: 'alert-button-confirm',
@@ -2922,6 +3024,395 @@ export class MapPage implements OnInit, OnDestroy {
         position: 'top'
       });
       await toast.present();
+    }
+  }
+
+  /**
+   * Start device orientation tracking for directional marker
+   */
+  private startOrientationTracking(): void {
+    console.log('🧭 Starting orientation tracking...');
+
+    if (typeof DeviceOrientationEvent !== 'undefined') {
+      console.log('🧭 DeviceOrientationEvent is supported');
+
+      // Check if we need to request permission (iOS 13+)
+      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        console.log('🧭 Requesting device orientation permission (iOS 13+)...');
+        (DeviceOrientationEvent as any).requestPermission()
+          .then((response: string) => {
+            console.log('🧭 Permission response:', response);
+            if (response === 'granted') {
+              this.addOrientationListener();
+            } else {
+              console.log('🧭 Device orientation permission denied');
+              // Show toast to user
+              this.toastCtrl.create({
+                message: 'Please allow device orientation access for compass direction',
+                duration: 5000,
+                color: 'warning'
+              }).then(toast => toast.present());
+            }
+          })
+          .catch((error: any) => {
+            console.error('🧭 Error requesting device orientation permission:', error);
+          });
+      } else {
+        // Permission not required, add listener directly
+        console.log('🧭 No permission required, adding listener directly');
+        this.addOrientationListener();
+      }
+    } else {
+      console.log('🧭 Device orientation not supported on this device/browser');
+      // Show toast to user
+      this.toastCtrl.create({
+        message: 'Device orientation not supported - direction arrow will point north',
+        duration: 3000,
+        color: 'medium'
+      }).then(toast => toast.present());
+    }
+  }
+
+  /**
+   * Add device orientation event listener
+   */
+  private addOrientationListener(): void {
+    console.log('🧭 Adding orientation event listeners...');
+
+    // Remove any existing listeners first to prevent duplicates
+    this.stopOrientationTracking();
+
+    // Bind the handler once to avoid creating new functions each time
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Temporarily disabled due to TypeScript build issues
+    // TODO: Re-enable compass functionality after fixing TypeScript issues
+    /*
+    // Add both listeners - the browser will use the appropriate one
+    (window as any).addEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).addEventListener('deviceorientation', boundHandler, true);
+    console.log('🧭 Added both deviceorientationabsolute and deviceorientation listeners');
+    */
+
+    console.log('🧭 Compass functionality temporarily disabled');
+
+    // Test if we can get initial orientation
+    setTimeout(() => {
+      console.log('🧭 Testing initial orientation after 2 seconds...');
+      console.log('🧭 Current device heading:', this.deviceHeading.toFixed(1));
+      if (this.deviceHeading === 0) {
+        console.log('🧭 No orientation data received yet - this might be normal on some devices');
+      }
+    }, 2000);
+  }
+
+  /**
+   * Handle device orientation change with smoothing and throttling
+   */
+  private handleOrientation(event: DeviceOrientationEvent): void {
+    if (event.alpha !== null) {
+      const now = Date.now();
+
+      // Throttle updates to prevent excessive DOM manipulation
+      if (now - this.lastHeadingUpdate < this.headingUpdateThrottle) {
+        return;
+      }
+
+      // Use webkitCompassHeading for iOS, alpha for Android
+      const rawHeading = (event as any).webkitCompassHeading || (360 - event.alpha);
+
+      // Apply smoothing to reduce jitter
+      const smoothedHeading = this.smoothHeading(this.deviceHeading, rawHeading);
+
+      // Only update if the change is significant (reduces micro-movements)
+      const headingDifference = Math.abs(smoothedHeading - this.deviceHeading);
+      const normalizedDifference = Math.min(headingDifference, 360 - headingDifference);
+
+      if (normalizedDifference > 2) { // Only update if change is > 2 degrees
+        const oldHeading = this.deviceHeading;
+        this.deviceHeading = smoothedHeading;
+        this.lastHeadingUpdate = now;
+
+        console.log('🧭 Device heading updated from', oldHeading.toFixed(1), 'to', this.deviceHeading.toFixed(1));
+
+        // Update user marker rotation if it exists
+        this.updateUserMarkerDirection();
+      }
+    } else {
+      console.log('🧭 No orientation data available (alpha is null)');
+    }
+  }
+
+  /**
+   * Smooth heading changes to reduce jitter
+   */
+  private smoothHeading(currentHeading: number, newHeading: number): number {
+    // Handle the circular nature of compass headings (0° = 360°)
+    let difference = newHeading - currentHeading;
+
+    // Normalize difference to [-180, 180] range
+    if (difference > 180) {
+      difference -= 360;
+    } else if (difference < -180) {
+      difference += 360;
+    }
+
+    // Apply smoothing
+    const smoothedDifference = difference * this.headingSmoothingFactor;
+    let result = currentHeading + smoothedDifference;
+
+    // Normalize result to [0, 360) range
+    if (result < 0) {
+      result += 360;
+    } else if (result >= 360) {
+      result -= 360;
+    }
+
+    return result;
+  }
+
+  /**
+   * Stop orientation tracking
+   */
+  private stopOrientationTracking(): void {
+    // Create bound handler to match the one used in addEventListener
+    const boundHandler = this.handleOrientation.bind(this);
+
+    // Remove both possible listeners
+    (window as any).removeEventListener('deviceorientationabsolute', boundHandler, true);
+    (window as any).removeEventListener('deviceorientation', boundHandler, true);
+
+    console.log('🧭 Removed orientation event listeners');
+  }
+
+  /**
+   * Create directional user marker with heading indicator
+   * Enhanced for driving/movement tracking with better visibility
+   */
+  private createDirectionalUserMarker(lat: number, lng: number): L.Marker {
+    console.log('🧭 Creating enhanced directional marker with heading:', this.deviceHeading);
+    console.log('🧭 Marker will be created at coordinates:', [lat, lng]);
+
+    const markerHtml = `
+      <div class="directional-user-marker" style="position: relative; width: 44px; height: 44px;">
+        <!-- Static background circle for better visibility -->
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 36px;
+          height: 36px;
+          margin-top: -18px;
+          margin-left: -18px;
+          background: rgba(59, 130, 246, 0.2);
+          border: 2px solid rgba(59, 130, 246, 0.8);
+          border-radius: 50%;
+          z-index: 0;
+        "></div>
+
+        <!-- Main location icon -->
+        <img src="assets/myLocation.png" alt="Your location" style="
+          width: 28px;
+          height: 28px;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          margin-top: -14px;
+          margin-left: -14px;
+          z-index: 1;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        ">
+
+        <!-- Enhanced direction arrow with better design -->
+        <div class="direction-arrow" style="
+          position: absolute;
+          top: -12px;
+          left: 50%;
+          transform: translateX(-50%) rotate(${this.deviceHeading}deg);
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-bottom: 24px solid #FF4444;
+          z-index: 3;
+          filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+          transition: transform 0.3s ease;
+        "></div>
+
+        <!-- White inner arrow for contrast -->
+        <div style="
+          position: absolute;
+          top: -10px;
+          left: 50%;
+          transform: translateX(-50%) rotate(${this.deviceHeading}deg);
+          width: 0;
+          height: 0;
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-bottom: 16px solid #FFFFFF;
+          z-index: 4;
+          transition: transform 0.3s ease;
+        "></div>
+
+        <!-- Compass direction indicator -->
+        <div style="
+          position: absolute;
+          top: -2px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 10px;
+          font-weight: bold;
+          color: #333;
+          background: rgba(255, 255, 255, 0.9);
+          padding: 1px 4px;
+          border-radius: 8px;
+          z-index: 5;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        ">${this.getCompassDirection(this.deviceHeading)}</div>
+      </div>
+    `;
+
+    console.log('🧭 Generated marker HTML:', markerHtml);
+
+    const directionalIcon = L.divIcon({
+      html: markerHtml,
+      className: 'custom-directional-marker',
+      iconSize: [44, 44],
+      iconAnchor: [22, 38]
+    });
+
+    // Use high precision coordinates for user marker stability
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    const marker = L.marker([preciseLat, preciseLng], {
+      icon: directionalIcon,
+      // Add stability options for user marker
+      riseOnHover: false,
+      riseOffset: 0,
+      zIndexOffset: 1000, // Keep user marker on top
+      opacity: 1,
+      interactive: true,
+      bubblingMouseEvents: true
+    });
+
+    console.log('🧭 Directional marker created successfully!');
+    return marker;
+  }
+
+  /**
+   * Update user marker direction based on device heading with smooth transitions
+   */
+  private updateUserMarkerDirection(): void {
+    console.log('🧭 Updating marker direction to:', this.deviceHeading.toFixed(1));
+    if (this.userMarker) {
+      const markerElement = this.userMarker.getElement();
+      if (markerElement) {
+        // Update direction arrow with smooth transition
+        const directionArrow = markerElement.querySelector('.direction-arrow');
+        if (directionArrow) {
+          const element = directionArrow as HTMLElement;
+          element.style.transition = 'transform 0.2s ease-out';
+          element.style.transform = `translateX(-50%) rotate(${this.deviceHeading}deg)`;
+          console.log('🧭 Updated primary direction arrow');
+        }
+
+        // Update all rotatable elements (arrows) with smooth transitions
+        const allRotatableElements = markerElement.querySelectorAll('[style*="rotate"]');
+        allRotatableElements.forEach((element, index) => {
+          const htmlElement = element as HTMLElement;
+          const currentStyle = htmlElement.style.transform;
+
+          // Add smooth transition
+          htmlElement.style.transition = 'transform 0.2s ease-out';
+
+          if (currentStyle.includes('rotate') && !currentStyle.includes('translateX(-50%)')) {
+            // Skip elements that already have translateX (they're handled separately)
+            const newStyle = currentStyle.replace(/rotate\([^)]*\)/, `rotate(${this.deviceHeading}deg)`);
+            htmlElement.style.transform = newStyle;
+          } else if (currentStyle.includes('translateX(-50%)')) {
+            // Handle elements with translateX and rotate
+            const newStyle = currentStyle.replace(/rotate\([^)]*\)/, `rotate(${this.deviceHeading}deg)`);
+            htmlElement.style.transform = newStyle;
+          }
+          console.log(`🧭 Updated rotatable element ${index + 1} to ${this.deviceHeading.toFixed(1)}deg`);
+        });
+
+        // Update compass direction text (no transition needed for text)
+        const compassText = markerElement.querySelector('[style*="font-size: 10px"]');
+        if (compassText) {
+          compassText.textContent = this.getCompassDirection(this.deviceHeading);
+          console.log('🧭 Updated compass direction text to:', this.getCompassDirection(this.deviceHeading));
+        }
+      } else {
+        console.log('🧭 No marker element found - marker might not be created yet');
+      }
+    } else {
+      console.log('🧭 No user marker exists to update direction');
+    }
+  }
+
+  /**
+   * Convert heading degrees to compass direction
+   */
+  private getCompassDirection(heading: number): string {
+    const directions = [
+      'N', 'NNE', 'NE', 'ENE',
+      'E', 'ESE', 'SE', 'SSE',
+      'S', 'SSW', 'SW', 'WSW',
+      'W', 'WNW', 'NW', 'NNW'
+    ];
+
+    // Normalize heading to 0-360 range
+    const normalizedHeading = ((heading % 360) + 360) % 360;
+
+    // Calculate index (16 directions, so 360/16 = 22.5 degrees per direction)
+    const index = Math.round(normalizedHeading / 22.5) % 16;
+
+    return directions[index];
+  }
+
+  /**
+   * Force recreate directional marker for testing
+   */
+  public forceRecreateDirectionalMarker(): void {
+    console.log('🧭 FORCE RECREATE: Starting...');
+
+    if (this.userMarker && this.map) {
+      const currentPos = this.userMarker.getLatLng();
+      console.log('🧭 FORCE RECREATE: Current position:', currentPos);
+
+      // Remove existing marker
+      this.map.removeLayer(this.userMarker);
+      console.log('🧭 FORCE RECREATE: Removed old marker');
+
+      // Set a test heading for visibility
+      this.deviceHeading = 45; // Northeast
+      console.log('🧭 FORCE RECREATE: Set test heading to 45°');
+
+      // Create new directional marker
+      this.userMarker = this.createDirectionalUserMarker(currentPos.lat, currentPos.lng).addTo(this.map);
+      console.log('🧭 FORCE RECREATE: Created new directional marker');
+
+      // Update popup
+      this.userMarker.bindPopup(`
+        📍 You are here! (FORCE RECREATED)<br>
+        🧭 Test Heading: NE (45°)<br>
+        <small>Arrow should point Northeast</small>
+      `).openPopup();
+
+      console.log('🧭 FORCE RECREATE: Complete!');
+
+      // Show toast
+      this.toastCtrl.create({
+        message: '🧭 Directional marker recreated with test heading (45° NE)',
+        duration: 5000,
+        color: 'success'
+      }).then(toast => toast.present());
+    } else {
+      console.log('🧭 FORCE RECREATE: No user marker or map available');
     }
   }
 }

@@ -47,30 +47,34 @@ export class EmergencyOverlayService {
    * Preload emergency sound files
    */
   private preloadEmergencySounds() {
-    const soundFiles = {
-      'Earthquake': 'assets/sounds/emergency-earthquake.mp3',
-      'Flood': 'assets/sounds/emergency-flood.mp3',
-      'Typhoon': 'assets/sounds/emergency-typhoon.mp3',
-      'Fire': 'assets/sounds/emergency-fire.mp3',
-      'Landslide': 'assets/sounds/emergency-landslide.mp3',
-      'General': 'assets/sounds/emergency-general.mp3',
-      'critical': 'assets/sounds/emergency-critical.mp3'
-    };
+    // Use the same alarm sound for all disaster types
+    const alarmSoundPath = 'assets/sounds/NewAlarmForAll.mp3';
 
-    Object.keys(soundFiles).forEach(key => {
-      const audio = new Audio(soundFiles[key as keyof typeof soundFiles]);
+    const soundKeys = [
+      'Earthquake', 'Flood', 'Typhoon', 'Fire', 'Landslide', 'General', 'critical'
+    ];
+
+    soundKeys.forEach(key => {
+      const audio = new Audio(alarmSoundPath);
       audio.preload = 'auto';
       audio.loop = true;
-      audio.volume = 1.0;
-      
+      audio.volume = 1.0; // Valid range is 0.0 to 1.0
+
+      // Add load event listener for debugging
+      audio.onloadeddata = () => {
+        console.log(`✅ Emergency sound loaded successfully: ${alarmSoundPath} for ${key}`);
+      };
+
       // Fallback to default notification sound if emergency sound not found
-      audio.onerror = () => {
-        console.warn(`Emergency sound not found: ${soundFiles[key as keyof typeof soundFiles]}, using fallback`);
+      audio.onerror = (error) => {
+        console.error(`❌ Emergency sound failed to load: ${alarmSoundPath} for ${key}`, error);
         audio.src = 'assets/sounds/notification.mp3';
       };
-      
+
       this.emergencySounds[key] = audio;
     });
+
+    console.log('🔊 Emergency sounds preloaded for keys:', soundKeys);
   }
 
   /**
@@ -85,6 +89,9 @@ export class EmergencyOverlayService {
     this.isShowingEmergency = true;
 
     try {
+      // Enable audio interaction first
+      await this.enableAudioInteraction();
+
       // Start emergency vibration pattern
       await this.startEmergencyVibration(notification.category, notification.severity);
 
@@ -102,22 +109,20 @@ export class EmergencyOverlayService {
         keyboardClose: false,
         showBackdrop: true,
         animated: true,
-        mode: 'ios' // Force iOS mode for consistent appearance
+        mode: 'ios', // Force iOS mode for consistent appearance
+        canDismiss: true // Allow programmatic dismissal
       });
 
       // Handle modal dismissal
       this.currentModal.onDidDismiss().then((result) => {
+        console.log('🚨 Emergency Service: Modal dismissed with result:', result);
         this.handleEmergencyDismissal(notification, result.data);
+      }).catch((error) => {
+        console.error('🚨 Emergency Service: Error in modal dismissal handler:', error);
+        this.handleEmergencyDismissal(notification, { action: 'error_dismissed' });
       });
 
       await this.currentModal.present();
-
-      // Auto-dismiss after 30 seconds if not interacted with (safety measure)
-      setTimeout(() => {
-        if (this.currentModal && this.isShowingEmergency) {
-          this.dismissCurrentEmergency();
-        }
-      }, 30000);
 
     } catch (error) {
       console.error('Error showing emergency notification:', error);
@@ -221,36 +226,106 @@ export class EmergencyOverlayService {
   }
 
   /**
-   * Play emergency sound based on disaster type and severity
+   * Play emergency sound (same alarm for all disasters)
    */
   private async playEmergencySound(category: string, severity: string): Promise<void> {
     try {
+      console.log(`🔊 Attempting to play emergency sound for ${category} (${severity})`);
+
+      // Resume audio context if suspended (required by browser policies)
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        console.log('🔊 Resuming suspended audio context...');
+        await this.audioContext.resume();
+      }
+
       // Stop any currently playing emergency sounds
       this.stopAllEmergencySounds();
 
-      // Choose sound based on severity first, then category
-      let soundKey = severity === 'critical' ? 'critical' : category;
-      let audio = this.emergencySounds[soundKey];
+      // Use the same alarm sound for all disasters (onlyAlarm.mp3)
+      let audio = this.emergencySounds['General']; // All keys point to the same sound
 
-      // Fallback to general emergency sound if specific sound not available
-      if (!audio || audio.error) {
-        audio = this.emergencySounds['General'];
+      if (!audio) {
+        console.error('❌ No audio object found for emergency sound');
+        return;
       }
 
-      if (audio) {
-        audio.currentTime = 0;
-        audio.volume = 1.0;
+      // Check if audio is loaded
+      if (audio.readyState < 2) { // HAVE_CURRENT_DATA
+        console.log('🔊 Audio not ready, waiting for load...');
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Audio load timeout'));
+          }, 5000);
 
-        // Play the sound
-        const playPromise = audio.play();
+          audio.oncanplay = () => {
+            clearTimeout(timeout);
+            resolve(void 0);
+          };
 
-        if (playPromise !== undefined) {
-          await playPromise;
-          console.log(`Emergency sound playing: ${soundKey}`);
-        }
+          audio.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error('Audio load error'));
+          };
+        });
       }
+
+      // Set audio properties
+      audio.currentTime = 0;
+      audio.volume = 1.0; // Valid range is 0.0 to 1.0
+      audio.loop = true;
+
+      console.log('🔊 Playing emergency sound...');
+
+      // Play the sound
+      const playPromise = audio.play();
+
+      if (playPromise !== undefined) {
+        await playPromise;
+        console.log(`✅ Emergency alarm sound playing for ${category} (${severity})`);
+      } else {
+        console.log('✅ Emergency sound started (no promise returned)');
+      }
+
     } catch (error) {
-      console.warn('Error playing emergency sound:', error);
+      console.error('❌ Error playing emergency sound:', error);
+
+      // Try to play a simple beep as fallback
+      this.playFallbackSound();
+    }
+  }
+
+  /**
+   * Play fallback sound using Web Audio API
+   */
+  private playFallbackSound(): void {
+    try {
+      if (!this.audioContext) return;
+
+      console.log('🔊 Playing fallback beep sound...');
+
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+
+      oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime); // 800Hz beep
+      gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+
+      // Create beep pattern: beep for 0.2s, pause 0.1s, repeat 3 times
+      let time = this.audioContext.currentTime;
+      for (let i = 0; i < 3; i++) {
+        gainNode.gain.setValueAtTime(0.3, time);
+        gainNode.gain.setValueAtTime(0, time + 0.2);
+        time += 0.3;
+      }
+
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(time);
+
+      console.log('✅ Fallback beep sound played');
+    } catch (error) {
+      console.error('❌ Fallback sound also failed:', error);
     }
   }
 
@@ -270,13 +345,18 @@ export class EmergencyOverlayService {
    * Handle emergency notification dismissal
    */
   private async handleEmergencyDismissal(notification: EmergencyNotification, actionData?: any): Promise<void> {
+    console.log('🚨 Emergency Service: Handling dismissal with action:', actionData?.action);
+
     this.isShowingEmergency = false;
     this.stopAllEmergencySounds();
+    this.currentModal = null;
 
     // Navigate to appropriate disaster map if user clicked "View Map"
     if (actionData?.action === 'view_map') {
       await this.navigateToDisasterMap(notification.category);
     }
+
+    console.log('✅ Emergency Service: Dismissal handled successfully');
   }
 
   /**
@@ -327,16 +407,24 @@ export class EmergencyOverlayService {
    * Dismiss current emergency overlay
    */
   async dismissCurrentEmergency(): Promise<void> {
+    console.log('🚨 Emergency Service: Dismissing current emergency overlay');
+
     if (this.currentModal) {
       this.isShowingEmergency = false;
       this.stopAllEmergencySounds();
 
       try {
-        await this.currentModal.dismiss();
+        await this.currentModal.dismiss({ action: 'service_dismissed' });
         this.currentModal = null;
+        console.log('✅ Emergency Service: Modal dismissed successfully');
       } catch (error) {
-        console.warn('Error dismissing emergency modal:', error);
+        console.error('❌ Emergency Service: Error dismissing emergency modal:', error);
+        this.currentModal = null; // Clean up even if dismiss failed
       }
+    } else {
+      console.log('🚨 Emergency Service: No current modal to dismiss');
+      this.isShowingEmergency = false;
+      this.stopAllEmergencySounds();
     }
   }
 
@@ -380,6 +468,37 @@ export class EmergencyOverlayService {
 
     console.log('🧪 Testing earthquake emergency overlay...');
     await this.showEmergencyNotification(testNotification);
+  }
+
+  /**
+   * Enable audio interaction (call this after user interaction)
+   */
+  async enableAudioInteraction(): Promise<void> {
+    try {
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+        console.log('✅ Audio context resumed');
+      }
+
+      // Test play a silent sound to unlock audio
+      const testAudio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+      testAudio.volume = 1.0;
+      await testAudio.play();
+      testAudio.pause();
+
+      console.log('✅ Audio interaction enabled');
+    } catch (error) {
+      console.warn('⚠️ Could not enable audio interaction:', error);
+    }
+  }
+
+  /**
+   * Test emergency sound only (for debugging)
+   */
+  async testEmergencySound(): Promise<void> {
+    console.log('🔊 Testing emergency sound...');
+    await this.enableAudioInteraction();
+    await this.playEmergencySound('Test', 'high');
   }
 
   /**

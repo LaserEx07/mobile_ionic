@@ -29,6 +29,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   private userMarker: L.Marker<any> | null = null;
   private routeLayer: L.LayerGroup | null = null;
   private nearestMarkers: L.Marker[] = [];
+  private evacuationMarkers: L.Marker[] = [];
 
   public evacuationCenters: EvacuationCenter[] = [];
   public userLocation: { lat: number, lng: number } | null = null;
@@ -38,6 +39,10 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
   public highlightCenter: boolean = false;
   public centerLat: number | null = null;
   public centerLng: number | null = null;
+
+  // Enhanced position tracking for movement
+  private watchId: string | number | null = null;
+  public deviceHeading: number = 0; // Default pointing north
 
   // Navigation panel properties
   public selectedCenter: EvacuationCenter | null = null;
@@ -266,23 +271,58 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       this.map.remove();
     }
 
-    this.map = L.map('earthquake-map').setView([lat, lng], 13);
+    this.map = L.map('earthquake-map', {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: false,
+      keyboard: true,
+      dragging: true,
+      touchZoom: true,
+      zoomAnimation: true,
+      zoomAnimationThreshold: 4,
+      fadeAnimation: true,
+      markerZoomAnimation: true,
+      transform3DLimit: 2^23,
+      zoomSnap: 1,
+      zoomDelta: 1,
+      trackResize: true,
+      inertia: true,
+      inertiaDeceleration: 3000,
+      inertiaMaxSpeed: Infinity,
+      easeLinearity: 0.2,
+      worldCopyJump: false,
+      maxBoundsViscosity: 0.0
+    }).setView([lat, lng], 13);
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: 'OpenStreetMap contributors'
     }).addTo(this.map);
 
-    // Add user marker
-    this.userMarker = L.marker([lat, lng], {
+    // Add user marker with stability options
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    this.userMarker = L.marker([preciseLat, preciseLng], {
       icon: L.icon({
         iconUrl: 'assets/myLocation.png',
         iconSize: [32, 32],
         iconAnchor: [16, 32]
-      })
+      }),
+      // Add marker stability options
+      riseOnHover: false,
+      riseOffset: 0,
+      zIndexOffset: 1000,
+      opacity: 1,
+      interactive: true,
+      bubblingMouseEvents: true
     }).addTo(this.map);
 
     this.userMarker.bindPopup('📍 You are here!').openPopup();
+
+    // Start enhanced position tracking for movement
+    this.startWatchingPosition();
   }
 
   /**
@@ -444,10 +484,15 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
   // Add markers and routes to map
   async addMarkersAndRoutes(userLat: number, userLng: number) {
+    // Clear existing evacuation markers to prevent duplicates
+    this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
+    this.evacuationMarkers = [];
+
     // Add earthquake markers (orange)
     this.evacuationCenters.forEach(center => {
-      const lat = Number(center.latitude);
-      const lng = Number(center.longitude);
+      // Use high precision coordinates for stability
+      const lat = parseFloat(Number(center.latitude).toFixed(8));
+      const lng = parseFloat(Number(center.longitude).toFixed(8));
 
       if (!isNaN(lat) && !isNaN(lng)) {
         const marker = L.marker([lat, lng], {
@@ -456,7 +501,14 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
             iconSize: [40, 40],
             iconAnchor: [20, 40],
             popupAnchor: [0, -40]
-          })
+          }),
+          // Add marker stability options
+          riseOnHover: false,
+          riseOffset: 0,
+          zIndexOffset: 0,
+          opacity: 1,
+          interactive: true,
+          bubblingMouseEvents: true
         });
 
         const distance = this.calculateDistance(userLat, userLng, lat, lng);
@@ -464,40 +516,13 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         // Make marker clickable with navigation panel
         marker.on('click', () => {
           console.log('🟠 EARTHQUAKE: Marker clicked for center:', center.name);
-          if (center.routing_available === false) {
-            // Show alert for full centers
-            this.alertCtrl.create({
-              header: 'Center Full',
-              message: `${center.name} is currently full. Routing is not available.`,
-              buttons: ['OK']
-            }).then(alert => alert.present());
-          } else {
-            this.showNavigationPanel(center);
-          }
+          this.showNavigationPanel(center);
         });
 
         // Check if this is the new center to highlight
         const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
 
-        // Determine status display and routing availability
-        const statusDisplay = center.status || 'Active';
-        const isFullCenter = center.routing_available === false;
-        const statusIcon = isFullCenter ? '🔴' : '🟠';
-        const routingText = isFullCenter ?
-          '<p><em>⚠️ Center is Full - No routing available</em></p>' :
-          '<p><em>Click marker for route options</em></p>';
 
-        marker.bindPopup(`
-          <div class="evacuation-popup">
-            <h3>${statusIcon} ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
-            <p><strong>Type:</strong> Earthquake Center</p>
-            <p><strong>Status:</strong> ${statusDisplay}</p>
-            <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
-            <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            ${routingText}
-            ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
-          </div>
-        `);
 
         // If this is the new center, open its popup and center map on it
         if (isNewCenter) {
@@ -514,6 +539,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         }
 
         marker.addTo(this.map);
+        this.evacuationMarkers.push(marker);
       }
     });
 
@@ -672,30 +698,55 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
   // Add pulsing markers for nearest centers (like all-maps)
   addPulsingMarkers(centers: EvacuationCenter[]) {
+    console.log('🟠 EARTHQUAKE: Adding pulsing markers for', centers.length, 'nearest centers');
+
     // Clear existing nearest markers
     this.nearestMarkers.forEach(marker => this.map.removeLayer(marker));
     this.nearestMarkers = [];
+
+    // Hide regular evacuation markers to avoid duplication
+    this.evacuationMarkers.forEach(marker => this.map.removeLayer(marker));
 
     centers.forEach((center, index) => {
       const lat = Number(center.latitude);
       const lng = Number(center.longitude);
 
       if (!isNaN(lat) && !isNaN(lng)) {
-        // Create pulsing marker with earthquake styling
+        // Create improved pulsing marker with earthquake styling
+        console.log(`🟠 Creating pulsing marker #${index + 1} for earthquake center:`, center.name);
         const pulsingIcon = L.divIcon({
-          className: 'pulsing-marker',
+          className: '', // Leave empty to avoid default leaflet styles
           html: `
-            <div class="pulse-container">
-              <div class="pulse" style="background-color: #ff9500"></div>
-              <img src="assets/forEarthquake.png" class="marker-icon" />
-              <div class="marker-label">${index + 1}</div>
+            <div class="pulse-marker">
+              <div class="pulse-circle earthquake smooth"></div>
+              <img src="assets/forEarthquake.png" />
+              <div class="marker-label earthquake">${index + 1}</div>
             </div>
           `,
-          iconSize: [50, 50],
-          iconAnchor: [25, 50]
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
         });
 
-        const marker = L.marker([lat, lng], { icon: pulsingIcon });
+        // Use high precision coordinates for stability
+        const preciseLat = parseFloat(Number(lat).toFixed(8));
+        const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+        const marker = L.marker([preciseLat, preciseLng], {
+          icon: pulsingIcon,
+          // Add marker stability options
+          riseOnHover: false,
+          riseOffset: 0,
+          zIndexOffset: 500, // Higher than regular markers but lower than user
+          opacity: 1,
+          interactive: true,
+          bubblingMouseEvents: true
+        });
+
+        // Add click handler for navigation panel
+        marker.on('click', () => {
+          console.log('🟠 EARTHQUAKE: Pulsing marker clicked for center:', center.name);
+          this.showNavigationPanel(center);
+        });
 
         marker.bindPopup(`
           <div class="evacuation-popup nearest-popup">
@@ -704,6 +755,7 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
             <p><strong>Type:</strong> Earthquake</p>
             <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
+            <p><em>Click marker for route options</em></p>
           </div>
         `);
 
@@ -711,6 +763,8 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
         this.nearestMarkers.push(marker);
       }
     });
+
+    console.log('🟠 EARTHQUAKE: Successfully added', this.nearestMarkers.length, 'pulsing markers to map');
   }
 
   // Calculate routes to nearest centers using Mapbox (like all-maps)
@@ -721,13 +775,6 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
 
     for (let i = 0; i < centers.length; i++) {
       const center = centers[i];
-
-      // Skip routing if not available for this center
-      if (center.routing_available === false) {
-        console.log(`🟠 EARTHQUAKE MAP: Skipping route to ${center.name} - routing not available`);
-        continue;
-      }
-
       const lat = Number(center.latitude);
       const lng = Number(center.longitude);
 
@@ -789,6 +836,13 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       this.map.removeLayer(marker);
     });
     this.nearestMarkers = [];
+
+    // Restore regular evacuation markers if they were hidden
+    this.evacuationMarkers.forEach(marker => {
+      if (!this.map.hasLayer(marker)) {
+        marker.addTo(this.map);
+      }
+    });
 
     // Clear any remaining route layers by checking all map layers
     this.map.eachLayer((layer: any) => {
@@ -1077,6 +1131,32 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     return (distance / 1000).toFixed(1);
   }
 
+  // Helper method to format disaster type for display
+  getDisasterTypeDisplay(center: EvacuationCenter): string {
+    // Always prioritize showing "Earthquake" as the primary disaster type for this map
+    if (!center.disaster_type) {
+      return 'Earthquake';
+    }
+
+    if (Array.isArray(center.disaster_type)) {
+      // If array contains earthquake, prioritize it, otherwise show all types
+      if (center.disaster_type.some(type => type.toLowerCase().includes('earthquake'))) {
+        return 'Earthquake';
+      }
+      return center.disaster_type.join(', ');
+    }
+
+    // If it's a string, check if it contains earthquake
+    if (typeof center.disaster_type === 'string') {
+      if (center.disaster_type.toLowerCase().includes('earthquake')) {
+        return 'Earthquake';
+      }
+      return center.disaster_type;
+    }
+
+    return 'Earthquake';
+  }
+
   // Route to nearest centers (compass button functionality)
   async routeToNearestCenters() {
     if (!this.userLocation || this.evacuationCenters.length === 0) {
@@ -1172,6 +1252,15 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
       `,
       buttons: [
         {
+          text: '✕',
+          role: 'cancel',
+          cssClass: 'alert-button-close',
+          handler: () => {
+            console.log('🚨 User closed earthquake emergency alert');
+            return true; // Explicitly return true to dismiss the alert
+          }
+        },
+        {
           text: 'Navigate Now',
           role: 'confirm',
           cssClass: 'alert-button-confirm',
@@ -1196,23 +1285,168 @@ export class EarthquakeMapPage implements OnInit, AfterViewInit {
     await alert.present();
   }
 
-  ionViewWillEnter() {
-    console.log('🟠 EARTHQUAKE MAP: View will enter - refreshing data...');
-    // Refresh evacuation centers data when entering the page
-    if (this.map && this.userLocation) {
-      this.loadEarthquakeCenters(this.userLocation.lat, this.userLocation.lng);
-    }
-  }
-
   ionViewWillLeave() {
     this.clearRoutes();
     // Stop real-time navigation if active
     if (this.isRealTimeNavigationActive) {
       this.osmRouting.stopRealTimeRouting();
     }
+    // Stop position tracking
+    this.stopWatchingPosition();
     if (this.map) {
       this.map.remove();
     }
+  }
+
+  /**
+   * Start enhanced position tracking for earthquake map
+   */
+  startWatchingPosition() {
+    this.stopWatchingPosition();
+
+    console.log('🟠 EARTHQUAKE MAP: Starting enhanced position watch...');
+
+    try {
+      this.watchId = Geolocation.watchPosition(
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 1000
+        },
+        (position, err) => {
+          if (position) {
+            console.log('🟠 EARTHQUAKE MAP: Position update:', position);
+
+            const gpsHeading = position.coords.heading;
+            if (gpsHeading !== null && gpsHeading !== undefined) {
+              this.deviceHeading = gpsHeading;
+            }
+
+            this.updateUserMarkerWithMovement(
+              position.coords.latitude,
+              position.coords.longitude,
+              position.coords.speed || 0,
+              gpsHeading
+            );
+          }
+          if (err) {
+            console.error('🟠 EARTHQUAKE MAP: Position error:', err);
+          }
+        }
+      ) as unknown as string;
+
+      console.log('🟠 EARTHQUAKE MAP: Position watch started');
+    } catch (error) {
+      console.log('🟠 EARTHQUAKE MAP: Capacitor failed, trying browser fallback:', error);
+
+      if (navigator.geolocation) {
+        this.watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            console.log('🟠 EARTHQUAKE MAP: Browser position update:', position);
+
+            const gpsHeading = position.coords.heading;
+            if (gpsHeading !== null && gpsHeading !== undefined) {
+              this.deviceHeading = gpsHeading;
+            }
+
+            this.updateUserMarkerWithMovement(
+              position.coords.latitude,
+              position.coords.longitude,
+              position.coords.speed || 0,
+              gpsHeading
+            );
+          },
+          (error) => {
+            console.error('🟠 EARTHQUAKE MAP: Browser position error:', error);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 1000
+          }
+        );
+      }
+    }
+  }
+
+  /**
+   * Stop position tracking
+   */
+  stopWatchingPosition() {
+    if (this.watchId !== null) {
+      try {
+        if (typeof this.watchId === 'string') {
+          Geolocation.clearWatch({ id: this.watchId });
+        } else {
+          navigator.geolocation.clearWatch(this.watchId);
+        }
+        console.log('🟠 EARTHQUAKE MAP: Position watch stopped');
+      } catch (error) {
+        console.error('🟠 EARTHQUAKE MAP: Error stopping position watch:', error);
+      }
+      this.watchId = null;
+    }
+  }
+
+  /**
+   * Enhanced user marker update with movement tracking
+   */
+  updateUserMarkerWithMovement(lat: number, lng: number, speed: number = 0, gpsHeading: number | null = null) {
+    if (!this.userMarker || !this.map) return;
+
+    const preciseLat = parseFloat(Number(lat).toFixed(8));
+    const preciseLng = parseFloat(Number(lng).toFixed(8));
+
+    // Update heading from GPS if available and moving
+    if (gpsHeading !== null && gpsHeading !== undefined && speed > 1) {
+      this.deviceHeading = gpsHeading;
+    }
+
+    const oldPosition = this.userMarker.getLatLng();
+    this.userMarker.setLatLng([preciseLat, preciseLng]);
+
+    // Calculate movement
+    const distanceMoved = this.calculateDistance(
+      oldPosition.lat, oldPosition.lng,
+      preciseLat, preciseLng
+    );
+
+    // Center map if moving significantly
+    if (distanceMoved > 5 || speed > 2) {
+      this.map.setView([preciseLat, preciseLng], this.map.getZoom(), {
+        animate: true,
+        duration: 0.5
+      });
+    }
+
+    // Update popup with movement info
+    const speedKmh = (speed * 3.6).toFixed(1);
+    const headingDirection = this.getCompassDirection(this.deviceHeading);
+    this.userMarker.bindPopup(`
+      📍 You are here!<br>
+      🚗 Speed: ${speedKmh} km/h<br>
+      🧭 Heading: ${headingDirection} (${this.deviceHeading.toFixed(0)}°)
+    `);
+
+    // Store user location
+    this.userLocation = { lat: preciseLat, lng: preciseLng };
+  }
+
+  /**
+   * Convert heading degrees to compass direction
+   */
+  private getCompassDirection(heading: number): string {
+    const directions = [
+      'N', 'NNE', 'NE', 'ENE',
+      'E', 'ESE', 'SE', 'SSE',
+      'S', 'SSW', 'SW', 'WSW',
+      'W', 'WNW', 'NW', 'NNW'
+    ];
+
+    const normalizedHeading = ((heading % 360) + 360) % 360;
+    const index = Math.round(normalizedHeading / 22.5) % 16;
+
+    return directions[index];
   }
 
   // Real-time navigation methods
