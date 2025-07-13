@@ -10,7 +10,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
-import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
+import { EvacuationCenter, ContactInfo } from '../../interfaces/evacuation-center.interface';
 
 // Define GeolocationPosition interface to match Capacitor's Geolocation plugin
 interface GeolocationPosition {
@@ -594,12 +594,27 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
             })
           });
 
-          // Add popup with center details
+          // Create contact info display
+          let contactInfo = '';
+          if (center.contact) {
+            if (typeof center.contact === 'string') {
+              contactInfo = `<br>📞 Contact: ${center.contact}`;
+            } else if (Array.isArray(center.contact)) {
+              const contacts = center.contact.map(c => `${c.number} (${c.network})`).join(', ');
+              contactInfo = `<br>📞 Contact: ${contacts}`;
+            }
+          }
+
+          // Add popup with center details including contact info
           marker.bindPopup(
+            `<div class="evacuation-popup">` +
             `<b>${center.name || 'Evacuation Center'}</b><br>` +
             `Type: ${center.disaster_type}<br>` +
             (center.capacity ? `Capacity: ${center.capacity} people<br>` : '') +
-            (center.status ? `Status: ${center.status}` : '')
+            (center.status ? `Status: ${center.status}<br>` : '') +
+            contactInfo +
+            `<br><button class="popup-button" onclick="window.showCenterDetails(${center.id})">View Details</button>` +
+            `</div>`
           );
 
           // Add marker to map
@@ -1205,8 +1220,13 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
    * @param type The disaster type string to normalize
    * @returns Normalized disaster type string matching backend enum
    */
-  getNormalizedDisasterType(type: string): string {
+  getNormalizedDisasterType(type: string | string[] | undefined): string {
     if (!type) return 'unknown';
+
+    // Handle array types - take the first element
+    if (Array.isArray(type)) {
+      type = type[0] || 'unknown';
+    }
 
     // Direct match with backend enum values: 'Earthquake', 'Typhoon', 'Flood'
     if (type === 'Earthquake' || type === 'earthquake') {

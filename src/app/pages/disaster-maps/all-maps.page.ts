@@ -355,6 +355,17 @@ export class AllMapsPage implements OnInit {
             '<p><em>⚠️ Center is Full - No routing available</em></p>' :
             '<p><em>Click marker for route options</em></p>';
 
+          // Create contact info display
+          let contactInfo = '';
+          if (center.contact) {
+            if (typeof center.contact === 'string') {
+              contactInfo = `<p><strong>📞 Contact:</strong> ${center.contact}</p>`;
+            } else if (Array.isArray(center.contact)) {
+              const contacts = center.contact.map((c: any) => `${c.number} (${c.network})`).join(', ');
+              contactInfo = `<p><strong>📞 Contact:</strong> ${contacts}</p>`;
+            }
+          }
+
           marker.bindPopup(`
             <div class="evacuation-popup">
               <h3>${statusIcon} ${center.name}</h3>
@@ -362,6 +373,7 @@ export class AllMapsPage implements OnInit {
               <p><strong>Status:</strong> ${statusDisplay}</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
+              ${contactInfo}
               ${routingText}
             </div>
           `);
@@ -536,6 +548,17 @@ export class AllMapsPage implements OnInit {
 
         const marker = L.marker([lat, lng], { icon: pulsingIcon });
 
+        // Create contact info display
+        let contactInfo = '';
+        if (center.contact) {
+          if (typeof center.contact === 'string') {
+            contactInfo = `<p><strong>📞 Contact:</strong> ${center.contact}</p>`;
+          } else if (Array.isArray(center.contact)) {
+            const contacts = center.contact.map((c: any) => `${c.number} (${c.network})`).join(', ');
+            contactInfo = `<p><strong>📞 Contact:</strong> ${contacts}</p>`;
+          }
+        }
+
         marker.bindPopup(`
           <div class="evacuation-popup nearest-popup">
             <h3>🎯 Nearest Center #${index + 1}</h3>
@@ -543,6 +566,7 @@ export class AllMapsPage implements OnInit {
             <p><strong>Type:</strong> ${center.disaster_type}</p>
             <p><strong>Distance:</strong> ${((center as any).distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
+            ${contactInfo}
           </div>
         `);
 

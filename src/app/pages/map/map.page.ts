@@ -1011,12 +1011,24 @@ export class MapPage implements OnInit, OnDestroy {
         })
       });
 
+      // Create contact info display
+      let contactInfo = '';
+      if (center.contact) {
+        if (typeof center.contact === 'string') {
+          contactInfo = `<p><strong>📞 Contact:</strong> ${center.contact}</p>`;
+        } else if (Array.isArray(center.contact)) {
+          const contacts = center.contact.map((c: any) => `${c.number} (${c.network})`).join(', ');
+          contactInfo = `<p><strong>📞 Contact:</strong> ${contacts}</p>`;
+        }
+      }
+
       marker.bindPopup(`
         <div class="evacuation-popup">
           <h3>${center.name}</h3>
           <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
           <p><strong>Address:</strong> ${center.address}</p>
           <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
+          ${contactInfo}
         </div>
       `).openPopup();
 
@@ -2150,11 +2162,23 @@ export class MapPage implements OnInit, OnDestroy {
             })
           });
 
+          // Create contact info display
+          let contactInfo = '';
+          if (center.contact) {
+            if (typeof center.contact === 'string') {
+              contactInfo = `<p><strong>📞 Contact:</strong> ${center.contact}</p>`;
+            } else if (Array.isArray(center.contact)) {
+              const contacts = center.contact.map((c: any) => `${c.number} (${c.network})`).join(', ');
+              contactInfo = `<p><strong>📞 Contact:</strong> ${contacts}</p>`;
+            }
+          }
+
           let popupContent = `
             <div class="evacuation-popup">
               <h3>${center.name || 'Evacuation Center'}</h3>
               <p><strong>Type:</strong> ${center.disaster_type || 'General'}</p>
               <p><strong>Distance:</strong> ${(this.calculateDistance(userLat, userLng, lat, lng) / 1000).toFixed(2)} km</p>
+              ${contactInfo}
               <p><button class="popup-button">View Details</button></p>
             </div>
           `;
@@ -2355,10 +2379,22 @@ export class MapPage implements OnInit, OnDestroy {
             })
           });
 
+          // Create contact info display
+          let contactInfo = '';
+          if (center.contact) {
+            if (typeof center.contact === 'string') {
+              contactInfo = `<p><strong>📞 Contact:</strong> ${center.contact}</p>`;
+            } else if (Array.isArray(center.contact)) {
+              const contacts = center.contact.map((c: any) => `${c.number} (${c.network})`).join(', ');
+              contactInfo = `<p><strong>📞 Contact:</strong> ${contacts}</p>`;
+            }
+          }
+
           let popupContent = `
             <div class="evacuation-popup">
               <h3>${center.name || 'Evacuation Center'}</h3>
               <p><strong>Distance:</strong> ${(this.calculateDistance(userLat, userLng, lat, lng) / 1000).toFixed(2)} km</p>
+              ${contactInfo}
               <p><button class="popup-button">View Details</button></p>
             </div>
           `;

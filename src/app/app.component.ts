@@ -4,7 +4,6 @@ import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { registerIcons } from './icons';
 import { FCMService } from './services/fcm.service';
 import { EmergencyOverlayService } from './services/emergency-overlay.service';
-import { OfflineStatusComponent } from './components/offline-status/offline-status.component';
 import { EmergencyContactsService } from './services/emergency-contacts.service';
 
 @Component({
@@ -12,7 +11,7 @@ import { EmergencyContactsService } from './services/emergency-contacts.service'
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
   standalone: true,
-  imports: [IonApp, IonRouterOutlet, OfflineStatusComponent]
+  imports: [IonApp, IonRouterOutlet]
 })
 export class AppComponent {
   constructor(

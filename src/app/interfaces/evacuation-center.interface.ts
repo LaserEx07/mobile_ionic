@@ -1,3 +1,8 @@
+export interface ContactInfo {
+  number: string;
+  network: string;
+}
+
 export interface EvacuationCenter {
   id: number;
   name: string;
@@ -7,7 +12,7 @@ export interface EvacuationCenter {
   capacity?: number;
   status?: string;
   disaster_type?: string | string[]; // Can be either string or array
-  contact?: string;
+  contact?: string | ContactInfo[];
   image_url?: string;
   last_updated?: string;
   barangay?: string;

@@ -123,7 +123,18 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   openNotifications() {
-    console.log('Notification button clicked! Navigating to notifications...');
-    this.router.navigate(['/notifications']);
+    console.log('🔔 Notification button clicked! Navigating to notifications...');
+    console.log('🔔 Current route:', this.router.url);
+    console.log('🔔 Attempting to navigate to /notifications');
+
+    this.router.navigate(['/notifications']).then(success => {
+      if (success) {
+        console.log('🔔 Navigation successful!');
+      } else {
+        console.error('🔔 Navigation failed!');
+      }
+    }).catch(error => {
+      console.error('🔔 Navigation error:', error);
+    });
   }
 }

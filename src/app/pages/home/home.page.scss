@@ -404,6 +404,9 @@ ion-item-divider {
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 1000;
 
   &:hover {
     --background: rgba(255, 255, 255, 0.2);
@@ -414,6 +417,7 @@ ion-item-divider {
     font-size: 1.4rem;
     color: white;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    pointer-events: none; // Prevent icon from blocking clicks
   }
 }
 
@@ -435,6 +439,7 @@ ion-item-divider {
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
   border: 2px solid white;
   animation: pulse-notification 2s infinite;
+  pointer-events: none; // Allow clicks to pass through to the button
 }
 
 @keyframes pulse-notification {

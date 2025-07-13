@@ -64,6 +64,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/offline-data/offline-data.page').then(m => m.OfflineDataPage)
   },
   {
+    path: 'notifications',
+    loadComponent: () => import('./pages/notifications/notifications.page').then(m => m.NotificationsPage)
+  },
+  {
     path: 'ors-test',
     loadChildren: () => import('./pages/ors-test/ors-test.module').then(m => m.OrsTestPageModule)
   },
