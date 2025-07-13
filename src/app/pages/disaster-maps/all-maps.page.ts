@@ -11,19 +11,8 @@ import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap
 import { MapboxRoutingService } from '../../services/mapbox-routing.service';
 import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 import * as L from 'leaflet';
-
-interface EvacuationCenter {
-  id: number;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  capacity?: number;
-  status?: string;
-  disaster_type?: string;
-  contact?: string;
-}
 
 @Component({
   selector: 'app-all-maps',
@@ -37,6 +26,7 @@ export class AllMapsPage implements OnInit {
   private userMarker: L.Marker<any> | null = null;
   private routeLayer: L.LayerGroup | null = null;
   private nearestMarkers: L.Marker[] = [];
+  private allMarkers: L.Marker[] = []; // Store all markers for filtering
 
   public evacuationCenters: EvacuationCenter[] = [];
   public centerCounts = {
@@ -72,6 +62,10 @@ export class AllMapsPage implements OnInit {
   // All centers panel properties
   public showAllCentersPanel = false;
 
+  // Filter panel properties
+  public showFilterPanel = false;
+  public currentFilter: string = 'all';
+
   private loadingCtrl = inject(LoadingController);
   private toastCtrl = inject(ToastController);
   private alertCtrl = inject(AlertController);
@@ -83,6 +77,9 @@ export class AllMapsPage implements OnInit {
 
   async ngOnInit() {
     console.log('🗺️ ALL MAPS: Initializing...');
+    // Reset filter state
+    this.currentFilter = 'all';
+    this.showFilterPanel = false;
     await this.loadAllMaps();
   }
 
@@ -162,9 +159,9 @@ export class AllMapsPage implements OnInit {
     // Add user marker (use same icon as individual disaster maps)
     this.userMarker = L.marker([lat, lng], {
       icon: L.icon({
-        iconUrl: 'assets/Location.png',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
+        iconUrl: 'assets/myLocation.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
       })
     }).addTo(this.map);
 
@@ -250,6 +247,10 @@ export class AllMapsPage implements OnInit {
         return;
       }
 
+      // Clear existing markers
+      this.allMarkers.forEach(marker => marker.remove());
+      this.allMarkers = [];
+
       // Add all markers with appropriate colors
       this.evacuationCenters.forEach(center => {
         const lat = Number(center.latitude);
@@ -259,6 +260,7 @@ export class AllMapsPage implements OnInit {
           // Get icon based on disaster type
           let iconUrl = 'assets/Location.png';
           let colorEmoji = '⚪';
+          let markerDisasterType = 'Others'; // Default type for filtering
 
           // Check if center supports multiple disaster types
           const disasterTypes = Array.isArray(center.disaster_type) ? center.disaster_type : [center.disaster_type];
@@ -268,6 +270,7 @@ export class AllMapsPage implements OnInit {
             // Use multiple marker for centers that support multiple disaster types
             iconUrl = 'assets/forMultiple.png'; // Multiple disaster marker
             colorEmoji = '🔘';
+            markerDisasterType = 'Multiple';
             console.log(`🗺️ Multi-type center: ${center.name} supports ${disasterTypes.join(', ')}`);
           } else {
             // Single disaster type - use specific icon
@@ -277,35 +280,43 @@ export class AllMapsPage implements OnInit {
             if (typeof primaryType === 'string' && primaryType.startsWith('Others:')) {
               iconUrl = 'assets/forOthers.png';
               colorEmoji = '🟣';
+              markerDisasterType = 'Others';
             } else {
               switch(primaryType) {
                 case 'Earthquake':
                   iconUrl = 'assets/forEarthquake.png';
                   colorEmoji = '🟠';
+                  markerDisasterType = 'Earthquake';
                   break;
                 case 'Typhoon':
                   iconUrl = 'assets/forTyphoon.png';
                   colorEmoji = '🟢';
+                  markerDisasterType = 'Typhoon';
                   break;
                 case 'Flood':
                   iconUrl = 'assets/forFlood.png';
                   colorEmoji = '🔵';
+                  markerDisasterType = 'Flood';
                   break;
                 case 'Fire':
                   iconUrl = 'assets/forFire.png';
                   colorEmoji = '🔴';
+                  markerDisasterType = 'Fire';
                   break;
                 case 'Landslide':
                   iconUrl = 'assets/forLandslide.png';
                   colorEmoji = '🟤';
+                  markerDisasterType = 'Landslide';
                   break;
                 case 'Others':
                   iconUrl = 'assets/forOthers.png';
                   colorEmoji = '🟣';
+                  markerDisasterType = 'Others';
                   break;
                 default:
                   iconUrl = 'assets/forOthers.png';
                   colorEmoji = '🟣';
+                  markerDisasterType = 'Others';
                   break;
               }
             }
@@ -320,6 +331,10 @@ export class AllMapsPage implements OnInit {
             })
           });
 
+          // Store disaster type and center data on marker for filtering
+          (marker as any).disasterType = markerDisasterType;
+          (marker as any).centerData = center;
+
           const distance = this.calculateDistance(userLat, userLng, lat, lng);
 
           // Make marker clickable to show navigation panel
@@ -332,17 +347,27 @@ export class AllMapsPage implements OnInit {
             ? center.disaster_type.join(', ')
             : center.disaster_type || 'General';
 
+          // Determine status display and routing availability
+          const statusDisplay = center.status || 'Active';
+          const isFullCenter = center.routing_available === false;
+          const statusIcon = isFullCenter ? '🔴' : colorEmoji;
+          const routingText = isFullCenter ?
+            '<p><em>⚠️ Center is Full - No routing available</em></p>' :
+            '<p><em>Click marker for route options</em></p>';
+
           marker.bindPopup(`
             <div class="evacuation-popup">
-              <h3>${colorEmoji} ${center.name}</h3>
+              <h3>${statusIcon} ${center.name}</h3>
               <p><strong>Type:</strong> ${disasterTypeDisplay}</p>
+              <p><strong>Status:</strong> ${statusDisplay}</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              <p><em>Click marker for route options</em></p>
+              ${routingText}
             </div>
           `);
 
           marker.addTo(this.map);
+          this.allMarkers.push(marker);
           console.log(`🗺️ Added ${center.disaster_type} marker: ${center.name}`);
         }
       });
@@ -667,6 +692,12 @@ export class AllMapsPage implements OnInit {
   async calculateAllRoutes(center: EvacuationCenter) {
     if (!this.userLocation) return;
 
+    // Skip route calculation if routing is not available for this center
+    if (center.routing_available === false) {
+      console.log(`Skipping route calculation for ${center.name} - routing not available`);
+      return;
+    }
+
     const lat = Number(center.latitude);
     const lng = Number(center.longitude);
 
@@ -734,6 +765,18 @@ export class AllMapsPage implements OnInit {
   // Route to specific center with chosen transportation mode
   async routeToCenter(center: EvacuationCenter, travelMode: 'walking' | 'cycling' | 'driving') {
     if (!this.userLocation) return;
+
+    // Check if routing is available for this center
+    if (center.routing_available === false) {
+      const toast = await this.toastCtrl.create({
+        message: `⚠️ Routing not available for ${center.name} - Center is currently full`,
+        duration: 3000,
+        color: 'warning',
+        position: 'top'
+      });
+      await toast.present();
+      return;
+    }
 
     try {
       // Clear existing routes
@@ -810,6 +853,21 @@ export class AllMapsPage implements OnInit {
   }
 
   goBack() {
+    // Close any open panels first
+    if (this.showFilterPanel) {
+      this.closeFilterPanel();
+      return;
+    }
+    if (this.showAllCentersPanel) {
+      this.closeAllCentersPanel();
+      return;
+    }
+    if (this.selectedCenter) {
+      this.closeNavigationPanel();
+      return;
+    }
+
+    // If no panels are open, navigate back
     this.router.navigate(['/tabs/home']);
   }
 
@@ -879,6 +937,14 @@ export class AllMapsPage implements OnInit {
   }
 
 
+
+  ionViewWillEnter() {
+    console.log('🗺️ ALL MAPS: View will enter - refreshing data...');
+    // Refresh evacuation centers data when entering the page
+    if (this.map && this.userLocation) {
+      this.loadAllCenters(this.userLocation.lat, this.userLocation.lng);
+    }
+  }
 
   ionViewWillLeave() {
     this.clearRoutes();
@@ -956,5 +1022,82 @@ export class AllMapsPage implements OnInit {
         this.map.removeLayer(layer);
       }
     });
+  }
+
+  // Filter Panel Methods
+  toggleFilterPanel() {
+    this.showFilterPanel = !this.showFilterPanel;
+
+    // Close other panels if open
+    if (this.showFilterPanel) {
+      this.showAllCentersPanel = false;
+      this.selectedCenter = null;
+    }
+  }
+
+  closeFilterPanel() {
+    this.showFilterPanel = false;
+  }
+
+  async applyFilter(filterType: string) {
+    console.log(`🎯 Applying filter: ${filterType}`);
+
+    this.currentFilter = filterType;
+
+    // Show loading
+    const loading = await this.loadingCtrl.create({
+      message: `Filtering ${filterType === 'all' ? 'all' : filterType} centers...`,
+      duration: 1000
+    });
+    await loading.present();
+
+    // Filter markers based on type
+    this.allMarkers.forEach(marker => {
+      const markerType = (marker as any).disasterType;
+
+      if (filterType === 'all') {
+        // Show all markers
+        if (!this.map.hasLayer(marker)) {
+          marker.addTo(this.map);
+        }
+      } else {
+        // Show only markers of the selected type
+        if (markerType === filterType) {
+          if (!this.map.hasLayer(marker)) {
+            marker.addTo(this.map);
+          }
+        } else {
+          // Hide markers that don't match
+          if (this.map.hasLayer(marker)) {
+            this.map.removeLayer(marker);
+          }
+        }
+      }
+    });
+
+    // Close filter panel
+    this.closeFilterPanel();
+
+    // Show success message
+    const visibleCount = this.allMarkers.filter(marker => {
+      if (filterType === 'all') return true;
+      return (marker as any).disasterType === filterType;
+    }).length;
+
+    let message = `🎯 Showing ${visibleCount} ${filterType === 'all' ? 'evacuation centers' : filterType + ' centers'}`;
+    let color = 'primary';
+
+    if (visibleCount === 0 && filterType !== 'all') {
+      message = `⚠️ No ${filterType} evacuation centers found`;
+      color = 'warning';
+    }
+
+    const toast = await this.toastCtrl.create({
+      message: message,
+      duration: 3000,
+      color: color,
+      position: 'top'
+    });
+    await toast.present();
   }
 }

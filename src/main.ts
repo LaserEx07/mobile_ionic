@@ -4,6 +4,7 @@ import { RouteReuseStrategy, provideRouter, withPreloading, PreloadAllModules, w
 import { IonicRouteStrategy, provideIonicAngular } from '@ionic/angular/standalone';
 import { IonicModule } from '@ionic/angular';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { IonicStorageModule } from '@ionic/storage-angular';
 
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
@@ -29,6 +30,7 @@ bootstrapApplication(AppComponent, {
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
     provideIonicAngular({}),
     importProvidersFrom(IonicModule.forRoot()),
+    importProvidersFrom(IonicStorageModule.forRoot()),
     provideRouter(routes, withHashLocation(), withPreloading(PreloadAllModules)),
     provideHttpClient(withInterceptorsFromDi()),
   ],

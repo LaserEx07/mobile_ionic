@@ -1,7 +1,7 @@
 import {
   registerPlugin
-} from "./chunk-QU63WDX7.js";
-import "./chunk-SCNEKAWF.js";
+} from "./chunk-MCFBZ5YE.js";
+import "./chunk-EAE2VPRF.js";
 
 // node_modules/@capacitor/local-notifications/dist/esm/definitions.js
 var Weekday;
@@ -17,7 +17,7 @@ var Weekday;
 
 // node_modules/@capacitor/local-notifications/dist/esm/index.js
 var LocalNotifications = registerPlugin("LocalNotifications", {
-  web: () => import("./web-QYAXGUPL.js").then((m) => new m.LocalNotificationsWeb())
+  web: () => import("./web-JQLZW4OP.js").then((m) => new m.LocalNotificationsWeb())
 });
 export {
   LocalNotifications,

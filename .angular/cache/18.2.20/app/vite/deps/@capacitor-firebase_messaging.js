@@ -1,7 +1,7 @@
 import {
   registerPlugin
-} from "./chunk-QU63WDX7.js";
-import "./chunk-SCNEKAWF.js";
+} from "./chunk-MCFBZ5YE.js";
+import "./chunk-EAE2VPRF.js";
 
 // node_modules/@capacitor-firebase/messaging/dist/esm/definitions.js
 var Importance;
@@ -21,7 +21,7 @@ var Visibility;
 
 // node_modules/@capacitor-firebase/messaging/dist/esm/index.js
 var FirebaseMessaging = registerPlugin("FirebaseMessaging", {
-  web: () => import("./web-ZLMGDAPB.js").then((m) => new m.FirebaseMessagingWeb())
+  web: () => import("./web-WQ7IGJWG.js").then((m) => new m.FirebaseMessagingWeb())
 });
 export {
   FirebaseMessaging,

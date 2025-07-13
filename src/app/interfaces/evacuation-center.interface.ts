@@ -12,6 +12,7 @@ export interface EvacuationCenter {
   last_updated?: string;
   barangay?: string;
   distance?: number; // For nearest center calculations
+  routing_available?: boolean; // Whether routing is available for this center
 }
 
 

@@ -58,6 +58,9 @@ export class FloodMapPage implements OnInit, AfterViewInit {
   // Real-time navigation properties
   public isRealTimeNavigationActive = false;
   public navigationDestination: { lat: number; lng: number; name?: string } | null = null;
+
+  // Emergency notification properties
+  public shouldAutoRouteEmergency = false;
   public currentNavigationRoute: Route | null = null;
 
   private loadingCtrl = inject(LoadingController);
@@ -75,7 +78,7 @@ export class FloodMapPage implements OnInit, AfterViewInit {
     console.log('🔵 FLOOD MAP: Component initialized...');
     // Don't initialize map here - wait for view to be ready
 
-    // Check for query parameters to highlight new center
+    // Check for query parameters to highlight new center or emergency navigation
     this.route.queryParams.subscribe((params: any) => {
       if (params['newCenterId']) {
         this.newCenterId = params['newCenterId'];
@@ -83,6 +86,27 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         this.centerLat = params['centerLat'] ? parseFloat(params['centerLat']) : null;
         this.centerLng = params['centerLng'] ? parseFloat(params['centerLng']) : null;
         console.log('🔵 FLOOD MAP: New center to highlight:', this.newCenterId);
+      }
+
+      // Handle emergency navigation from notifications
+      if (params['emergency'] === 'true' && params['autoRoute'] === 'true') {
+        console.log('🚨 Emergency navigation triggered for flood map');
+
+        // Check if this came from a notification
+        if (params['notification'] === 'true') {
+          console.log('📱 Emergency triggered by notification:', {
+            category: params['category'],
+            severity: params['severity'],
+            title: params['title'],
+            message: params['message']
+          });
+
+          // Show notification-specific emergency alert
+          this.showNotificationEmergencyAlert(params);
+        }
+
+        // Set flag to auto-route to nearest centers after map loads
+        this.shouldAutoRouteEmergency = true;
       }
     });
   }
@@ -178,9 +202,9 @@ export class FloodMapPage implements OnInit, AfterViewInit {
     // Add user marker
     this.userMarker = L.marker([lat, lng], {
       icon: L.icon({
-        iconUrl: 'assets/Location.png',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
+        iconUrl: 'assets/myLocation.png',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
       })
     }).addTo(this.map);
 
@@ -257,19 +281,37 @@ export class FloodMapPage implements OnInit, AfterViewInit {
           // Make marker clickable with navigation panel
           marker.on('click', () => {
             console.log('🌊 FLOOD: Marker clicked for center:', center.name);
-            this.showNavigationPanel(center);
+            if (center.routing_available === false) {
+              // Show alert for full centers
+              this.alertCtrl.create({
+                header: 'Center Full',
+                message: `${center.name} is currently full. Routing is not available.`,
+                buttons: ['OK']
+              }).then(alert => alert.present());
+            } else {
+              this.showNavigationPanel(center);
+            }
           });
 
           // Check if this is the new center to highlight
           const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
 
+          // Determine status display and routing availability
+          const statusDisplay = center.status || 'Active';
+          const isFullCenter = center.routing_available === false;
+          const statusIcon = isFullCenter ? '🔴' : '🔵';
+          const routingText = isFullCenter ?
+            '<p><em>⚠️ Center is Full - No routing available</em></p>' :
+            '<p><em>Click marker for route options</em></p>';
+
           marker.bindPopup(`
             <div class="evacuation-popup">
-              <h3>🔵 ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
+              <h3>${statusIcon} ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
               <p><strong>Type:</strong> Flood Center</p>
+              <p><strong>Status:</strong> ${statusDisplay}</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              <p><em>Click marker for route options</em></p>
+              ${routingText}
               ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
             </div>
           `);
@@ -471,6 +513,13 @@ export class FloodMapPage implements OnInit, AfterViewInit {
 
     for (let i = 0; i < centers.length; i++) {
       const center = centers[i];
+
+      // Skip routing if not available for this center
+      if (center.routing_available === false) {
+        console.log(`🔵 FLOOD MAP: Skipping route to ${center.name} - routing not available`);
+        continue;
+      }
+
       const lat = Number(center.latitude);
       const lng = Number(center.longitude);
 
@@ -1077,6 +1126,14 @@ export class FloodMapPage implements OnInit, AfterViewInit {
     }).addTo(this.map);
   }
 
+  ionViewWillEnter() {
+    console.log('🌊 FLOOD MAP: View will enter - refreshing data...');
+    // Refresh evacuation centers data when entering the page
+    if (this.map && this.userLocation) {
+      this.loadFloodCenters(this.userLocation.lat, this.userLocation.lng);
+    }
+  }
+
   ionViewWillLeave() {
     // Stop real-time navigation if active
     if (this.isRealTimeNavigationActive) {
@@ -1166,5 +1223,45 @@ export class FloodMapPage implements OnInit, AfterViewInit {
         this.map.removeLayer(layer);
       }
     });
+  }
+
+  /**
+   * Show emergency alert for notification-triggered navigation
+   */
+  private async showNotificationEmergencyAlert(params: any): Promise<void> {
+    const alert = await this.alertCtrl.create({
+      header: '🌊 FLOOD EMERGENCY',
+      subHeader: params['title'] || 'Emergency Notification',
+      message: `
+        <div style="text-align: left;">
+          <p><strong>Alert:</strong> ${params['message'] || 'Flood emergency detected'}</p>
+          <p><strong>Severity:</strong> ${(params['severity'] || 'medium').toUpperCase()}</p>
+          <p><strong>Action:</strong> Routing to nearest flood evacuation centers</p>
+        </div>
+      `,
+      buttons: [
+        {
+          text: 'Navigate Now',
+          role: 'confirm',
+          cssClass: 'alert-button-confirm',
+          handler: () => {
+            console.log('🚨 User confirmed emergency navigation for flood');
+            // Emergency routing will be triggered by shouldAutoRouteEmergency flag
+          }
+        },
+        {
+          text: 'View Map Only',
+          role: 'cancel',
+          cssClass: 'alert-button-cancel',
+          handler: () => {
+            console.log('📍 User chose to view flood map without auto-routing');
+            this.shouldAutoRouteEmergency = false;
+          }
+        }
+      ],
+      cssClass: 'emergency-alert'
+    });
+
+    await alert.present();
   }
 }

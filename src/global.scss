@@ -1,6 +1,57 @@
 /* Emergency notification styles - must be first */
 @use "app/styles/emergency-notifications.scss";
 
+/* Emergency Alert Styles for Deep Linking */
+.emergency-alert {
+  --background: #ff4444;
+  --color: white;
+
+  .alert-wrapper {
+    --background: #ff4444;
+    border: 2px solid #ff0000;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(255, 68, 68, 0.3);
+  }
+
+  .alert-head {
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .alert-message {
+    padding: 16px;
+    background: white;
+    color: #333;
+    line-height: 1.5;
+  }
+
+  .alert-button-confirm {
+    --background: #ff4444;
+    --color: white;
+    font-weight: bold;
+  }
+
+  .alert-button-cancel {
+    --background: transparent;
+    --color: #666;
+    border: 1px solid #ddd;
+  }
+}
+
+.emergency-toast {
+  --background: #ff4444;
+  --color: white;
+  font-weight: bold;
+
+  .toast-wrapper {
+    border-left: 4px solid #ff0000;
+  }
+}
+
 /*
  * App Global CSS
  * ----------------------------------------------------------------------------
