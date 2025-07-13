@@ -25,11 +25,25 @@
     </div>
   </div>
 
+  <!-- Status info -->
+  <div class="info-section" *ngIf="center.status">
+    <div class="info-label">Status</div>
+    <div class="info-value status" [ngClass]="{'full-status': center.status === 'Full'}">
+      <ion-icon [name]="center.status === 'Full' ? 'warning-outline' : 'checkmark-circle-outline'"
+                [color]="center.status === 'Full' ? 'warning' : 'success'"></ion-icon>
+      <span>{{ center.status }}</span>
+      <span *ngIf="center.status === 'Full'" class="full-notice"> - No routing available</span>
+    </div>
+  </div>
+
   <!-- Get Directions button -->
   <div class="directions-button">
-    <ion-button expand="block" color="primary" (click)="getDirections()">
-      <ion-icon name="navigate" slot="start"></ion-icon>
-      Get Directions
+    <ion-button expand="block"
+                [color]="center.routing_available === false ? 'medium' : 'primary'"
+                [disabled]="center.routing_available === false"
+                (click)="getDirections()">
+      <ion-icon [name]="center.routing_available === false ? 'warning-outline' : 'navigate'" slot="start"></ion-icon>
+      {{ center.routing_available === false ? 'Center Full - No Directions' : 'Get Directions' }}
     </ion-button>
   </div>
 </div>

@@ -359,8 +359,14 @@ export class MapPage implements OnInit, OnDestroy {
           }
         });
 
-        // Draw routes to both
+        // Draw routes to both (only if routing is available)
         for (const center of nearestTwo) {
+          // Check if routing is available for this center
+          if (center.routing_available === false) {
+            console.log(`Skipping route to ${center.name} - routing not available (center is full)`);
+            continue;
+          }
+
           // Ensure coordinates are properly converted to numbers
           const centerLat = Number(center.latitude);
           const centerLng = Number(center.longitude);
@@ -2188,6 +2194,12 @@ export class MapPage implements OnInit, OnDestroy {
           this.addPulsingAnimationToNearest(nearestTwo[0]);
 
           for (const center of nearestTwo) {
+            // Check if routing is available for this center
+            if (center.routing_available === false) {
+              console.log(`Skipping route to ${center.name} - routing not available (center is full)`);
+              continue;
+            }
+
             const centerLat = Number(center.latitude);
             const centerLng = Number(center.longitude);
 
@@ -2380,6 +2392,12 @@ export class MapPage implements OnInit, OnDestroy {
           });
 
           for (const center of nearestTwo) {
+            // Check if routing is available for this center
+            if (center.routing_available === false) {
+              console.log(`Skipping route to ${center.name} - routing not available (center is full)`);
+              continue;
+            }
+
             const centerLat = Number(center.latitude);
             const centerLng = Number(center.longitude);
 

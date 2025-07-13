@@ -13,6 +13,7 @@ interface EvacuationCenter {
   status?: string;
   disaster_type?: string;
   contact?: string;
+  routing_available?: boolean;
 }
 
 @Component({
@@ -56,6 +57,16 @@ export class EvacuationCenterModalComponent {
   }
 
   getDirections() {
+    // Check if routing is available
+    if (this.center.routing_available === false) {
+      this.toastCtrl.create({
+        message: `${this.center.name} is currently full. Routing is not available.`,
+        duration: 3000,
+        color: 'warning'
+      }).then(toast => toast.present());
+      return;
+    }
+
     this.modalCtrl.dismiss();
 
     // Navigate to map tab with center coordinates and directions flag

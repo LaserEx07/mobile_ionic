@@ -281,19 +281,37 @@ export class FloodMapPage implements OnInit, AfterViewInit {
           // Make marker clickable with navigation panel
           marker.on('click', () => {
             console.log('🌊 FLOOD: Marker clicked for center:', center.name);
-            this.showNavigationPanel(center);
+            if (center.routing_available === false) {
+              // Show alert for full centers
+              this.alertCtrl.create({
+                header: 'Center Full',
+                message: `${center.name} is currently full. Routing is not available.`,
+                buttons: ['OK']
+              }).then(alert => alert.present());
+            } else {
+              this.showNavigationPanel(center);
+            }
           });
 
           // Check if this is the new center to highlight
           const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
 
+          // Determine status display and routing availability
+          const statusDisplay = center.status || 'Active';
+          const isFullCenter = center.routing_available === false;
+          const statusIcon = isFullCenter ? '🔴' : '🔵';
+          const routingText = isFullCenter ?
+            '<p><em>⚠️ Center is Full - No routing available</em></p>' :
+            '<p><em>Click marker for route options</em></p>';
+
           marker.bindPopup(`
             <div class="evacuation-popup">
-              <h3>🔵 ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
+              <h3>${statusIcon} ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
               <p><strong>Type:</strong> Flood Center</p>
+              <p><strong>Status:</strong> ${statusDisplay}</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              <p><em>Click marker for route options</em></p>
+              ${routingText}
               ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
             </div>
           `);
@@ -495,6 +513,13 @@ export class FloodMapPage implements OnInit, AfterViewInit {
 
     for (let i = 0; i < centers.length; i++) {
       const center = centers[i];
+
+      // Skip routing if not available for this center
+      if (center.routing_available === false) {
+        console.log(`🔵 FLOOD MAP: Skipping route to ${center.name} - routing not available`);
+        continue;
+      }
+
       const lat = Number(center.latitude);
       const lng = Number(center.longitude);
 
@@ -1099,6 +1124,14 @@ export class FloodMapPage implements OnInit, AfterViewInit {
     L.tileLayer(placeholderUrl, {
       attribution: 'Offline Mode - Map tiles unavailable'
     }).addTo(this.map);
+  }
+
+  ionViewWillEnter() {
+    console.log('🌊 FLOOD MAP: View will enter - refreshing data...');
+    // Refresh evacuation centers data when entering the page
+    if (this.map && this.userLocation) {
+      this.loadFloodCenters(this.userLocation.lat, this.userLocation.lng);
+    }
   }
 
   ionViewWillLeave() {

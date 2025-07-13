@@ -5,17 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { OpenStreetMapRoutingService } from '../../services/openstreetmap-routing.service';
-
-interface EvacuationCenter {
-  name: string;
-  latitude: number;
-  longitude: number;
-  disaster_type?: string;
-  address?: string;
-  capacity?: number;
-  status?: string;
-  contact?: string;
-}
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
 interface TravelTimeEstimate {
   mode: string;
@@ -326,13 +316,17 @@ export class EvacuationCenterDetailsComponent implements OnInit {
     });
   }
 
-  getDisasterTypeIcon(type: string | undefined): string {
+  getDisasterTypeIcon(type: string | string[] | undefined): string {
     if (!type) return 'alert-circle-outline';
 
-    const normalizedType = type.toLowerCase();
+    // Handle array of disaster types - use the first one
+    const typeString = Array.isArray(type) ? type[0] : type;
+    if (!typeString) return 'alert-circle-outline';
+
+    const normalizedType = typeString.toLowerCase();
 
     // Check if it's an "Others:" type
-    if (type.startsWith('Others:')) {
+    if (typeString.startsWith('Others:')) {
       return 'help-circle-outline';
     } else if (normalizedType.includes('earthquake') || normalizedType.includes('quake')) {
       return 'earth-outline';
@@ -349,6 +343,17 @@ export class EvacuationCenterDetailsComponent implements OnInit {
     }
 
     return 'alert-circle-outline';
+  }
+
+  getDisasterTypeDisplay(type: string | string[] | undefined): string {
+    if (!type) return 'General';
+
+    // Handle array of disaster types - join them with commas
+    if (Array.isArray(type)) {
+      return type.join(', ');
+    }
+
+    return type;
   }
 
   getStatusColor(status: string | undefined): string {
