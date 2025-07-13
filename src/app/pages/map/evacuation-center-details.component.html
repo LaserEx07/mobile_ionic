@@ -23,7 +23,7 @@
     <div class="center-type">
       <ion-chip [color]="getStatusColor(center.status)">
         <ion-icon [name]="getDisasterTypeIcon(center.disaster_type)"></ion-icon>
-        <ion-label>{{ center.disaster_type || 'General' }}</ion-label>
+        <ion-label>{{ getDisasterTypeDisplay(center.disaster_type) || 'General' }}</ion-label>
       </ion-chip>
       <ion-chip *ngIf="center.status" [color]="getStatusColor(center.status)">
         <ion-icon name="information-circle-outline"></ion-icon>

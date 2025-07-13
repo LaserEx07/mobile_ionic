@@ -11,19 +11,8 @@ import { OpenStreetMapRoutingService, Route } from '../../services/openstreetmap
 import { MapboxRoutingService } from '../../services/mapbox-routing.service';
 import { RealTimeNavigationComponent } from '../../components/real-time-navigation/real-time-navigation.component';
 import { EnhancedDownloadService } from '../../services/enhanced-download.service';
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 import * as L from 'leaflet';
-
-interface EvacuationCenter {
-  id: number;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  capacity?: number;
-  status?: string;
-  disaster_type?: string;
-  contact?: string;
-}
 
 @Component({
   selector: 'app-all-maps',
@@ -358,13 +347,22 @@ export class AllMapsPage implements OnInit {
             ? center.disaster_type.join(', ')
             : center.disaster_type || 'General';
 
+          // Determine status display and routing availability
+          const statusDisplay = center.status || 'Active';
+          const isFullCenter = center.routing_available === false;
+          const statusIcon = isFullCenter ? '🔴' : colorEmoji;
+          const routingText = isFullCenter ?
+            '<p><em>⚠️ Center is Full - No routing available</em></p>' :
+            '<p><em>Click marker for route options</em></p>';
+
           marker.bindPopup(`
             <div class="evacuation-popup">
-              <h3>${colorEmoji} ${center.name}</h3>
+              <h3>${statusIcon} ${center.name}</h3>
               <p><strong>Type:</strong> ${disasterTypeDisplay}</p>
+              <p><strong>Status:</strong> ${statusDisplay}</p>
               <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
               <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-              <p><em>Click marker for route options</em></p>
+              ${routingText}
             </div>
           `);
 
@@ -694,6 +692,12 @@ export class AllMapsPage implements OnInit {
   async calculateAllRoutes(center: EvacuationCenter) {
     if (!this.userLocation) return;
 
+    // Skip route calculation if routing is not available for this center
+    if (center.routing_available === false) {
+      console.log(`Skipping route calculation for ${center.name} - routing not available`);
+      return;
+    }
+
     const lat = Number(center.latitude);
     const lng = Number(center.longitude);
 
@@ -761,6 +765,18 @@ export class AllMapsPage implements OnInit {
   // Route to specific center with chosen transportation mode
   async routeToCenter(center: EvacuationCenter, travelMode: 'walking' | 'cycling' | 'driving') {
     if (!this.userLocation) return;
+
+    // Check if routing is available for this center
+    if (center.routing_available === false) {
+      const toast = await this.toastCtrl.create({
+        message: `⚠️ Routing not available for ${center.name} - Center is currently full`,
+        duration: 3000,
+        color: 'warning',
+        position: 'top'
+      });
+      await toast.present();
+      return;
+    }
 
     try {
       // Clear existing routes
@@ -921,6 +937,14 @@ export class AllMapsPage implements OnInit {
   }
 
 
+
+  ionViewWillEnter() {
+    console.log('🗺️ ALL MAPS: View will enter - refreshing data...');
+    // Refresh evacuation centers data when entering the page
+    if (this.map && this.userLocation) {
+      this.loadAllCenters(this.userLocation.lat, this.userLocation.lng);
+    }
+  }
 
   ionViewWillLeave() {
     this.clearRoutes();

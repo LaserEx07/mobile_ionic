@@ -298,19 +298,37 @@ export class FireMapPage implements OnInit, AfterViewInit {
         // Make marker clickable with navigation panel
         marker.on('click', () => {
           console.log('🔥 FIRE: Marker clicked for center:', center.name);
-          this.showNavigationPanel(center);
+          if (center.routing_available === false) {
+            // Show alert for full centers
+            this.alertCtrl.create({
+              header: 'Center Full',
+              message: `${center.name} is currently full. Routing is not available.`,
+              buttons: ['OK']
+            }).then(alert => alert.present());
+          } else {
+            this.showNavigationPanel(center);
+          }
         });
 
         // Check if this is the new center to highlight
         const isNewCenter = this.newCenterId && center.id.toString() === this.newCenterId;
 
+        // Determine status display and routing availability
+        const statusDisplay = center.status || 'Active';
+        const isFullCenter = center.routing_available === false;
+        const statusIcon = isFullCenter ? '🔴' : '🔥';
+        const routingText = isFullCenter ?
+          '<p><em>⚠️ Center is Full - No routing available</em></p>' :
+          '<p><em>Click marker for route options</em></p>';
+
         marker.bindPopup(`
           <div class="evacuation-popup">
-            <h3>🔥 ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
+            <h3>${statusIcon} ${center.name} ${isNewCenter ? '⭐ NEW!' : ''}</h3>
             <p><strong>Type:</strong> Fire Center</p>
+            <p><strong>Status:</strong> ${statusDisplay}</p>
             <p><strong>Distance:</strong> ${(distance / 1000).toFixed(2)} km</p>
             <p><strong>Capacity:</strong> ${center.capacity || 'N/A'}</p>
-            <p><em>Click marker for route options</em></p>
+            ${routingText}
             ${isNewCenter ? '<p><strong>🆕 Recently Added!</strong></p>' : ''}
           </div>
         `);
@@ -846,6 +864,14 @@ export class FireMapPage implements OnInit, AfterViewInit {
 
 
 
+
+  ionViewWillEnter() {
+    console.log('🔥 FIRE MAP: View will enter - refreshing data...');
+    // Refresh evacuation centers data when entering the page
+    if (this.map && this.userLocation) {
+      this.loadFireCenters(this.userLocation.lat, this.userLocation.lng);
+    }
+  }
 
   ionViewWillLeave() {
     this.clearRoutes();

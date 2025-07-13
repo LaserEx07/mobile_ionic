@@ -10,16 +10,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
-
-interface EvacuationCenter {
-  name: string;
-  latitude: number;
-  longitude: number;
-  disaster_type: string;
-  address?: string;
-  capacity?: number;
-  status?: string;
-}
+import { EvacuationCenter } from '../../interfaces/evacuation-center.interface';
 
 // Define GeolocationPosition interface to match Capacitor's Geolocation plugin
 interface GeolocationPosition {
@@ -841,12 +832,17 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
           // Get the actual user position from the marker (real GPS)
           const userPosition = this.userMarker.getLatLng();
 
-          // Only calculate routes if we're using real GPS coordinates
-          await this.getRealRoute(userPosition.lat, userPosition.lng, Number(nearest.latitude), Number(nearest.longitude));
+          // Only calculate routes if routing is available and we're using real GPS coordinates
+          if (nearest.routing_available !== false) {
+            await this.getRealRoute(userPosition.lat, userPosition.lng, Number(nearest.latitude), Number(nearest.longitude));
+          } else {
+            console.log(`Skipping route to nearest center ${nearest.name} - routing not available (center is full)`);
+          }
 
           const distanceInMeters = this.calculateDistance(userPosition.lat, userPosition.lng, Number(nearest.latitude), Number(nearest.longitude));
+          const routingStatus = nearest.routing_available === false ? ' (Full - No routing)' : '';
           this.userMarker.bindPopup(
-            `You are here. <br> Nearest: ${nearest.name} <br> Distance: ${(distanceInMeters / 1000).toFixed(2)} km`
+            `You are here. <br> Nearest: ${nearest.name}${routingStatus} <br> Distance: ${(distanceInMeters / 1000).toFixed(2)} km`
           ).openPopup();
         }
       } else {
@@ -970,8 +966,14 @@ export class DisasterMapModalComponent implements OnInit, OnDestroy {
           }
         });
 
-        // Calculate fresh routes from current position
+        // Calculate fresh routes from current position (only if routing is available)
         for (const center of nearestTwo) {
+          // Check if routing is available for this center
+          if (center.routing_available === false) {
+            console.log(`Skipping route to ${center.name} - routing not available (center is full)`);
+            continue;
+          }
+
           console.log(`Calculating route from [${userLat}, ${userLng}] to center: ${center.name}`);
           await this.getRealRoute(userLat, userLng, Number(center.latitude), Number(center.longitude), this.travelMode);
         }

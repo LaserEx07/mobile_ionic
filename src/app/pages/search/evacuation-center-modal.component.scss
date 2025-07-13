@@ -70,6 +70,24 @@
       color: #ff4961;
     }
   }
+
+  &.status {
+    ion-icon {
+      color: #28a745;
+    }
+
+    &.full-status {
+      ion-icon {
+        color: #ffc107;
+      }
+    }
+
+    .full-notice {
+      color: #ffc107;
+      font-size: 13px;
+      font-style: italic;
+    }
+  }
 }
 
 .directions-button {
