@@ -3,10 +3,10 @@ export const environment = {
 
   // API Configuration for production
   // Change this to your production server's URL
-  apiUrl: 'http://192.168.110.198:8000/api',
+  apiUrl: 'http://192.168.43.188:8000/api',
 
   // Health check endpoint (automatically derived if not specified)
-  healthCheckUrl: 'http://192.168.110.198:8000/up',
+  healthCheckUrl: 'http://192.168.43.188:8000/up',
 
   // External APIs - Synchronized with WebAlerto backend
   orsApiKey: '5b3ce3597851110001cf62485d16190c4e8d4358bf96e7207454806f', // Updated OpenRouteService API key
