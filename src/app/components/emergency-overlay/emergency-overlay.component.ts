@@ -135,7 +135,8 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   /**
    * Handle dismiss button click
    */
-  async dismiss() {
+  async dismiss(event?: Event) {
+    try { event?.stopPropagation(); } catch (e) { /* ignore */ }
     console.log('🚨 Emergency Overlay: Dismiss button clicked');
     await this.dismissModal('dismiss');
   }
@@ -154,7 +155,17 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
     };
 
     console.log('🚨 Emergency Overlay: Dismiss data:', dismissData);
-    await this.modalController.dismiss(dismissData);
+    try {
+      const topModal = await this.modalController.getTop();
+      if (topModal) {
+        await topModal.dismiss(dismissData);
+        return;
+      }
+
+      await this.modalController.dismiss(dismissData);
+    } catch (error) {
+      console.error('⚠️ Emergency Overlay: Error dismissing modal', error);
+    }
   }
 
   /**

@@ -63,10 +63,10 @@
       </button>
 
       <!-- Secondary Action - Dismiss -->
-      <button class="emergency-button secondary-action"
-              (click)="dismiss()"
-              (touchstart)="dismiss()"
-              type="button">
+  <button class="emergency-button secondary-action"
+      (click)="dismiss($event)"
+      (touchstart)="dismiss($event)"
+      type="button">
         <ion-icon name="checkmark-circle" class="button-icon"></ion-icon>
         <span class="button-text">I'm Safe - Dismiss</span>
       </button>
