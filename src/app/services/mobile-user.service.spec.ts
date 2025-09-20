@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class MobileUserService {
-  private apiUrl = 'http://192.168.112.244:8000/api/mobile-users';
+  private apiUrl = `${environment.apiUrl.replace(/\/api\/?$/, '')}/api/mobile-users`;
 
   constructor(private http: HttpClient) {}
 
