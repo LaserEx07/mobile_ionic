@@ -117,8 +117,8 @@
                 📍 {{ calculateDistanceInKm(center) }} km away
               </span>
               <span class="capacity">👥 {{ center.capacity || 'N/A' }} capacity</span>
-              <span class="status" [ngClass]="{'full-status': center.routing_available === false}">
-                {{ center.routing_available === false ? '🔴 Full' : '🟢 Available' }}
+              <span class="status" [ngClass]="{'full-status': center.status === 'Full'}">
+                {{ center.status === 'Full' ? '🔴 Full' : '🟢 Available' }}
               </span>
             </div>
           </div>
