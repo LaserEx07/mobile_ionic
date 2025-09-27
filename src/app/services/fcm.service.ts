@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { NotificationDetailComponent } from '../components/notification-detail/notification-detail.component';
 import { EmergencyOverlayService, EmergencyNotification } from './emergency-overlay.service';
+import { NotificationPayloadService, HardcodedNotification } from './notification-payload.service';
 
 @Injectable({
   providedIn: 'root'
@@ -22,7 +23,8 @@ export class FCMService {
     private modalController: ModalController,
     private emergencyOverlay: EmergencyOverlayService,
     private router: Router,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private notificationPayloadService: NotificationPayloadService
   ) {}
 
   /**
@@ -117,6 +119,17 @@ export class FCMService {
         notification: event.notification,
         timestamp: new Date().toISOString()
       });
+
+      // Process notification through payload service
+      const payload = {
+        id: `fcm_${Date.now()}`,
+        title: event.notification.title || 'Notification',
+        body: event.notification.body || '',
+        data: event.notification.data || {},
+        timestamp: new Date().toISOString(),
+        source: 'fcm' as const
+      };
+      this.notificationPayloadService.processNotificationPayload(payload);
 
       // Check if this is an emergency notification
       if (this.isEmergencyNotification(event.notification)) {
@@ -846,5 +859,86 @@ export class FCMService {
       token: this.fcmToken ? this.fcmToken.substring(0, 20) + '...' : 'No token',
       timestamp: new Date().toISOString()
     };
+  }
+
+  /**
+   * Display hardcoded notification for testing
+   */
+  async displayHardcodedNotification(type: 'emergency' | 'regular' = 'regular'): Promise<void> {
+    try {
+      if (type === 'emergency') {
+        // Create hardcoded emergency notification
+        const hardcodedEmergency: HardcodedNotification = {
+          id: `emergency_${Date.now()}`,
+          title: 'Emergency Alert Test',
+          message: 'This is a test emergency notification with hardcoded content.',
+          type: 'emergency',
+          duration: 10000,
+          showToast: true,
+          showAlert: true,
+          vibrate: true
+        };
+
+        // Process through notification payload service
+        await this.notificationPayloadService.displayHardcodedNotification(hardcodedEmergency);
+        
+        // Also show emergency overlay
+        await this.emergencyOverlay.showEmergencyNotification({
+          id: `emergency_overlay_${Date.now()}`,
+          title: hardcodedEmergency.title,
+          message: hardcodedEmergency.message,
+          category: 'General',
+          severity: 'high',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        // Create hardcoded regular notification
+        const hardcodedRegular: HardcodedNotification = {
+          id: `regular_${Date.now()}`,
+          title: 'Regular Notification Test',
+          message: 'This is a test regular notification with hardcoded content.',
+          type: 'info',
+          duration: 5000,
+          showToast: true,
+          showAlert: false,
+          vibrate: false
+        };
+
+        // Process through notification payload service
+        await this.notificationPayloadService.displayHardcodedNotification(hardcodedRegular);
+        
+        // Show as local notification
+        await this.showLocalNotification({
+          title: hardcodedRegular.title,
+          body: hardcodedRegular.message,
+          data: { test: 'true' }
+        });
+      }
+
+      console.log(`✅ Hardcoded ${type} notification displayed successfully`);
+    } catch (error) {
+      console.error(`❌ Error displaying hardcoded ${type} notification:`, error);
+    }
+  }
+
+  /**
+   * Test notification system with both types
+   */
+  async testNotificationSystem(): Promise<void> {
+    try {
+      console.log('🧪 Testing notification system...');
+      
+      // Test regular notification first
+      await this.displayHardcodedNotification('regular');
+      
+      // Wait 3 seconds then test emergency notification
+      setTimeout(async () => {
+        await this.displayHardcodedNotification('emergency');
+      }, 3000);
+      
+      console.log('✅ Notification system test initiated');
+    } catch (error) {
+      console.error('❌ Error testing notification system:', error);
+    }
   }
 }

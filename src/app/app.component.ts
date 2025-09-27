@@ -5,6 +5,7 @@ import { registerIcons } from './icons';
 import { FCMService } from './services/fcm.service';
 import { EmergencyOverlayService } from './services/emergency-overlay.service';
 import { EmergencyContactsService } from './services/emergency-contacts.service';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -66,6 +67,14 @@ export class AppComponent {
       setTimeout(() => {
         this.fcmService.retryTokenRegistration();
       }, 2000); // Wait 2 seconds before retrying
+
+      // Test notification system after initialization (for development)
+      if (!environment.production) {
+        setTimeout(() => {
+          console.log('🧪 Testing notification system in development mode...');
+          this.fcmService.testNotificationSystem();
+        }, 5000); // Wait 5 seconds after FCM initialization
+      }
 
     } catch (error) {
       console.error('Error initializing FCM:', error);

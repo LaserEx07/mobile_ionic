@@ -1,0 +1,58 @@
+<ion-card>
+  <ion-card-header>
+    <ion-card-title>
+      <ion-icon name="notifications-outline"></ion-icon>
+      Notification System Test
+    </ion-card-title>
+    <ion-card-subtitle>Test both hardcoded and payload notifications</ion-card-subtitle>
+  </ion-card-header>
+
+  <ion-card-content>
+    <div class="test-buttons">
+      <!-- Regular Notification Test -->
+      <ion-button 
+        expand="block" 
+        fill="outline" 
+        color="primary"
+        (click)="testRegularNotification()">
+        <ion-icon name="information-circle-outline" slot="start"></ion-icon>
+        Test Regular Notification
+      </ion-button>
+
+      <!-- Emergency Notification Test -->
+      <ion-button 
+        expand="block" 
+        fill="outline" 
+        color="danger"
+        (click)="testEmergencyNotification()">
+        <ion-icon name="warning-outline" slot="start"></ion-icon>
+        Test Emergency Notification
+      </ion-button>
+
+      <!-- Payload Notification Test -->
+      <ion-button 
+        expand="block" 
+        fill="outline" 
+        color="secondary"
+        (click)="testPayloadNotification()">
+        <ion-icon name="cube-outline" slot="start"></ion-icon>
+        Test Payload Notification
+      </ion-button>
+
+      <!-- Complete System Test -->
+      <ion-button 
+        expand="block" 
+        fill="solid" 
+        color="success"
+        (click)="testCompleteSystem()">
+        <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
+        Test Complete System
+      </ion-button>
+    </div>
+
+    <ion-note color="medium">
+      <p><strong>Note:</strong> Check the browser console for detailed logs of notification processing.</p>
+      <p>Regular notifications will show as toast/alert, while emergency notifications will display the emergency overlay.</p>
+    </ion-note>
+  </ion-card-content>
+</ion-card>

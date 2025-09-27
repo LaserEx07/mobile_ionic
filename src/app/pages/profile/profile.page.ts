@@ -5,16 +5,18 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { NotificationTestComponent } from '../../components/notification-test/notification-test.component';
 
 @Component({
   selector: 'app-profile',
   templateUrl: './profile.page.html',
   styleUrls: ['./profile.page.scss'],
   standalone: true,
-  imports: [IonicModule, CommonModule, FormsModule, RouterModule]
+  imports: [IonicModule, CommonModule, FormsModule, RouterModule, NotificationTestComponent]
 })
 export class ProfilePage {
   userData: any = {};
+  isProduction = environment.production;
 
   constructor(
     private modalCtrl: ModalController,

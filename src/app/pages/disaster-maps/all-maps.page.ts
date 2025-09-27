@@ -1064,8 +1064,6 @@ export class AllMapsPage implements OnInit {
   }
 
   async applyFilter(filterType: string) {
-    console.log(`🎯 Applying filter: ${filterType}`);
-
     this.currentFilter = filterType;
 
     // Show loading
@@ -1123,5 +1121,31 @@ export class AllMapsPage implements OnInit {
       position: 'top'
     });
     await toast.present();
+  }
+
+  getDisasterTypeDisplay(center: EvacuationCenter | null): string {
+    if (!center || !center.disaster_type) {
+      return 'Not specified';
+    }
+    
+    // Handle both string and string[] types
+    let types: string[];
+    if (Array.isArray(center.disaster_type)) {
+      types = center.disaster_type;
+    } else {
+      types = center.disaster_type.split(',').map((type: string) => type.trim());
+    }
+    
+    if (types.length === 1) {
+      return this.capitalizeFirstLetter(types[0]);
+    } else if (types.length > 1) {
+      return types.map((type: string) => this.capitalizeFirstLetter(type)).join(', ');
+    }
+    
+    return 'Not specified';
+  }
+
+  private capitalizeFirstLetter(string: string): string {
+    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
   }
 }
