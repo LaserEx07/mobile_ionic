@@ -24,11 +24,20 @@
         <h2 class="disaster-type">{{ notification.category.toUpperCase() }}</h2>
       </div>
       
-      <!-- Countdown Timer -->
-      <div class="countdown-container" *ngIf="timeRemaining > 0">
-        <div class="countdown-circle">
+      <!-- Countdown Timer / Close Button -->
+      <div class="countdown-container">
+        <!-- Show timer when time remaining > 0 -->
+        <div class="countdown-circle" *ngIf="timeRemaining > 0">
           <span class="countdown-text">{{ getFormattedTimeRemaining() }}</span>
         </div>
+        <!-- Show close button when timer reaches 0 -->
+        <button class="close-button" 
+                *ngIf="timeRemaining <= 0"
+                (click)="dismissModal('close')"
+                (touchstart)="dismissModal('close')"
+                type="button">
+          <ion-icon name="close" class="close-icon"></ion-icon>
+        </button>
       </div>
     </div>
 

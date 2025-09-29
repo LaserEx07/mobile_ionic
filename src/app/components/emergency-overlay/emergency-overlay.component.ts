@@ -14,7 +14,7 @@ import { EmergencyNotification } from '../../services/emergency-overlay.service'
 export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   @Input() notification!: EmergencyNotification;
   
-  public timeRemaining = 30; // Auto-dismiss countdown
+  public timeRemaining = 3; // Auto-dismiss countdown
   private countdownInterval: any;
   private pulseAnimation: any;
 
@@ -39,8 +39,9 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   private startCountdown() {
     this.countdownInterval = setInterval(() => {
       this.timeRemaining--;
-      if (this.timeRemaining <= 0) {
-        this.dismissModal('timeout');
+      if (this.timeRemaining < 0) {
+        // Stop the countdown but don't auto-dismiss
+        this.clearCountdown();
       }
     }, 1000);
   }
@@ -144,7 +145,7 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   /**
    * Dismiss modal with action data
    */
-  private async dismissModal(action: string) {
+  public async dismissModal(action: string) {
     console.log(`🚨 Emergency Overlay: Dismissing modal with action: ${action}`);
     this.clearCountdown();
     this.stopPulseAnimation();
