@@ -34,7 +34,30 @@ export class NotificationDetailComponent implements OnInit {
    * Close the modal
    */
   async closeModal() {
-    await this.modalController.dismiss();
+    try {
+      console.log('🔄 Closing notification detail modal');
+      
+      // First try to dismiss normally
+      const result = await this.modalController.dismiss();
+      console.log('✅ Modal dismissed successfully:', result);
+      
+    } catch (error) {
+      console.error('❌ Error closing notification modal:', error);
+      
+      // Force close by getting the top modal
+      try {
+        console.log('🔄 Attempting force close...');
+        const topModal = await this.modalController.getTop();
+        if (topModal) {
+          await topModal.dismiss();
+          console.log('✅ Modal force closed successfully');
+        } else {
+          console.log('ℹ️ No modal found to close');
+        }
+      } catch (forceError) {
+        console.error('❌ Failed to force close modal:', forceError);
+      }
+    }
   }
 
   /**

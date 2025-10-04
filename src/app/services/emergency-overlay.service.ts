@@ -112,13 +112,6 @@ export class EmergencyOverlayService {
 
       await this.currentModal.present();
 
-      // Auto-dismiss after 30 seconds if not interacted with (safety measure)
-      setTimeout(() => {
-        if (this.currentModal && this.isShowingEmergency) {
-          this.dismissCurrentEmergency();
-        }
-      }, 30000);
-
     } catch (error) {
       console.error('Error showing emergency notification:', error);
       this.isShowingEmergency = false;

@@ -14,8 +14,8 @@ const config: CapacitorConfig = {
       'http://127.0.0.1:8000',
       'http://192.168.8.174:8000', // New API endpoint
       'http://172.30.11.217:8000', // School IP
-      'http://192.168.112.191:8000', // Home / local API
-      'http://192.168.112.191:8000', // Home / local API (duplicate for coverage)
+      'http://192.168.112.244:8000', // Home / local API
+      'http://192.168.112.244:8000', // Home / local API (duplicate for coverage)
       'http://172.30.13.185:8000', // Previous IP
       'https://*.ngrok-free.app',
       'http://*.ngrok-free.app',

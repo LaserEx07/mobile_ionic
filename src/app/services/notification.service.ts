@@ -5,7 +5,7 @@ import { environment } from '../../environments/environment';
 
 export interface AppNotification {
   id: number;
-  type: 'evacuation_center_added' | 'evacuation_center_full' | 'emergency_alert' | 'system_update' | 'general';
+  type: 'evacuation_center_added' | 'evacuation_center_available' | 'evacuation_center_full' | 'emergency_alert' | 'system_update' | 'general';
   title: string;
   message: string;
   data?: any;

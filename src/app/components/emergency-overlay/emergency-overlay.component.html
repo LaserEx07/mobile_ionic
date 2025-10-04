@@ -5,6 +5,14 @@
     
     <!-- Emergency Header -->
     <div class="emergency-header">
+      <!-- Close Button -->
+      <button class="emergency-close-button"
+              (click)="dismiss($event)"
+              type="button"
+              aria-label="Close emergency alert">
+        <ion-icon name="close" class="close-icon"></ion-icon>
+      </button>
+
       <!-- Disaster Icon -->
       <div class="disaster-icon-container">
         <img [src]="getDisasterIcon()" 
@@ -22,22 +30,6 @@
           EMERGENCY ALERT
         </h1>
         <h2 class="disaster-type">{{ notification.category.toUpperCase() }}</h2>
-      </div>
-      
-      <!-- Countdown Timer / Close Button -->
-      <div class="countdown-container">
-        <!-- Show timer when time remaining > 0 -->
-        <div class="countdown-circle" *ngIf="timeRemaining > 0">
-          <span class="countdown-text">{{ getFormattedTimeRemaining() }}</span>
-        </div>
-        <!-- Show close button when timer reaches 0 -->
-        <button class="close-button" 
-                *ngIf="timeRemaining <= 0"
-                (click)="dismissModal('close')"
-                (touchstart)="dismissModal('close')"
-                type="button">
-          <ion-icon name="close" class="close-icon"></ion-icon>
-        </button>
       </div>
     </div>
 
@@ -63,7 +55,6 @@
       <!-- Primary Action - View Map -->
       <button class="emergency-button primary-action"
               (click)="viewMap()"
-              (touchstart)="viewMap()"
               [ngClass]="getDisasterClass()"
               type="button">
         <ion-icon name="map" class="button-icon"></ion-icon>
@@ -71,11 +62,19 @@
         <ion-icon name="chevron-forward" class="button-arrow"></ion-icon>
       </button>
 
-      <!-- Secondary Action - Dismiss -->
-  <button class="emergency-button secondary-action"
-      (click)="dismiss($event)"
-      (touchstart)="dismiss($event)"
-      type="button">
+      <!-- Countdown Display (shows for 3 seconds) -->
+      <div class="countdown-display" *ngIf="!canDismiss">
+        <div class="countdown-circle">
+          <span class="countdown-text">{{ countdownTime }}</span>
+        </div>
+        <p class="countdown-message">Please wait {{ countdownTime }} seconds</p>
+      </div>
+
+      <!-- Secondary Action - Dismiss (shows after countdown) -->
+      <button class="emergency-button secondary-action"
+              *ngIf="canDismiss"
+              (click)="dismiss($event)"
+              type="button">
         <ion-icon name="checkmark-circle" class="button-icon"></ion-icon>
         <span class="button-text">I'm Safe - Dismiss</span>
       </button>

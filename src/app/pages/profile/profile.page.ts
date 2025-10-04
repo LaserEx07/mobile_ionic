@@ -6,6 +6,7 @@ import { RouterModule, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { NotificationTestComponent } from '../../components/notification-test/notification-test.component';
+import { EmergencyOverlayService } from '../../services/emergency-overlay.service';
 
 @Component({
   selector: 'app-profile',
@@ -23,7 +24,8 @@ export class ProfilePage {
     private alertCtrl: AlertController,
     private toastCtrl: ToastController,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private emergencyOverlay: EmergencyOverlayService
   ) {
     this.loadUserData();
   }
@@ -320,6 +322,8 @@ export class ProfilePage {
       }
     });
   }
+
+
 }
 
 // Terms and Conditions Modal

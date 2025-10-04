@@ -13,6 +13,7 @@
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(10px);
   animation: emergencyFadeIn 0.3s ease-out;
+  pointer-events: auto !important;
 }
 
 .emergency-alert-container {
@@ -25,68 +26,94 @@
   position: relative;
   animation: emergencySlideIn 0.5s ease-out;
   border: 4px solid;
+  pointer-events: auto !important;
 }
 
 // Emergency Header
 .emergency-header {
-  padding: 24px 20px 16px;
+  padding: 20px;
   text-align: center;
   position: relative;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: auto !important;
+}
+
+// Close Button - Enhanced visibility and styling
+.emergency-close-button {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid rgba(255, 255, 255, 1) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  z-index: 999999 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: manipulation !important;
+  outline: none !important;
+
+  .close-icon {
+    font-size: 24px !important;
+    color: #333 !important;
+    font-weight: bold !important;
+    pointer-events: none !important;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 1) !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  &:active {
+    transform: scale(0.95) !important;
+  }
 }
 
 .disaster-icon-container {
   position: relative;
-  display: inline-block;
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .disaster-icon {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   object-fit: cover;
 }
 
-.severity-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 .emergency-title-container {
-  margin-bottom: 12px;
+  flex: 1;
+  text-align: center;
 }
 
 .emergency-title {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
   color: white;
   margin: 0 0 4px 0;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.warning-icon {
-  font-size: 20px;
-  animation: warningPulse 1s infinite;
+  letter-spacing: 0.5px;
 }
 
 .disaster-type {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 900;
   color: white;
   margin: 0;
@@ -141,71 +168,16 @@
   color: #333;
 }
 
-// Emergency Message
-.emergency-message-container {
-  padding: 20px;
-  background: white;
-}
-
-.emergency-message {
-  margin-bottom: 16px;
-}
-
-.message-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 8px 0;
-}
-
-.message-content {
-  font-size: 16px;
-  line-height: 1.5;
-  color: #555;
-  margin: 0;
-}
-
-.emergency-instructions {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 16px;
-}
-
-.instructions-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  color: #856404;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.info-icon {
-  font-size: 16px;
-}
-
-.instructions-text {
-  font-size: 14px;
-  color: #856404;
-  margin: 0;
-  line-height: 1.4;
-}
-
-// Action Buttons
+// Emergency Actions Section
 .emergency-actions {
-  padding: 0 20px 20px;
-  background: white;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  position: relative;
-  z-index: 999;
-  pointer-events: auto;
+  gap: 16px;
+  background: #f8f9fa;
 }
 
+// Emergency Button Base Styles
 .emergency-button {
   width: 100%;
   padding: 16px 20px;
@@ -215,88 +187,286 @@
   font-weight: 600;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  z-index: 1000;
-  pointer-events: auto;
-  touch-action: manipulation;
+  pointer-events: auto !important;
+  user-select: none;
+  -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  outline: none;
+
+  .button-icon {
+    font-size: 20px;
+  }
+
+  .button-text {
+    flex: 1;
+    text-align: center;
+  }
+
+  .button-arrow {
+    font-size: 18px;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 }
 
+// Primary Action Button (View Map)
 .primary-action {
+  background: #007bff;
+  color: white;
+  box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
+
+  &:hover {
+    background: #0056b3;
+  }
+}
+
+// Secondary Action Button (I'm Safe - Dismiss)
+.secondary-action {
   background: #28a745;
   color: white;
   box-shadow: 0 4px 16px rgba(40, 167, 69, 0.3);
+
+  &:hover {
+    background: #1e7e34;
+  }
 }
 
-.primary-action:hover {
-  background: #218838;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+// Countdown Display
+.countdown-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
-.secondary-action {
-  background: #6c757d;
+.countdown-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.countdown-text {
+  font-size: 24px;
+  font-weight: 700;
   color: white;
-  box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
 }
 
-.secondary-action:hover {
-  background: #5a6268;
-  transform: translateY(-2px);
-}
-
-.button-icon {
-  font-size: 20px;
-}
-
-.button-text {
-  flex: 1;
+.countdown-message {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
   text-align: center;
-  margin: 0 12px;
-}
-
-.button-arrow {
-  font-size: 18px;
+  margin: 0;
 }
 
 // Emergency Footer
 .emergency-footer {
   padding: 16px 20px;
   background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .timestamp {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 12px;
   color: #666;
-  justify-content: center;
-}
 
-.time-icon {
-  font-size: 14px;
+  .time-icon {
+    font-size: 14px;
+  }
 }
 
 .critical-indicator {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  margin-top: 8px;
-  padding: 8px 16px;
+  color: #dc3545;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.critical-text {
+  animation: criticalBlink 1s infinite;
+}
+
+@keyframes criticalBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.5; }
+}
+
+// Emergency Message Container
+.emergency-message-container {
+  padding: 20px;
+  background: white;
+}
+
+.emergency-message {
+  margin-bottom: 20px;
+}
+
+.message-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+.message-content {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #555;
+  margin: 0;
+}
+
+// Emergency Instructions
+.emergency-instructions {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.instructions-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #856404;
+  margin-bottom: 8px;
+
+  .info-icon {
+    font-size: 18px;
+  }
+}
+
+.instructions-text {
+  font-size: 14px;
+  color: #856404;
+  margin: 0;
+  line-height: 1.4;
+}
+
+// Severity Badge
+.severity-badge {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
   background: #dc3545;
   color: white;
-  border-radius: 20px;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  border: 2px solid white;
+}
+
+// Warning Icon Animation
+.warning-icon {
+  animation: warningPulse 1.5s infinite;
+  margin-right: 8px;
+}
+
+@keyframes warningPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+
+// Emergency Content
+.emergency-content {
+  padding: 0;
+  background: white;
+}
+
+.content-row {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.title-row {
+  .row-label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 8px;
+  }
+
+  .urgent-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  .urgent-message {
+    font-size: 16px;
+    line-height: 1.4;
+    color: #555;
+  }
+}
+
+.priority-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .row-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    min-width: 70px;
+  }
+
+  .priority-content {
+    font-size: 16px;
+    font-weight: 600;
+    color: #dc3545;
+  }
+}
+
+.tips-row {
+  background: #f8f9fa;
+
+  .safety-tips {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #495057;
+    font-weight: 500;
+  }
 }
 
 .critical-pulse {
@@ -340,6 +510,12 @@
   .primary-action:hover {
     background: #FF7700;
   }
+  // Ensure exit button is visible on earthquake background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
 }
 
 .disaster-flood {
@@ -356,6 +532,12 @@
   }
   .primary-action:hover {
     background: #0052A3;
+  }
+  // Ensure exit button is visible on flood background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
   }
 }
 
@@ -374,6 +556,12 @@
   .primary-action:hover {
     background: #1F7A1F;
   }
+  // Ensure exit button is visible on typhoon background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
 }
 
 .disaster-fire {
@@ -390,6 +578,12 @@
   }
   .primary-action:hover {
     background: #B91C3C;
+  }
+  // Ensure exit button is visible on fire background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
   }
 }
 
@@ -408,6 +602,12 @@
   .primary-action:hover {
     background: #654321;
   }
+  // Ensure exit button is visible on landslide background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
 }
 
 .disaster-general {
@@ -424,6 +624,90 @@
   }
   .primary-action:hover {
     background: #555555;
+  }
+  // Ensure exit button is visible on general background
+  .emergency-exit-button {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(255, 255, 255, 1) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5) !important;
+  }
+}
+
+// Universal exit button visibility override for all disaster types
+.emergency-alert-container {
+  .emergency-exit-button {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 44px !important;
+    height: 44px !important;
+    background: #ffffff !important;
+    border: 3px solid #ffffff !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+    z-index: 999999 !important; // Increased z-index
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+    touch-action: manipulation !important;
+    align-items: center !important;
+    justify-content: center !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+
+    // Ensure button is always on top and clickable
+    &:before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      z-index: -1;
+      pointer-events: auto;
+    }
+
+    .exit-icon {
+      color: #333333 !important;
+      font-size: 26px !important;
+      font-weight: 900 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
+
+    .exit-x-icon {
+      color: #333333 !important;
+      font-size: 28px !important;
+      font-weight: 900 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      font-family: Arial, sans-serif !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    // Enhanced hover and active states
+    &:hover {
+      background: #f0f0f0 !important;
+      transform: scale(1.05) !important;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.9) !important;
+    }
+
+    &:active {
+      background: #e0e0e0 !important;
+      transform: scale(0.98) !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6) !important;
+    }
   }
 }
 

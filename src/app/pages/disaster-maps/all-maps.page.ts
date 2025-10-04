@@ -61,6 +61,7 @@ export class AllMapsPage implements OnInit {
 
   // All centers panel properties
   public showAllCentersPanel = false;
+  public showDisasterSidebar = false;
 
   // Filter panel properties
   public showFilterPanel = false;
@@ -972,9 +973,9 @@ export class AllMapsPage implements OnInit {
 
   ionViewWillLeave() {
     this.clearRoutes();
-    // Stop real-time navigation if active
+    // Clean up any active navigation
     if (this.isRealTimeNavigationActive) {
-      this.osmRouting.stopRealTimeRouting();
+      this.isRealTimeNavigationActive = false;
     }
     if (this.map) {
       this.map.remove();
@@ -1025,7 +1026,7 @@ export class AllMapsPage implements OnInit {
     this.clearNavigationRoute();
 
     if (route.geometry && route.geometry.coordinates) {
-      const routeGeoJSON = this.osmRouting.convertToGeoJSON(route);
+      const routeGeoJSON = this.mapboxRouting.convertToGeoJSON(route);
 
       const navigationRoute = L.geoJSON(routeGeoJSON, {
         style: {
@@ -1147,5 +1148,32 @@ export class AllMapsPage implements OnInit {
 
   private capitalizeFirstLetter(string: string): string {
     return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+  }
+
+  /**
+   * Toggle sidebar visibility
+   */
+  toggleSidebar() {
+    this.showAllCentersPanel = !this.showAllCentersPanel;
+    console.log('🗺️ ALL MAPS: Toggled sidebar, now:', this.showAllCentersPanel);
+  }
+
+  /**
+   * Close sidebar
+   */
+  closeSidebar() {
+    this.showAllCentersPanel = false;
+    this.showFilterPanel = false;
+    console.log('🗺️ ALL MAPS: Closed sidebar');
+  }
+
+  /**
+   * Exit current view
+   */
+  exitCurrentView() {
+    this.selectedCenter = null;
+    this.showAllCentersPanel = false;
+    this.showFilterPanel = false;
+    console.log('🗺️ ALL MAPS: Exited current view');
   }
 }

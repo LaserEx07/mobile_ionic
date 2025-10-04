@@ -117,8 +117,8 @@
                 📍 {{ calculateDistanceInKm(center) }} km away
               </span>
               <span class="capacity">👥 {{ center.capacity || 'N/A' }} capacity</span>
-              <span class="status" [ngClass]="{'full-status': center.routing_available === false}">
-                {{ center.routing_available === false ? '🔴 Full' : '🟢 Available' }}
+              <span class="status" [ngClass]="{'full-status': center.status === 'Full'}">
+                {{ center.status === 'Full' ? '🔴 Full' : '🟢 Available' }}
               </span>
             </div>
           </div>
@@ -264,6 +264,79 @@
        (click)="closeFilterPanel()">
   </div>
 
+  <!-- Disaster Details Sidebar (slides from left) -->
+  <div class="disaster-sidebar" [class.show]="selectedCenter && showDisasterSidebar">
+    <div class="sidebar-content">
+      <!-- Sidebar Header -->
+      <div class="sidebar-header">
+        <div class="sidebar-title">
+          <ion-icon name="information-circle-outline" color="primary"></ion-icon>
+          <span>Disaster Information</span>
+        </div>
+        <ion-button fill="clear" size="small" (click)="closeSidebar()">
+          <ion-icon name="close-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+      <!-- Disaster Details Content -->
+      <div class="disaster-details" *ngIf="selectedCenter">
+        <div class="disaster-info">
+          <div class="info-item">
+            <div class="info-label">
+              <ion-icon name="alert-circle-outline"></ion-icon>
+              <strong>Disaster Type:</strong>
+            </div>
+            <div class="info-value">{{ getDisasterTypeDisplay(selectedCenter) }}</div>
+          </div>
+          
+          <div class="info-item" *ngIf="userLocation">
+            <div class="info-label">
+              <ion-icon name="location-outline"></ion-icon>
+              <strong>Distance:</strong>
+            </div>
+            <div class="info-value">{{ calculateDistanceInKm(selectedCenter) }} km</div>
+          </div>
+          
+          <div class="info-item" *ngIf="selectedCenter.capacity">
+            <div class="info-label">
+              <ion-icon name="people-outline"></ion-icon>
+              <strong>Capacity:</strong>
+            </div>
+            <div class="info-value">{{ selectedCenter.capacity }} people</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">
+              <ion-icon name="business-outline"></ion-icon>
+              <strong>Center Name:</strong>
+            </div>
+            <div class="info-value">{{ selectedCenter.name }}</div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">
+              <ion-icon name="map-outline"></ion-icon>
+              <strong>Address:</strong>
+            </div>
+            <div class="info-value">{{ selectedCenter.address }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exit Button (floating) -->
+  <div class="exit-button" *ngIf="selectedCenter || showAllCentersPanel || showFilterPanel">
+    <ion-button 
+      fill="solid" 
+      color="danger" 
+      size="small"
+      (click)="exitCurrentView()">
+      <ion-icon name="close-outline"></ion-icon>
+      Exit
+    </ion-button>
+  </div>
+
   <!-- Navigation Panel (slides from right) -->
   <div class="navigation-panel" [class.show]="selectedCenter">
     <div class="panel-content">
@@ -273,28 +346,13 @@
           <h3>{{ selectedCenter.name }}</h3>
           <p>{{ selectedCenter.address }}</p>
         </div>
-        <ion-button fill="clear" size="small" (click)="closeNavigationPanel()">
-          <ion-icon name="close-outline"></ion-icon>
-        </ion-button>
-      </div>
-
-      <!-- Disaster Details Section -->
-      <div class="disaster-details" *ngIf="selectedCenter">
-        <div class="disaster-header">
-          <ion-icon name="information-circle-outline" color="medium"></ion-icon>
-          <span>Disaster Information</span>
-        </div>
-        <div class="disaster-info">
-          <div class="disaster-type">
-            <strong>Type:</strong>
-            <span>{{ getDisasterTypeDisplay(selectedCenter) }}</span>
-          </div>
-          <div class="disaster-distance" *ngIf="userLocation">
-            <strong>Distance:</strong> {{ calculateDistanceInKm(selectedCenter) }} km
-          </div>
-          <div class="disaster-capacity" *ngIf="selectedCenter.capacity">
-            <strong>Capacity:</strong> {{ selectedCenter.capacity }}
-          </div>
+        <div class="header-actions">
+          <ion-button fill="clear" size="small" (click)="toggleSidebar()" *ngIf="selectedCenter">
+            <ion-icon name="information-circle-outline"></ion-icon>
+          </ion-button>
+          <ion-button fill="clear" size="small" (click)="closeNavigationPanel()">
+            <ion-icon name="close-outline"></ion-icon>
+          </ion-button>
         </div>
       </div>
 

@@ -14,33 +14,91 @@ import { EmergencyNotification } from '../../services/emergency-overlay.service'
 export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   @Input() notification!: EmergencyNotification;
   
-  public timeRemaining = 3; // Auto-dismiss countdown
-  private countdownInterval: any;
   private pulseAnimation: any;
+  public canDismiss: boolean = false;
+  public countdownTime: number = 3;
+  public timeRemaining: number = 0;
+  private countdownInterval: any;
+  private isDestroyed: boolean = false;
 
   constructor(
     private modalController: ModalController,
     private animationController: AnimationController
-  ) {}
+  ) {
+    console.log('🚨 Emergency Overlay: Component constructor called');
+  }
 
   ngOnInit() {
-    this.startCountdown();
+    console.log('🚨 Emergency Overlay: Component initialized with notification:', this.notification);
     this.startPulseAnimation();
+    this.startCountdown();
   }
 
   ngOnDestroy() {
-    this.clearCountdown();
+    console.log('🚨 Emergency Overlay: Component destroying');
+    this.isDestroyed = true;
     this.stopPulseAnimation();
+    this.clearCountdown();
   }
 
   /**
-   * Start countdown timer for auto-dismiss
+   * Start pulse animation for emergency effect
+   */
+  private startPulseAnimation() {
+    // Delay animation start to avoid interference with initial rendering
+    setTimeout(() => {
+      const alertElement = document.querySelector('.emergency-alert-container');
+      if (alertElement && !this.pulseAnimation) {
+        this.pulseAnimation = this.animationController
+          .create()
+          .addElement(alertElement)
+          .duration(2000) // Slower animation to reduce interference
+          .iterations(Infinity)
+          .keyframes([
+            { offset: 0, transform: 'scale(1)', opacity: '1' },
+            { offset: 0.5, transform: 'scale(1.01)', opacity: '0.95' }, // Reduced scale
+            { offset: 1, transform: 'scale(1)', opacity: '1' }
+          ]);
+        
+        this.pulseAnimation.play();
+        console.log('🚨 Emergency Overlay: Pulse animation started');
+      }
+    }, 500);
+  }
+
+  /**
+   * Stop pulse animation
+   */
+  private stopPulseAnimation() {
+    if (this.pulseAnimation) {
+      this.pulseAnimation.stop();
+      this.pulseAnimation = null;
+    }
+  }
+
+  /**
+   * Start countdown timer (3 seconds like ads)
    */
   private startCountdown() {
+    console.log('🚨 Emergency Overlay: Starting countdown timer');
+    this.canDismiss = false;
+    this.countdownTime = 3;
+    this.timeRemaining = this.countdownTime;
+    
     this.countdownInterval = setInterval(() => {
-      this.timeRemaining--;
-      if (this.timeRemaining < 0) {
-        // Stop the countdown but don't auto-dismiss
+      if (this.isDestroyed) {
+        console.log('🚨 Emergency Overlay: Component destroyed, stopping countdown');
+        this.clearCountdown();
+        return;
+      }
+      
+      this.countdownTime--;
+      this.timeRemaining = this.countdownTime;
+      console.log(`🚨 Emergency Overlay: Countdown: ${this.countdownTime} seconds remaining`);
+      
+      if (this.countdownTime <= 0) {
+        this.canDismiss = true;
+        console.log('🚨 Emergency Overlay: Countdown complete, dismiss button now available');
         this.clearCountdown();
       }
     }, 1000);
@@ -51,39 +109,9 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
    */
   private clearCountdown() {
     if (this.countdownInterval) {
+      console.log('🚨 Emergency Overlay: Clearing countdown timer');
       clearInterval(this.countdownInterval);
       this.countdownInterval = null;
-    }
-  }
-
-  /**
-   * Start pulse animation for emergency effect
-   */
-  private startPulseAnimation() {
-    const alertElement = document.querySelector('.emergency-alert-container');
-    if (alertElement) {
-      this.pulseAnimation = this.animationController
-        .create()
-        .addElement(alertElement)
-        .duration(1000)
-        .iterations(Infinity)
-        .keyframes([
-          { offset: 0, transform: 'scale(1)', opacity: '1' },
-          { offset: 0.5, transform: 'scale(1.02)', opacity: '0.9' },
-          { offset: 1, transform: 'scale(1)', opacity: '1' }
-        ]);
-      
-      this.pulseAnimation.play();
-    }
-  }
-
-  /**
-   * Stop pulse animation
-   */
-  private stopPulseAnimation() {
-    if (this.pulseAnimation) {
-      this.pulseAnimation.stop();
-      this.pulseAnimation = null;
     }
   }
 
@@ -119,36 +147,45 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Format time remaining for display
-   */
-  getFormattedTimeRemaining(): string {
-    return `${this.timeRemaining}s`;
-  }
-
-  /**
    * Handle view map button click
    */
   async viewMap() {
     console.log('🚨 Emergency Overlay: View Map button clicked for', this.notification.category);
+    
+    // Stop animation during interaction
+    this.stopPulseAnimation();
+    
     await this.dismissModal('view_map');
   }
 
   /**
-   * Handle dismiss button click
+   * Handle dismiss button click - allows immediate dismissal
    */
   async dismiss(event?: Event) {
-    try { event?.stopPropagation(); } catch (e) { /* ignore */ }
     console.log('🚨 Emergency Overlay: Dismiss button clicked');
+    
+    // Stop event propagation
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
+    
+    // Stop animation during interaction
+    this.stopPulseAnimation();
+    
     await this.dismissModal('dismiss');
   }
 
   /**
    * Dismiss modal with action data
    */
-  public async dismissModal(action: string) {
+  private async dismissModal(action: string) {
     console.log(`🚨 Emergency Overlay: Dismissing modal with action: ${action}`);
-    this.clearCountdown();
+    
+    // Stop all animations and cleanup
     this.stopPulseAnimation();
+    this.clearCountdown();
 
     const dismissData = {
       action: action,
@@ -156,16 +193,24 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
     };
 
     console.log('🚨 Emergency Overlay: Dismiss data:', dismissData);
+    
     try {
-      const topModal = await this.modalController.getTop();
-      if (topModal) {
-        await topModal.dismiss(dismissData);
-        return;
-      }
-
+      // Use a more reliable dismissal approach
       await this.modalController.dismiss(dismissData);
+      console.log('🚨 Emergency Overlay: Modal dismissed successfully');
     } catch (error) {
       console.error('⚠️ Emergency Overlay: Error dismissing modal', error);
+      
+      // Fallback: try to get and dismiss the top modal
+      try {
+        const topModal = await this.modalController.getTop();
+        if (topModal) {
+          await topModal.dismiss(dismissData);
+          console.log('🚨 Emergency Overlay: Top modal dismissed as fallback');
+        }
+      } catch (fallbackError) {
+        console.error('⚠️ Emergency Overlay: Fallback dismissal also failed', fallbackError);
+      }
     }
   }
 
@@ -195,6 +240,16 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
    */
   getActionButtonText(): string {
     return `View ${this.notification.category} Map & Routes`;
+  }
+
+  /**
+   * Get formatted time remaining for countdown
+   */
+  getFormattedTimeRemaining(): string {
+    const seconds = Math.max(this.timeRemaining, 0);
+    const minutes = Math.floor(seconds / 60);
+    const rem = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${rem.toString().padStart(2, '0')}`;
   }
 
   /**

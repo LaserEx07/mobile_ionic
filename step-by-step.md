@@ -6,7 +6,7 @@ to build -
 
 to run php 
 cd webalerto
-C:\Users\User\PHP\php\php.exe artisan serve --host= 192.168.112.191 --port=8000
+C:\Users\User\PHP\php\php.exe artisan serve --host= 192.168.112.244 --port=8000
 
 wala man koy makita nga revisions man. naglibog ako...
 basin pwedi ra nga from the start? since naa raman sad ning trae. 
@@ -15,7 +15,7 @@ prompt lang unya test
 
 ang paglogin sa ila jincent kay 
 cd webalerto
-C:\Users\User\PHP\php\php.exe artisan serve --host= 192.168.112.191 --port=8000
+C:\Users\User\PHP\php\php.exe artisan serve --host= 192.168.112.244 --port=8000
 
 tapos login gamit ani nga acc
 username:junrelberceroejurango@gmail.com

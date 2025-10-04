@@ -131,12 +131,18 @@ export class FCMService {
       };
       this.notificationPayloadService.processNotificationPayload(payload);
 
-      // Check if this is an emergency notification
-      if (this.isEmergencyNotification(event.notification)) {
-        this.handleEmergencyNotification(event.notification);
-      } else {
-        // For regular foreground messages, show local notification
-        this.showLocalNotification(event.notification);
+        // Evacuation center notifications (full / available)
+        if (this.isEvacuationNotification(event.notification)) {
+          this.handleEvacuationNotification(event.notification);
+          return;
+        }
+
+        // Check if this is an emergency notification
+        if (this.isEmergencyNotification(event.notification)) {
+          this.handleEmergencyNotification(event.notification);
+        } else {
+          // For regular foreground messages, show local notification
+          this.showLocalNotification(event.notification);
       }
     });
 
@@ -181,6 +187,101 @@ export class FCMService {
            severity === 'critical' ||
            data.emergency === 'true' ||
            data.emergency === true;
+  }
+
+  /**
+   * Check if notification is an evacuation center notification
+   */
+  private isEvacuationNotification(notification: any): boolean {
+    const data = notification.data || {};
+    const type = (data.type || data.category || '').toLowerCase();
+    const category = (data.category || '').toLowerCase();
+
+    console.log('🔍 Checking evacuation notification:', {
+      notification,
+      data,
+      type,
+      category,
+      isEvacuation: type === 'evacuation_center_full' || type === 'evacuation_center_available' ||
+                   type === 'evacuation_center' || type === 'evacuation' ||
+                   category === 'evacuation_center_full' || category === 'evacuation_center_available'
+    });
+
+    return type === 'evacuation_center_full' || type === 'evacuation_center_available' ||
+           type === 'evacuation_center' || type === 'evacuation' ||
+           category === 'evacuation_center_full' || category === 'evacuation_center_available';
+  }
+
+  /**
+   * Handle evacuation center notifications (full / available)
+   */
+  private async handleEvacuationNotification(notification: any): Promise<void> {
+    try {
+      console.log('🏁 Evacuation notification received:', notification);
+
+      // Extract data from notification
+      const data = notification.data || {};
+      const type = (data.type || data.category || '').toLowerCase();
+      const category = (data.category || '').toLowerCase();
+      const centerName = data.center_name || data.centerName || 'Evacuation Center';
+      const barangay = data.barangay || 'your area';
+      const centerId = data.center_id || data.evacuation_center_id;
+      
+      // Determine notification type
+      const isFull = type === 'evacuation_center_full' || category === 'evacuation_center_full';
+      const isAvailable = type === 'evacuation_center_available' || category === 'evacuation_center_available';
+      
+      // First, show as local notification for consistency
+      await this.showLocalNotification({
+        title: isFull ? `${centerName} is Full` : isAvailable ? `${centerName} Available` : `New Evacuation Center: ${centerName}`,
+        body: isFull ? `This evacuation center in ${barangay} is now full. Please find alternative centers.` :
+              isAvailable ? `This evacuation center in ${barangay} is now available.` :
+              `New evacuation center added in ${barangay}.`,
+        data: {
+          ...data,
+          type: isFull ? 'evacuation_center_full' : isAvailable ? 'evacuation_center_available' : 'evacuation_center_added',
+          center_id: centerId,
+          center_name: centerName,
+          barangay: barangay
+        }
+      });
+
+      // Then show specific toast for evacuation center status
+      const toast = await this.toastController.create({
+        message: isFull ? `${centerName} is now full. Please find alternative shelter.` :
+                isAvailable ? `${centerName} is now available for evacuation.` :
+                `New evacuation center: ${centerName}`,
+        duration: isFull ? 5000 : 4000,
+        color: isFull ? 'warning' : isAvailable ? 'success' : 'primary',
+        position: 'top',
+        buttons: [
+          {
+            text: isFull ? 'Find Others' : 'View',
+            handler: () => {
+              // Navigate to map with specific center highlighted
+              this.router.navigate(['/tabs/typhoon-map'], {
+                queryParams: {
+                  centerId: centerId,
+                  highlight: true,
+                  showStatus: true
+                }
+              });
+            }
+          },
+          {
+            text: 'Dismiss',
+            role: 'cancel'
+          }
+        ]
+      });
+      await toast.present();
+
+      console.log('✅ Evacuation notification handled successfully');
+    } catch (error) {
+      console.error('❌ Error handling evacuation notification:', error);
+      // Fallback to regular notification
+      await this.showLocalNotification(notification);
+    }
   }
 
   /**
@@ -662,6 +763,20 @@ export class FCMService {
    */
   private async showNotificationDetail(data: any): Promise<void> {
     try {
+      // Check if there's already a modal open and dismiss it first
+      const existingModal = await this.modalController.getTop();
+      if (existingModal) {
+        console.log('🔄 Dismissing existing modal before showing notification detail');
+        await existingModal.dismiss();
+      }
+
+      // Dismiss any active toasts to prevent interference
+      const activeToast = await this.toastController.getTop();
+      if (activeToast) {
+        console.log('🔄 Dismissing active toast before showing modal');
+        await activeToast.dismiss();
+      }
+
       const modal = await this.modalController.create({
         component: NotificationDetailComponent,
         componentProps: {
@@ -677,10 +792,21 @@ export class FCMService {
             notification_id: data.notification_id || ''
           }
         },
-        cssClass: 'notification-detail-modal'
+        cssClass: 'notification-detail-modal',
+        backdropDismiss: true, // Allow dismissing by tapping backdrop
+        keyboardClose: false, // Prevent accidental dismissal
+        showBackdrop: true // Ensure backdrop is visible
       });
 
+      // Store modal reference for proper cleanup
+      console.log('📱 Presenting notification detail modal');
       await modal.present();
+
+      // Handle modal dismissal
+      modal.onDidDismiss().then((result) => {
+        console.log('📱 Notification modal dismissed:', result);
+      });
+
     } catch (error) {
       console.error('Error showing notification detail:', error);
     }
