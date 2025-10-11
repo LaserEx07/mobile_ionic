@@ -111,7 +111,7 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get disaster type color class
+   * Get disaster-specific color class
    */
   getDisasterClass(): string {
     return `disaster-${this.notification.category.toLowerCase()}`;

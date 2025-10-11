@@ -5,6 +5,8 @@ import { registerIcons } from './icons';
 import { FCMService } from './services/fcm.service';
 import { EmergencyOverlayService } from './services/emergency-overlay.service';
 import { EmergencyContactsService } from './services/emergency-contacts.service';
+import { NotificationBannerService } from './services/notification-banner.service';
+import { NotificationBannerComponent } from './components/notification-banner/notification-banner.component';
 import { environment } from '../environments/environment';
 
 @Component({
@@ -12,14 +14,15 @@ import { environment } from '../environments/environment';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
   standalone: true,
-  imports: [IonApp, IonRouterOutlet]
+  imports: [IonApp, IonRouterOutlet, NotificationBannerComponent]
 })
 export class AppComponent {
   constructor(
     private platform: Platform,
     private fcmService: FCMService,
     private emergencyOverlay: EmergencyOverlayService,
-    private emergencyContacts: EmergencyContactsService
+    private emergencyContacts: EmergencyContactsService,
+    private notificationBanner: NotificationBannerService
   ) {
     // Register all Ionicons used in the app
     try {

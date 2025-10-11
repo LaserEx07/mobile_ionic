@@ -1,0 +1,212 @@
+.notification-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: var(--ion-color-light);
+  border-bottom: 1px solid var(--ion-color-light-shade);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease-out;
+  
+  .banner-content {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 12px;
+    
+    .alert-icon {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.2);
+      
+      ion-icon {
+        font-size: 18px;
+        color: white;
+      }
+    }
+    
+    .alert-info {
+      flex: 1;
+      min-width: 0;
+      
+      .alert-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: white;
+        margin-bottom: 2px;
+      }
+      
+      .alert-message {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.9);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 2px;
+      }
+      
+      .alert-time {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+    
+    .alert-actions {
+      display: flex;
+      gap: 4px;
+      
+      ion-button {
+        --color: rgba(255, 255, 255, 0.8);
+        --padding-start: 8px;
+        --padding-end: 8px;
+        height: 32px;
+        
+        &:hover {
+          --color: white;
+        }
+        
+        ion-icon {
+          font-size: 16px;
+        }
+      }
+      
+      .view-btn {
+        --background-hover: rgba(255, 255, 255, 0.1);
+      }
+      
+      .dismiss-btn {
+        --background-hover: rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+  
+  .severity-indicator {
+    height: 3px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+// Severity-based styling
+.notification-banner.severity-low {
+  background: linear-gradient(135deg, #4caf50, #66bb6a);
+  
+  .severity-indicator {
+    background: #2e7d32;
+  }
+}
+
+.notification-banner.severity-medium {
+  background: linear-gradient(135deg, #ff9800, #ffb74d);
+  
+  .severity-indicator {
+    background: #f57c00;
+  }
+}
+
+.notification-banner.severity-high {
+  background: linear-gradient(135deg, #f44336, #ef5350);
+  
+  .severity-indicator {
+    background: #c62828;
+  }
+}
+
+.notification-banner.severity-critical {
+  background: linear-gradient(135deg, #d32f2f, #f44336);
+  animation: slideDown 0.3s ease-out, pulse 2s infinite;
+  
+  .severity-indicator {
+    background: #b71c1c;
+    animation: criticalPulse 1s infinite;
+  }
+  
+  .alert-icon {
+    animation: shake 0.5s infinite;
+  }
+}
+
+// Animations
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(211, 47, 47, 0.3);
+  }
+}
+
+@keyframes criticalPulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+// Responsive adjustments
+@media (max-width: 480px) {
+  .notification-banner {
+    .banner-content {
+      padding: 10px 12px;
+      gap: 10px;
+      
+      .alert-icon {
+        width: 28px;
+        height: 28px;
+        
+        ion-icon {
+          font-size: 16px;
+        }
+      }
+      
+      .alert-info {
+        .alert-title {
+          font-size: 13px;
+        }
+        
+        .alert-message {
+          font-size: 11px;
+        }
+        
+        .alert-time {
+          font-size: 10px;
+        }
+      }
+      
+      .alert-actions {
+        ion-button {
+          height: 28px;
+          
+          ion-icon {
+            font-size: 14px;
+          }
+        }
+      }
+    }
+  }
+}

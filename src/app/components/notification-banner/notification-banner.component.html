@@ -1,0 +1,37 @@
+<div class="notification-banner" *ngIf="activeAlert" [ngClass]="getSeverityClass()">
+  <div class="banner-content">
+    <!-- Alert Icon -->
+    <div class="alert-icon">
+      <ion-icon [name]="getCategoryIcon()"></ion-icon>
+    </div>
+    
+    <!-- Alert Info -->
+    <div class="alert-info">
+      <div class="alert-title">{{ activeAlert.category }} Alert</div>
+      <div class="alert-message">{{ activeAlert.title }}</div>
+      <div class="alert-time">{{ getTimeSince() }}</div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="alert-actions">
+      <ion-button 
+        fill="clear" 
+        size="small" 
+        (click)="viewAlert()"
+        class="view-btn">
+        <ion-icon name="eye" slot="icon-only"></ion-icon>
+      </ion-button>
+      
+      <ion-button 
+        fill="clear" 
+        size="small" 
+        (click)="dismissAlert()"
+        class="dismiss-btn">
+        <ion-icon name="close" slot="icon-only"></ion-icon>
+      </ion-button>
+    </div>
+  </div>
+  
+  <!-- Severity Indicator -->
+  <div class="severity-indicator"></div>
+</div>

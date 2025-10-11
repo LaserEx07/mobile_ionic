@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FCM Complete Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.success {
+            background: #28a745;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .token-display {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .emergency-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 0, 0, 0.9);
+            display: none;
+            z-index: 99999;
+            cursor: pointer;
+        }
+        .emergency-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border: 3px solid red;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            cursor: default;
+        }
+        .emergency-title {
+            color: red;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .emergency-message {
+            font-size: 18px;
+            margin-bottom: 30px;
+            color: black;
+            line-height: 1.5;
+        }
+        .emergency-close-btn {
+            background: red;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            min-width: 150px;
+        }
+        .emergency-close-btn:hover {
+            background: darkred;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔥 FCM Complete Debug Tool</h1>
+    
+    <div class="grid">
+        <div class="container">
+            <h2>🔧 System Status</h2>
+            <div id="systemStatus"></div>
+            <button class="button" onclick="checkSystemStatus()">Check System Status</button>
+            <button class="button" onclick="checkPermissions()">Check Permissions</button>
+            <button class="button" onclick="checkServiceWorker()">Check Service Worker</button>
+        </div>
+        
+        <div class="container">
+            <h2>🎯 FCM Operations</h2>
+            <button class="button" onclick="initializeFCM()">Initialize FCM</button>
+            <button class="button" onclick="getFCMToken()">Get FCM Token</button>
+            <button class="button" onclick="registerToken()">Register Token with Backend</button>
+            <button class="button warning" onclick="testEmergencyModal()">Test Emergency Modal</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>🔑 FCM Token</h2>
+        <div id="tokenDisplay" class="token-display">No token generated yet</div>
+    </div>
+    
+    <div class="container">
+        <h2>📋 Debug Logs</h2>
+        <button class="button" onclick="clearLogs()">Clear Logs</button>
+        <button class="button" onclick="exportLogs()">Export Logs</button>
+        <div id="debugLogs" class="log-area"></div>
+    </div>
+
+    <!-- Emergency Modal -->
+    <div id="emergencyModal" class="emergency-modal" onclick="closeEmergencyModal()">
+        <div class="emergency-content" onclick="event.stopPropagation()">
+            <div class="emergency-title">🚨 EMERGENCY ALERT</div>
+            <div id="emergencyMessage" class="emergency-message">
+                This is a test emergency notification!
+            </div>
+            <button class="emergency-close-btn" onclick="closeEmergencyModal()">OK - CLOSE ALERT</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging.js';
+
+        // Firebase configuration (from environment)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "448618578101",
+            appId: "1:448618578101:web:4dcfadf922a53cd8b1aa91"
+        };
+
+        let app;
+        let messaging;
+        let currentToken = null;
+
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logArea = document.getElementById('debugLogs');
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logArea.textContent += logEntry;
+            logArea.scrollTop = logArea.scrollHeight;
+            
+            // Also log to browser console
+            console.log(`FCM Debug: ${message}`);
+        }
+
+        // System status check
+        window.checkSystemStatus = function() {
+            log('=== SYSTEM STATUS CHECK ===');
+            const statusDiv = document.getElementById('systemStatus');
+            let statusHTML = '';
+
+            // Check if running in secure context
+            if (location.protocol === 'https:' || location.hostname === 'localhost') {
+                statusHTML += '<div class="status success">✅ Secure Context: Available</div>';
+                log('Secure context: Available');
+            } else {
+                statusHTML += '<div class="status error">❌ Secure Context: Not available (HTTPS required)</div>';
+                log('Secure context: Not available', 'error');
+            }
+
+            // Check if service workers are supported
+            if ('serviceWorker' in navigator) {
+                statusHTML += '<div class="status success">✅ Service Workers: Supported</div>';
+                log('Service Workers: Supported');
+            } else {
+                statusHTML += '<div class="status error">❌ Service Workers: Not supported</div>';
+                log('Service Workers: Not supported', 'error');
+            }
+
+            // Check if notifications are supported
+            if ('Notification' in window) {
+                statusHTML += '<div class="status success">✅ Notifications API: Supported</div>';
+                log('Notifications API: Supported');
+            } else {
+                statusHTML += '<div class="status error">❌ Notifications API: Not supported</div>';
+                log('Notifications API: Not supported', 'error');
+            }
+
+            // Check if Push API is supported
+            if ('PushManager' in window) {
+                statusHTML += '<div class="status success">✅ Push API: Supported</div>';
+                log('Push API: Supported');
+            } else {
+                statusHTML += '<div class="status error">❌ Push API: Not supported</div>';
+                log('Push API: Not supported', 'error');
+            }
+
+            statusDiv.innerHTML = statusHTML;
+        };
+
+        // Check permissions
+        window.checkPermissions = function() {
+            log('=== PERMISSION CHECK ===');
+            
+            if ('Notification' in window) {
+                const permission = Notification.permission;
+                log(`Current notification permission: ${permission}`);
+                
+                const statusDiv = document.getElementById('systemStatus');
+                let permissionHTML = '';
+                
+                if (permission === 'granted') {
+                    permissionHTML = '<div class="status success">✅ Notification Permission: Granted</div>';
+                } else if (permission === 'denied') {
+                    permissionHTML = '<div class="status error">❌ Notification Permission: Denied</div>';
+                } else {
+                    permissionHTML = '<div class="status warning">⚠️ Notification Permission: Not requested</div>';
+                }
+                
+                statusDiv.innerHTML += permissionHTML;
+                
+                if (permission !== 'granted') {
+                    log('Requesting notification permission...');
+                    Notification.requestPermission().then(result => {
+                        log(`Permission request result: ${result}`);
+                        if (result === 'granted') {
+                            log('Permission granted! You can now receive notifications.');
+                        } else {
+                            log('Permission denied. Notifications will not work.', 'error');
+                        }
+                    });
+                }
+            }
+        };
+
+        // Check service worker
+        window.checkServiceWorker = function() {
+            log('=== SERVICE WORKER CHECK ===');
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    log(`Found ${registrations.length} service worker registrations`);
+                    
+                    registrations.forEach((registration, index) => {
+                        log(`SW ${index + 1}: ${registration.scope}`);
+                        log(`  - Active: ${registration.active ? 'Yes' : 'No'}`);
+                        log(`  - Installing: ${registration.installing ? 'Yes' : 'No'}`);
+                        log(`  - Waiting: ${registration.waiting ? 'Yes' : 'No'}`);
+                    });
+                    
+                    // Check specifically for Firebase messaging service worker
+                    const firebaseSW = registrations.find(reg => 
+                        reg.scope.includes('firebase-messaging-sw') || 
+                        (reg.active && reg.active.scriptURL.includes('firebase-messaging-sw'))
+                    );
+                    
+                    if (firebaseSW) {
+                        log('✅ Firebase messaging service worker found');
+                    } else {
+                        log('❌ Firebase messaging service worker not found', 'error');
+                        log('Attempting to register firebase-messaging-sw.js...');
+                        
+                        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                            .then(registration => {
+                                log('✅ Firebase messaging service worker registered successfully');
+                            })
+                            .catch(error => {
+                                log(`❌ Failed to register Firebase messaging service worker: ${error.message}`, 'error');
+                            });
+                    }
+                });
+            } else {
+                log('❌ Service Workers not supported', 'error');
+            }
+        };
+
+        // Initialize FCM
+        window.initializeFCM = function() {
+            log('=== FCM INITIALIZATION ===');
+            
+            try {
+                app = initializeApp(firebaseConfig);
+                log('✅ Firebase app initialized');
+                
+                messaging = getMessaging(app);
+                log('✅ Firebase messaging initialized');
+                
+                // Set up message listener
+                onMessage(messaging, (payload) => {
+                    log('=== FOREGROUND MESSAGE RECEIVED ===');
+                    log(`Title: ${payload.notification?.title || 'No title'}`);
+                    log(`Body: ${payload.notification?.body || 'No body'}`);
+                    log(`Data: ${JSON.stringify(payload.data || {})}`);
+                    
+                    // Check if it's an emergency
+                    if (payload.data?.type === 'emergency' || 
+                        payload.notification?.title?.toLowerCase().includes('emergency') ||
+                        payload.notification?.body?.toLowerCase().includes('emergency')) {
+                        log('🚨 EMERGENCY DETECTED - Showing modal');
+                        showEmergencyModal(payload.notification?.body || 'Emergency Alert!');
+                    } else {
+                        // Show regular notification
+                        if (Notification.permission === 'granted') {
+                            new Notification(payload.notification?.title || 'Notification', {
+                                body: payload.notification?.body || 'You have a new message',
+                                icon: '/assets/icon/favicon.png'
+                            });
+                        }
+                    }
+                });
+                
+                log('✅ Message listener set up');
+                
+            } catch (error) {
+                log(`❌ FCM initialization failed: ${error.message}`, 'error');
+                console.error('FCM initialization error:', error);
+            }
+        };
+
+        // Get FCM token
+        window.getFCMToken = function() {
+            log('=== FCM TOKEN GENERATION ===');
+            
+            if (!messaging) {
+                log('❌ FCM not initialized. Please initialize first.', 'error');
+                return;
+            }
+            
+            getToken(messaging, { 
+                vapidKey: 'BKagOny0KF_2pCJQ3m....your-vapid-key-here' // You'll need to add your VAPID key
+            }).then((token) => {
+                if (token) {
+                    currentToken = token;
+                    log('✅ FCM token generated successfully');
+                    log(`Token length: ${token.length} characters`);
+                    log(`Token preview: ${token.substring(0, 50)}...`);
+                    
+                    document.getElementById('tokenDisplay').textContent = token;
+                } else {
+                    log('❌ No registration token available', 'error');
+                }
+            }).catch((err) => {
+                log(`❌ An error occurred while retrieving token: ${err.message}`, 'error');
+                console.error('Token retrieval error:', err);
+            });
+        };
+
+        // Register token with backend
+        window.registerToken = function() {
+            log('=== TOKEN REGISTRATION ===');
+            
+            if (!currentToken) {
+                log('❌ No FCM token available. Please generate token first.', 'error');
+                return;
+            }
+            
+            log('Registering token with backend...');
+            
+            // Replace with your actual backend URL
+            const backendUrl = 'http://localhost:8000/api/register-fcm-token';
+            
+            fetch(backendUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    token: currentToken,
+                    device_type: 'web',
+                    user_id: 1 // Replace with actual user ID
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    log('✅ Token registered successfully with backend');
+                } else {
+                    log(`❌ Backend registration failed: ${data.message || 'Unknown error'}`, 'error');
+                }
+            })
+            .catch(error => {
+                log(`❌ Network error during registration: ${error.message}`, 'error');
+            });
+        };
+
+        // Test emergency modal
+        window.testEmergencyModal = function() {
+            log('=== TESTING EMERGENCY MODAL ===');
+            showEmergencyModal('This is a test emergency alert to verify the modal functionality!');
+        };
+
+        // Show emergency modal
+        function showEmergencyModal(message) {
+            log('Displaying emergency modal');
+            document.getElementById('emergencyMessage').textContent = message;
+            document.getElementById('emergencyModal').style.display = 'flex';
+        }
+
+        // Close emergency modal
+        window.closeEmergencyModal = function() {
+            log('Emergency modal closed by user');
+            document.getElementById('emergencyModal').style.display = 'none';
+        };
+
+        // Clear logs
+        window.clearLogs = function() {
+            document.getElementById('debugLogs').textContent = '';
+            log('Debug logs cleared');
+        };
+
+        // Export logs
+        window.exportLogs = function() {
+            const logs = document.getElementById('debugLogs').textContent;
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fcm-debug-logs-${new Date().toISOString().slice(0, 19)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            log('Debug logs exported');
+        };
+
+        // Auto-initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            log('=== FCM DEBUG TOOL LOADED ===');
+            log('Click "Check System Status" to begin diagnostics');
+        });
+    </script>
+</body>
+</html>

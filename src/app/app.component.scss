@@ -1,0 +1,38 @@
+ion-app {
+  .app-content {
+    // Add top padding when notification banner is present
+    // This will be dynamically adjusted based on banner visibility
+    transition: padding-top 0.3s ease-out;
+  }
+}
+
+// Ensure content doesn't overlap with the fixed notification banner
+.app-content {
+  // Default state - no banner
+  padding-top: 0;
+  
+  // When banner is active, add padding to prevent content overlap
+  &.has-notification-banner {
+    padding-top: 70px; // Approximate height of notification banner
+  }
+}
+
+// Global styles for notification banner integration
+:root {
+  --notification-banner-height: 70px;
+}
+
+// Ensure proper z-index stacking
+ion-router-outlet {
+  position: relative;
+  z-index: 1;
+}
+
+// Handle safe area insets for devices with notches
+@supports (padding-top: env(safe-area-inset-top)) {
+  .app-content {
+    &.has-notification-banner {
+      padding-top: calc(70px + env(safe-area-inset-top));
+    }
+  }
+}

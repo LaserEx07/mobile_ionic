@@ -13,6 +13,7 @@ import { registerIcons } from './app/icons';
 import { ErrorHandlerService } from './app/services/error-handler.service';
 import { HttpErrorInterceptor } from './app/services/http-error.interceptor';
 import { AuthTokenInterceptor } from './app/services/auth-token.interceptor';
+import { NotificationBannerService } from './app/services/notification-banner.service';
 import { ErrorHandler } from '@angular/core';
 
 // Register Ionic icons
@@ -28,6 +29,7 @@ bootstrapApplication(AppComponent, {
     { provide: ErrorHandler, useClass: ErrorHandlerService },
     { provide: HTTP_INTERCEPTORS, useClass: AuthTokenInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
+    NotificationBannerService,
     provideIonicAngular({}),
     importProvidersFrom(IonicModule.forRoot()),
     importProvidersFrom(IonicStorageModule.forRoot()),

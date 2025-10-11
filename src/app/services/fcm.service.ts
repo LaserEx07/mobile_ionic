@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { NotificationDetailComponent } from '../components/notification-detail/notification-detail.component';
 import { EmergencyOverlayService, EmergencyNotification } from './emergency-overlay.service';
+import { NotificationBannerService } from './notification-banner.service';
 import { NotificationPayloadService, HardcodedNotification } from './notification-payload.service';
 
 @Injectable({
@@ -24,7 +25,8 @@ export class FCMService {
     private emergencyOverlay: EmergencyOverlayService,
     private router: Router,
     private toastController: ToastController,
-    private notificationPayloadService: NotificationPayloadService
+    private notificationPayloadService: NotificationPayloadService,
+    private notificationBannerService: NotificationBannerService
   ) {}
 
   /**
@@ -32,7 +34,18 @@ export class FCMService {
    */
   async initializeFCM(): Promise<void> {
     try {
+      console.log('🚀 [FCM] Starting FCM initialization...');
+      console.log('🔍 [PLATFORM] Platform detection:', {
+        capacitor: this.platform.is('capacitor'),
+        android: this.platform.is('android'),
+        ios: this.platform.is('ios'),
+        mobile: this.platform.is('mobile'),
+        platforms: this.platform.platforms()
+      });
+
       if (this.platform.is('capacitor')) {
+        console.log('📱 [CAPACITOR] Initializing FCM for Capacitor environment...');
+        
         // Request permissions
         await this.requestPermissions();
 
@@ -49,13 +62,53 @@ export class FCMService {
         this.listenForLocalNotificationActions();
 
         this.isInitialized = true;
-        console.log('FCM initialized successfully');
+        console.log('✅ [CAPACITOR] FCM initialized successfully');
       } else {
-        console.log('FCM not available on this platform');
+        console.log('🌐 [WEB] Initializing FCM for web environment...');
+        
+        // Initialize web FCM
+        await this.initializeWebFCM();
+        
+        this.isInitialized = true;
+        console.log('✅ [WEB] FCM initialized successfully');
       }
     } catch (error) {
-      console.error('Error initializing FCM:', error);
+      console.error('❌ [FCM] Error initializing FCM:', error);
       this.isInitialized = false;
+    }
+  }
+
+  /**
+   * Initialize FCM for web environment
+   */
+  private async initializeWebFCM(): Promise<void> {
+    try {
+      console.log('🔧 [WEB] Setting up web FCM...');
+      
+      // Check if we're in a secure context
+      if (!window.isSecureContext) {
+        console.error('❌ [WEB] FCM requires a secure context (HTTPS or localhost)');
+        return;
+      }
+
+      // Check if service workers are supported
+      if (!('serviceWorker' in navigator)) {
+        console.error('❌ [WEB] Service workers not supported');
+        return;
+      }
+
+      // Check if notifications are supported
+      if (!('Notification' in window)) {
+        console.error('❌ [WEB] Notifications not supported');
+        return;
+      }
+
+      console.log('✅ [WEB] Web environment checks passed');
+      console.log('📝 [WEB] Note: Use the debug tool at /debug-fcm-complete.html for full web FCM testing');
+      
+    } catch (error) {
+      console.error('❌ [WEB] Error initializing web FCM:', error);
+      throw error;
     }
   }
 
@@ -66,16 +119,17 @@ export class FCMService {
    */
   private async requestPermissions(): Promise<void> {
     try {
+      console.log('🔐 [PERMISSIONS] Requesting FCM permissions...');
       const result = await FirebaseMessaging.requestPermissions();
-      console.log('FCM permissions result:', result);
+      console.log('📋 [PERMISSIONS] FCM permissions result:', JSON.stringify(result, null, 2));
 
       if (result.receive === 'granted') {
-        console.log('FCM permissions granted');
+        console.log('✅ [PERMISSIONS] FCM permissions granted');
       } else {
-        console.warn('FCM permissions denied');
+        console.warn('⚠️ [PERMISSIONS] FCM permissions denied');
       }
     } catch (error) {
-      console.error('Error requesting FCM permissions:', error);
+      console.error('❌ [PERMISSIONS] Error requesting FCM permissions:', error);
     }
   }
 
@@ -84,16 +138,22 @@ export class FCMService {
    */
   async getFCMToken(): Promise<string> {
     try {
+      console.log('🎯 [TOKEN] Attempting to get FCM token...');
       const result = await FirebaseMessaging.getToken();
       this.fcmToken = result.token;
-      console.log('FCM Token:', this.fcmToken);
+      
+      console.log('✅ [TOKEN] FCM token received successfully');
+      console.log('📏 [TOKEN] Token length:', this.fcmToken.length, 'characters');
+      console.log('👀 [TOKEN] Token preview:', this.fcmToken.substring(0, 50) + '...');
+      console.log('🔑 [TOKEN] Full token:', this.fcmToken);
 
       // Register token with backend
+      console.log('📤 [BACKEND] Starting token registration with backend...');
       await this.registerTokenWithBackend(this.fcmToken);
 
       return this.fcmToken;
     } catch (error) {
-      console.error('Error getting FCM token:', error);
+      console.error('❌ [TOKEN] Error getting FCM token:', error);
       return '';
     }
   }
@@ -205,6 +265,17 @@ export class FCMService {
 
       // Show emergency overlay
       await this.emergencyOverlay.showEmergencyNotification(emergencyNotification);
+
+      // Also show persistent notification banner
+      this.notificationBannerService.showAlert({
+        id: emergencyNotification.id,
+        title: emergencyNotification.title,
+        message: emergencyNotification.message,
+        category: emergencyNotification.category,
+        severity: emergencyNotification.severity,
+        timestamp: emergencyNotification.timestamp,
+        data: emergencyNotification.data
+      });
 
     } catch (error) {
       console.error('Error handling emergency notification:', error);
