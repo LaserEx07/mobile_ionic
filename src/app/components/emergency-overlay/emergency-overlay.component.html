@@ -62,13 +62,16 @@
         <ion-icon name="chevron-forward" class="button-arrow"></ion-icon>
       </button>
 
-      <!-- Secondary Action - Dismiss -->
+      <!-- Secondary Action - Dismiss / Close -->
       <button class="emergency-button secondary-action"
-              (click)="dismiss()"
-              (touchstart)="dismiss()"
+              (click)="onDismissClick()"
+              (touchstart)="onDismissClick()"
+              [disabled]="!canDismiss"
               type="button">
-        <ion-icon name="checkmark-circle" class="button-icon"></ion-icon>
-        <span class="button-text">I'm Safe - Dismiss</span>
+        <ion-icon [name]="canDismiss ? 'close-circle' : 'lock-closed'" class="button-icon"></ion-icon>
+        <span class="button-text">
+          {{ canDismiss ? 'Close Alert' : 'Please wait...' }}
+        </span>
       </button>
     </div>
 

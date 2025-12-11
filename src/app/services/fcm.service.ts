@@ -34,6 +34,9 @@ export class FCMService {
         // Request permissions
         await this.requestPermissions();
 
+        // Ensure Android notification channels exist (for proper importance/behavior)
+        await this.ensureNotificationChannels();
+
         // Get FCM token
         await this.getFCMToken();
 
@@ -74,6 +77,40 @@ export class FCMService {
       }
     } catch (error) {
       console.error('Error requesting FCM permissions:', error);
+    }
+  }
+
+  /**
+   * Ensure high-importance notification channels exist on Android
+   */
+  private async ensureNotificationChannels(): Promise<void> {
+    try {
+      if (!this.platform.is('android')) {
+        return;
+      }
+
+      // High-importance channel for emergency/high severity alerts
+      await LocalNotifications.createChannel({
+        id: 'emergency_alerts',
+        name: 'Emergency Alerts',
+        description: 'High priority emergency notifications',
+        importance: 5, // IMPORTANCE_HIGH
+        vibration: true,
+        lights: true,
+        lightColor: '#FF0000',
+        visibility: 1 // VISIBILITY_PUBLIC
+      });
+
+      // Default channel for general/medium/low alerts
+      await LocalNotifications.createChannel({
+        id: 'general_alerts',
+        name: 'General Alerts',
+        description: 'General notifications',
+        importance: 3 // IMPORTANCE_DEFAULT
+      });
+
+    } catch (error) {
+      console.error('Error creating notification channels:', error);
     }
   }
 
@@ -193,6 +230,9 @@ export class FCMService {
       // Show emergency overlay
       await this.emergencyOverlay.showEmergencyNotification(emergencyNotification);
 
+      // Also show a local system notification for emergency alerts
+      await this.showLocalNotification(notification);
+
     } catch (error) {
       console.error('Error handling emergency notification:', error);
       // Fallback to regular notification if emergency overlay fails
@@ -238,6 +278,23 @@ export class FCMService {
   private async showLocalNotification(notification: any): Promise<void> {
     try {
       console.log('� [FOREGROUND] Attempting to show notification:', JSON.stringify(notification, null, 2));
+
+      // DEBUG: visible in-app indicator that local notification flow is running
+      try {
+        const toastTitle = notification?.title || notification?.data?.title || 'Foreground notification';
+        const toastBody = notification?.body || notification?.data?.body || '';
+        const toastSeverity = notification?.data?.severity || 'n/a';
+
+        const debugToast = await this.toastController.create({
+          message: `${toastTitle}\n${toastBody}\n(severity: ${toastSeverity})`,
+          duration: 2000,
+          position: 'top',
+          color: 'dark'
+        });
+        await debugToast.present();
+      } catch (toastError) {
+        console.log('Toast debug error (non-fatal):', toastError);
+      }
 
       // Check if we have notification permissions
       const permissionStatus = await LocalNotifications.checkPermissions();
@@ -297,6 +354,7 @@ export class FCMService {
         sound: this.getNotificationSound(severity),
         attachments: [],
         actionTypeId: '',
+        channelId: this.getChannelIdForSeverity(severity),
         extra: {
           ...data,
           original_title: notification.title,
@@ -455,6 +513,17 @@ export class FCMService {
       case 'low': return 'beep.wav';
       default: return 'default';
     }
+  }
+
+  /**
+   * Map severity to a notification channel
+   */
+  private getChannelIdForSeverity(severity: string): string {
+    const level = severity.toLowerCase();
+    if (level === 'high' || level === 'critical') {
+      return 'emergency_alerts';
+    }
+    return 'general_alerts';
   }
 
   /**

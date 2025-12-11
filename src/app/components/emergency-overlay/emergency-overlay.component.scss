@@ -23,6 +23,7 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
   position: relative;
+  z-index: 2; // Ensure alert sits above background pattern
   animation: emergencySlideIn 0.5s ease-out;
   border: 4px solid;
 }
@@ -289,6 +290,8 @@
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 1; // Keep behind the alert container
+  pointer-events: none; // Do not block clicks/touches on the alert
   opacity: 0.1;
   background-size: 30px 30px;
   background-image: 

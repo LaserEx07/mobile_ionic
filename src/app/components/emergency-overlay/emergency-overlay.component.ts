@@ -17,6 +17,8 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   public timeRemaining = 30; // Auto-dismiss countdown
   private countdownInterval: any;
   private pulseAnimation: any;
+  public canDismiss = false; // Controls when user can manually dismiss (after initial delay)
+  private dismissUnlockTimeout: any;
 
   constructor(
     private modalController: ModalController,
@@ -26,11 +28,13 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.startCountdown();
     this.startPulseAnimation();
+    this.startDismissUnlockTimer();
   }
 
   ngOnDestroy() {
     this.clearCountdown();
     this.stopPulseAnimation();
+    this.clearDismissUnlockTimer();
   }
 
   /**
@@ -43,6 +47,28 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
         this.dismissModal('timeout');
       }
     }, 1000);
+  }
+
+  /**
+   * After an initial delay, allow the user to manually dismiss the modal
+   */
+  private startDismissUnlockTimer() {
+    // Prevent manual dismissal immediately on display
+    this.canDismiss = false;
+
+    this.dismissUnlockTimeout = setTimeout(() => {
+      this.canDismiss = true;
+    }, 3000); // 3 seconds
+  }
+
+  /**
+   * Clear the dismiss unlock timer
+   */
+  private clearDismissUnlockTimer() {
+    if (this.dismissUnlockTimeout) {
+      clearTimeout(this.dismissUnlockTimeout);
+      this.dismissUnlockTimeout = null;
+    }
   }
 
   /**
@@ -138,6 +164,17 @@ export class EmergencyOverlayComponent implements OnInit, OnDestroy {
   async dismiss() {
     console.log('🚨 Emergency Overlay: Dismiss button clicked');
     await this.dismissModal('dismiss');
+  }
+
+  /**
+   * Template handler for dismiss button (respects canDismiss)
+   */
+  async onDismissClick() {
+    console.log('🚨 Emergency Overlay: onDismissClick, canDismiss =', this.canDismiss);
+    if (!this.canDismiss) {
+      return;
+    }
+    await this.dismiss();
   }
 
   /**
