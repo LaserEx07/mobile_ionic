@@ -15,14 +15,14 @@ export const environment = {
   // - ngrok tunnel: 'https://your-ngrok-url.ngrok-free.app/api'
 
   // TODO: Replace with ngrok URL or production domain for external access
-  apiUrl: 'http://192.168.112.244:8000/api', // ⚠️ Updated to use specified IP address
+  apiUrl: 'http://192.168.119.177:8000/api', // ⚠️ Updated to use specified IP address
 
   // For external access, use one of these:
   // apiUrl: 'https://your-ngrok-url.ngrok-free.app/api', // ngrok tunnel
   // apiUrl: 'https://yourdomain.com/api', // production domain
 
   // Health check endpoint (automatically derived if not specified)
-  healthCheckUrl: 'http://192.168.112.244:8000/up', // ⚠️ Updated to use specified IP address
+  healthCheckUrl: 'http://192.168.119.177:8000/up', // ⚠️ Updated to use specified IP address
 
   // External APIs
   orsApiKey: '5b3ce3597851110001cf62485d16190c4e8d4358bf96e7207454806f', // Updated OpenRouteService API key

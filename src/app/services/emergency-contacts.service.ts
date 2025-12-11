@@ -235,22 +235,22 @@ export class EmergencyContactsService {
       let contacts = this.defaultEmergencyContacts;
       let disasterInfo = this.defaultDisasterInfo;
 
-      try {
-        // Try to fetch updated contacts from API if available
-        const response = await firstValueFrom(
-          this.http.get<{contacts: EmergencyContact[], disasterInfo: DisasterPreparednessInfo[]}>
-            (`${environment.apiUrl}/emergency-contacts`)
-        );
+      // try {
+      //   // Try to fetch updated contacts from API if available
+      //   const response = await firstValueFrom(
+      //     this.http.get<{contacts: EmergencyContact[], disasterInfo: DisasterPreparednessInfo[]}>
+      //       (`${environment.apiUrl}/emergency-contacts`)
+      //   );
         
-        if (response.contacts) {
-          contacts = response.contacts;
-        }
-        if (response.disasterInfo) {
-          disasterInfo = response.disasterInfo;
-        }
-      } catch (error) {
-        console.log('Using default emergency contacts (API not available)');
-      }
+      //   if (response.contacts) {
+      //     contacts = response.contacts;
+      //   }
+      //   if (response.disasterInfo) {
+      //     disasterInfo = response.disasterInfo;
+      //   }
+      // } catch (error) {
+      //   console.log('Using default emergency contacts (API not available)');
+      // }
 
       // Cache the contacts and disaster info
       await this.offlineStorage.cacheEmergencyContacts(contacts);

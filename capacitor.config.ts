@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
       'http://localhost:8000',
       'http://127.0.0.1:8100',
       'http://127.0.0.1:8000',
-      'http://192.168.8.174:8000', // New API endpoint
+      'http://192.168.119.177:8000', // Current local API endpoint
       'http://172.30.11.217:8000', // School IP
       'http://192.168.112.191:8000', // Home / local API
       'http://192.168.112.191:8000', // Home / local API (duplicate for coverage)

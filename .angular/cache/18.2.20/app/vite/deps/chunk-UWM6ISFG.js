@@ -5,11 +5,19 @@ import {
   LIFECYCLE_WILL_LEAVE,
   LIFECYCLE_WILL_UNLOAD,
   createAnimation
-} from "./chunk-6ECVN26U.js";
+} from "./chunk-OPFSESKE.js";
 import {
   getMode,
   setMode
 } from "./chunk-RBEPSNWY.js";
+import {
+  MENU_BACK_BUTTON_PRIORITY,
+  OVERLAY_BACK_BUTTON_PRIORITY,
+  shouldUseCloseWatcher
+} from "./chunk-676MQPOE.js";
+import {
+  doc
+} from "./chunk-CJ5MJUPJ.js";
 import {
   addEventListener,
   componentOnReady,
@@ -20,14 +28,6 @@ import {
 import {
   BACKDROP_NO_SCROLL
 } from "./chunk-4AF7KAXZ.js";
-import {
-  MENU_BACK_BUTTON_PRIORITY,
-  OVERLAY_BACK_BUTTON_PRIORITY,
-  shouldUseCloseWatcher
-} from "./chunk-676MQPOE.js";
-import {
-  doc
-} from "./chunk-CJ5MJUPJ.js";
 import {
   config,
   configFromSession,
@@ -4133,4 +4133,4 @@ export {
    * (C) Ionic http://ionicframework.com - MIT License
    *)
 */
-//# sourceMappingURL=chunk-PS7JNHEC.js.map
+//# sourceMappingURL=chunk-UWM6ISFG.js.map

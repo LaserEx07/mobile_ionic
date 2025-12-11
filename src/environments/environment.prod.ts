@@ -3,10 +3,10 @@ export const environment = {
 
   // API Configuration for production
   // Change this to your production server's URL
-  apiUrl: 'http://192.168.8.174:8000/api',
+  apiUrl: 'http://192.168.119.177:8000/api',
 
   // Health check endpoint (automatically derived if not specified)
-  healthCheckUrl: 'http://192.168.8.174:8000/up',
+  healthCheckUrl: 'http://192.168.119.177:8000/up',
 
   // External APIs
   orsApiKey: '5b3ce3597851110001cf62485d16190c4e8d4358bf96e7207454806f', // Updated OpenRouteService API key

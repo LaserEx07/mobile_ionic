@@ -1,10 +1,4 @@
 import {
-  startFocusVisible
-} from "./chunk-7Q5HCUSL.js";
-import {
-  isRTL
-} from "./chunk-EUT5B6DW.js";
-import {
   KEYBOARD_DID_OPEN
 } from "./chunk-YYDXBVMM.js";
 import {
@@ -23,6 +17,12 @@ import {
   printIonContentErrorMsg,
   resetContentScrollY
 } from "./chunk-TWXMTMU7.js";
+import {
+  startFocusVisible
+} from "./chunk-7Q5HCUSL.js";
+import {
+  isRTL
+} from "./chunk-EUT5B6DW.js";
 import {
   AngularDelegate,
   BACKDROP,
@@ -86,13 +86,13 @@ import {
   setIonicClasses,
   setOverlayId,
   toastController
-} from "./chunk-PS7JNHEC.js";
+} from "./chunk-UWM6ISFG.js";
 import {
   iosTransitionAnimation
-} from "./chunk-MZOFVHKN.js";
+} from "./chunk-7ZCXYYYU.js";
 import {
   mdTransitionAnimation
-} from "./chunk-PUVVNQKQ.js";
+} from "./chunk-KC3K62ME.js";
 import {
   LIFECYCLE_DID_LEAVE,
   LIFECYCLE_WILL_LEAVE,
@@ -103,7 +103,7 @@ import {
   setPageHidden,
   transition,
   waitForMount
-} from "./chunk-6ECVN26U.js";
+} from "./chunk-OPFSESKE.js";
 import {
   Build,
   H,
@@ -116,6 +116,13 @@ import {
   readTask,
   writeTask
 } from "./chunk-RBEPSNWY.js";
+import {
+  shouldUseCloseWatcher
+} from "./chunk-676MQPOE.js";
+import {
+  doc,
+  win
+} from "./chunk-CJ5MJUPJ.js";
 import {
   addEventListener,
   assert,
@@ -140,13 +147,6 @@ import {
   GESTURE_CONTROLLER,
   createGesture
 } from "./chunk-4AF7KAXZ.js";
-import {
-  shouldUseCloseWatcher
-} from "./chunk-676MQPOE.js";
-import {
-  doc,
-  win
-} from "./chunk-CJ5MJUPJ.js";
 import {
   config,
   printIonError,
@@ -5642,14 +5642,14 @@ var App = proxyCustomElement(class App2 extends H {
       rIC(() => __async(this, null, function* () {
         const isHybrid = isPlatform(window, "hybrid");
         if (!config.getBoolean("_testing")) {
-          import("./index9-ET534LSX.js").then((module) => module.startTapClick(config));
+          import("./index9-HMP5NUAI.js").then((module) => module.startTapClick(config));
         }
         if (config.getBoolean("statusTap", isHybrid)) {
           import("./status-tap-MY3AAKXU.js").then((module) => module.startStatusTap());
         }
         if (config.getBoolean("inputShims", needInputShims())) {
           const platform = isPlatform(window, "ios") ? "ios" : "android";
-          import("./input-shims-2MBIK4VS.js").then((module) => module.startInputShims(config, platform));
+          import("./input-shims-FZZGYMVF.js").then((module) => module.startInputShims(config, platform));
         }
         const hardwareBackButtonModule = yield import("./hardware-back-button-WYJ3J23T.js");
         const supportsHardwareBackButtonEvents = isHybrid || shouldUseCloseWatcher();
